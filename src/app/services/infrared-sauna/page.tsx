@@ -16,17 +16,28 @@ export default function SaunaPage() {
   return (
     <div>
       <section className="border-b border-border bg-surface px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <SectionHeading
-            eyebrow="Recovery"
-            title={saunaCopy.headline}
-            description={saunaCopy.tagline}
-          />
-          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted sm:text-base">
-            {saunaCopy.intro}
-          </p>
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div>
+            <SectionHeading
+              eyebrow="Recovery"
+              title={saunaCopy.headline}
+              description={saunaCopy.tagline}
+            />
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
+              {saunaCopy.intro}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <ButtonLink href="/book?type=sauna">Book Sauna</ButtonLink>
+              <ButtonLink
+                href={`mailto:${siteConfig.contact.email}?subject=Infrared%20Sauna%20Pricing`}
+                variant="secondary"
+              >
+                Email to inquire about pricing
+              </ButtonLink>
+            </div>
+          </div>
 
-          <div className="mt-10 overflow-hidden border border-border bg-black">
+          <div className="overflow-hidden border border-border bg-black">
             <div className="relative aspect-video w-full">
               <iframe
                 src={saunaCopy.video.embedUrl}
@@ -36,16 +47,6 @@ export default function SaunaPage() {
                 className="absolute inset-0 h-full w-full"
               />
             </div>
-          </div>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/book?type=sauna">Book Sauna</ButtonLink>
-            <ButtonLink
-              href={`mailto:${siteConfig.contact.email}?subject=Infrared%20Sauna%20Pricing`}
-              variant="secondary"
-            >
-              Email to inquire about pricing
-            </ButtonLink>
           </div>
         </div>
       </section>
