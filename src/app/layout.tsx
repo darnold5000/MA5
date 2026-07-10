@@ -35,6 +35,12 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/images/brand/ma5-logo.png",
+        alt: `${siteConfig.name} logo`,
+      },
+    ],
   },
 };
 
