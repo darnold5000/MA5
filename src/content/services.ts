@@ -233,14 +233,14 @@ export const saunaCopy = {
     {
       title: "Weight Control Support",
       body: "Sessions can raise heart rate and metabolism in a way comparable to light-to-moderate cardio. A 30–45 minute infrared sauna session may burn roughly 200–600 calories depending on intensity and body weight — similar to a brisk walk or light jog.",
-      imageSrc: "/images/services/sauna-detox.png",
-      imageAlt: "Infrared sauna as part of an active recovery routine",
+      imageSrc: "/images/services/sauna-weight.png",
+      imageAlt: "Stepping onto a scale as part of weight and wellness tracking",
     },
     {
       title: "Immune Function Support",
       body: "Raising core body temperature can support circulation and recovery-oriented immune response. Many clients use infrared sauna as part of a consistent wellness routine.",
-      imageSrc: "/images/services/sauna-heart.webp",
-      imageAlt: "Wellness and immune support through infrared sauna",
+      imageSrc: "/images/services/sauna-immunity.png",
+      imageAlt: "Illustration representing immune system support",
     },
   ],
 } as const;
