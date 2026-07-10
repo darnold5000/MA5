@@ -16,8 +16,8 @@ export const services: Service[] = [
       "Customized coaching built from your assessment results and goals, with certified coaches focused on your progress.",
     href: "/training",
     bookingType: "assessment",
-    imageSrc: "/images/services/training.jpg",
-    imageAlt: "Semi-private training at MA5 Performance",
+    imageSrc: "/images/services/semi-private-training.png",
+    imageAlt: "Coach guiding a client through a barbell lift at MA5 Performance",
   },
   {
     slug: "small-group-training",
@@ -36,8 +36,8 @@ export const services: Service[] = [
       "Sport-specific training to improve speed, agility, movement patterns, athleticism, and injury resilience.",
     href: "/sports-performance",
     bookingType: "sports-performance",
-    imageSrc: "/images/services/sports-performance.jpg",
-    imageAlt: "Sports performance training with MA5",
+    imageSrc: "/images/services/sports-performance.png",
+    imageAlt: "Athlete balancing in a squat on a stability ball during sports performance training",
   },
   {
     slug: "open-gym",
@@ -55,8 +55,8 @@ export const services: Service[] = [
     summary:
       "Sustainable meal planning built on moderation and portion control — without cutting out the foods you love.",
     href: "/nutrition",
-    imageSrc: "/images/services/nutrition.jpg",
-    imageAlt: "Nutrition coaching and meal planning at MA5",
+    imageSrc: "/images/services/nutrition.png",
+    imageAlt: "Colorful balanced meal bowls with salmon, chicken, and plant-based options",
   },
   {
     slug: "recovery",

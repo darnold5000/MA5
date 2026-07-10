@@ -24,8 +24,8 @@ export default function TrainingPage() {
         <article className="border border-border bg-surface p-6">
           <div className="relative mb-6 aspect-[16/9] overflow-hidden">
             <Image
-              src="/images/brand/ma5-mark.jpg"
-              alt="MA5 semi-private training"
+              src="/images/services/semi-private-training.png"
+              alt="Coach guiding a client through a barbell lift at MA5 Performance"
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -71,15 +71,26 @@ export default function TrainingPage() {
         </article>
       </div>
 
-      <section className="mt-12 border border-border bg-surface p-6 sm:p-8">
-        <h2 className="font-display text-3xl tracking-wide uppercase">
-          {trainingCopy.assessment.title}
-        </h2>
-        <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted sm:text-base">
-          {trainingCopy.assessment.body}
-        </p>
-        <div className="mt-6">
-          <ButtonLink href="/book?type=assessment">Schedule Now</ButtonLink>
+      <section className="mt-12 grid gap-8 border border-border bg-surface p-6 sm:p-8 lg:grid-cols-2 lg:items-center">
+        <div className="relative aspect-[4/3] overflow-hidden">
+          <Image
+            src="/images/home/schedule-assessment.png"
+            alt="Fitness assessment tools including measuring tape, stopwatch, notebook, and training gear"
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 40vw"
+          />
+        </div>
+        <div>
+          <h2 className="font-display text-3xl tracking-wide uppercase">
+            {trainingCopy.assessment.title}
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">
+            {trainingCopy.assessment.body}
+          </p>
+          <div className="mt-6">
+            <ButtonLink href="/book?type=assessment">Schedule Now</ButtonLink>
+          </div>
         </div>
       </section>
     </div>

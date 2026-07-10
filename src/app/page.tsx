@@ -1,3 +1,4 @@
+import { AssessmentSection } from "@/components/home/assessment-section";
 import { FacilitySection } from "@/components/home/facility-section";
 import { FinalCta } from "@/components/home/final-cta";
 import { HeroSection } from "@/components/home/hero-section";
@@ -12,6 +13,7 @@ export default function HomePage() {
     <>
       <HeroSection />
       <ValueProposition />
+      <AssessmentSection />
       <ServicesOverview />
       <Ma5Difference />
       <ResultsSection />

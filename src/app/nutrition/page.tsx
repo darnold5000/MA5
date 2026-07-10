@@ -42,7 +42,7 @@ export default function NutritionPage() {
         </div>
         <div className="relative aspect-[4/3] overflow-hidden border border-border">
           <Image
-            src="/images/services/nutrition.jpg"
+            src="/images/services/nutrition.png"
             alt="Nutrition coaching at MA5 Performance"
             fill
             className="object-cover"
