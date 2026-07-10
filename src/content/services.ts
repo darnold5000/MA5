@@ -63,8 +63,8 @@ export const services: Service[] = [
     title: "InBody and Infrared Sauna",
     summary:
       "Track body composition with InBody scans and recover in a private infrared sauna room.",
-    href: "/services/inbody-scan",
-    bookingType: "inbody",
+    href: "/services/infrared-sauna",
+    bookingType: "sauna",
     imageSrc: "/images/services/inbody.jpg",
     imageAlt: "InBody scan and recovery services at MA5",
   },
@@ -195,20 +195,52 @@ export const inbodyPricing = [
 ] as const;
 
 export const saunaCopy = {
+  headline: "Private Infrared Sauna Room",
+  tagline: "Relax, Restore, Renew",
   intro:
-    "Relax, restore, and renew in MA5's private infrared sauna room. Infrared light penetrates the body to support recovery at more comfortable temperatures than traditional saunas.",
+    "Infrared saunas use light waves (far, mid, or near infrared) that penetrate the skin to heat the body from the inside out, allowing effective sessions at lower, more comfortable temperatures. Traditional saunas heat the air around you first, which usually requires much higher temperatures to feel similar effects.",
+  video: {
+    // From https://ma5performance.com/infrared-suana
+    embedUrl:
+      "https://player.vimeo.com/video/1087849433?badge=0&byline=0&h=407c3556ce&portrait=0&title=0&autoplay=0&loop=0&muted=0&controls=1",
+    title: "MA5 private infrared sauna room",
+  },
   benefits: [
     {
-      title: "Detoxification and Recovery",
-      body: "Infrared heat warms tissues, muscles, and joints and supports circulation that can aid recovery and comfort.",
+      title: "Detoxification",
+      body: "Infrared heat supports sweating and circulation as part of a recovery-focused session, helping you feel restored after training.",
+      imageSrc: "/images/services/sauna-detox.png",
+      imageAlt: "Detoxification and recovery benefits of infrared sauna",
+    },
+    {
+      title: "Heart Health Support",
+      body: "Infrared sauna sessions can support circulation and feel similar to moderate exercise for many people. Regular use is often included in recovery routines focused on heart health and overall wellness.",
+      imageSrc: "/images/services/sauna-heart.webp",
+      imageAlt: "Heart health support from infrared sauna use",
     },
     {
       title: "Stress Management",
-      body: "Sessions support relaxation, calmer nervous-system response, and better recovery habits.",
+      body: "Infrared sauna time helps calm the nervous system, support relaxation, and encourage better recovery habits that can lower everyday stress load.",
+      imageSrc: "/images/services/sauna-stress.jpeg",
+      imageAlt: "Stress management and relaxation in the infrared sauna",
     },
     {
-      title: "Heart and Immune Support",
-      body: "Regular infrared sauna use is associated with improved circulation and recovery-oriented heat exposure. Email MA5 for current pricing and availability.",
+      title: "Recovery",
+      body: "Infrared rays warm tissues, muscles, and joints and promote increased blood flow, which can help with comfort, inflammation support, and post-training recovery.",
+      imageSrc: "/images/services/sauna-recovery.jpeg",
+      imageAlt: "Muscle and joint recovery with infrared heat",
+    },
+    {
+      title: "Weight Control Support",
+      body: "Sessions can raise heart rate and metabolism in a way comparable to light-to-moderate cardio. A 30–45 minute infrared sauna session may burn roughly 200–600 calories depending on intensity and body weight — similar to a brisk walk or light jog.",
+      imageSrc: "/images/services/sauna-detox.png",
+      imageAlt: "Infrared sauna as part of an active recovery routine",
+    },
+    {
+      title: "Immune Function Support",
+      body: "Raising core body temperature can support circulation and recovery-oriented immune response. Many clients use infrared sauna as part of a consistent wellness routine.",
+      imageSrc: "/images/services/sauna-heart.webp",
+      imageAlt: "Wellness and immune support through infrared sauna",
     },
   ],
 } as const;

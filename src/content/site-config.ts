@@ -40,6 +40,11 @@ export const siteConfig = {
     fallbackUrl:
       "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
   },
+  signalWorks: {
+    url: "https://hiresignalworks.com",
+    // "by" | "designed-and-maintained"
+    creditVariant: "by" as const,
+  },
   owner: {
     name: "Robert Anderson",
     // Credentials referenced on the current site meta description.
@@ -51,6 +56,7 @@ export const siteConfig = {
     { label: "Training", href: "/training" },
     { label: "Sports Performance", href: "/sports-performance" },
     { label: "Open Gym", href: "/open-gym" },
+    { label: "Sauna", href: "/services/infrared-sauna" },
     { label: "About", href: "/about" },
     { label: "Results", href: "/transformations" },
   ],
