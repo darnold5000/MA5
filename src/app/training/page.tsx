@@ -1,0 +1,87 @@
+import type { Metadata } from "next";
+import Image from "next/image";
+
+import { ButtonLink } from "@/components/shared/button-link";
+import { SectionHeading } from "@/components/shared/section-heading";
+import { trainingCopy } from "@/content/services";
+
+export const metadata: Metadata = {
+  title: "Training",
+  description:
+    "Semi-private and small-group personal training with assessments at MA5 Performance in Avon, Indiana.",
+};
+
+export default function TrainingPage() {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <SectionHeading
+        eyebrow="Training"
+        title="Semi-Private and Small Group Coaching"
+        description="Schedule an assessment to find the right path — customized one-on-one coaching or small-group sessions capped at 10 people."
+      />
+
+      <div className="mt-12 grid gap-8 lg:grid-cols-2">
+        <article className="border border-border bg-surface p-6">
+          <div className="relative mb-6 aspect-[16/9] overflow-hidden">
+            <Image
+              src="/images/brand/ma5-mark.jpg"
+              alt="MA5 semi-private training"
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+          </div>
+          <h2 className="font-display text-3xl tracking-wide uppercase">
+            {trainingCopy.semiPrivate.title}
+          </h2>
+          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
+            {trainingCopy.semiPrivate.points.map((point) => (
+              <li key={point}>• {point}</li>
+            ))}
+          </ul>
+          <div className="mt-6">
+            <ButtonLink href="/book?type=assessment">Book NOW</ButtonLink>
+          </div>
+        </article>
+
+        <article className="border border-border bg-surface p-6">
+          <div className="relative mb-6 aspect-[16/9] overflow-hidden">
+            <Image
+              src="/images/services/training.jpg"
+              alt="MA5 small group training"
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+          </div>
+          <h2 className="font-display text-3xl tracking-wide uppercase">
+            {trainingCopy.smallGroup.title}
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            {trainingCopy.smallGroup.intro}
+          </p>
+          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
+            {trainingCopy.smallGroup.points.map((point) => (
+              <li key={point}>• {point}</li>
+            ))}
+          </ul>
+          <div className="mt-6">
+            <ButtonLink href="/book?type=small-group">Book NOW</ButtonLink>
+          </div>
+        </article>
+      </div>
+
+      <section className="mt-12 border border-border bg-surface p-6 sm:p-8">
+        <h2 className="font-display text-3xl tracking-wide uppercase">
+          {trainingCopy.assessment.title}
+        </h2>
+        <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted sm:text-base">
+          {trainingCopy.assessment.body}
+        </p>
+        <div className="mt-6">
+          <ButtonLink href="/book?type=assessment">Schedule Now</ButtonLink>
+        </div>
+      </section>
+    </div>
+  );
+}
