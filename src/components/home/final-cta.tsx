@@ -1,4 +1,5 @@
 import { ButtonLink } from "@/components/shared/button-link";
+import { siteConfig } from "@/content/site-config";
 
 export function FinalCta() {
   return (
@@ -12,7 +13,7 @@ export function FinalCta() {
           healthier, more confident you.
         </p>
         <div className="mt-8 flex justify-center">
-          <ButtonLink href="/book">Book Now</ButtonLink>
+          <ButtonLink href={siteConfig.booking.path}>Book Now</ButtonLink>
         </div>
       </div>
     </section>

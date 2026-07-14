@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { sportsCopy } from "@/content/services";
+import { siteConfig } from "@/content/site-config";
 
 export const metadata: Metadata = {
   title: "Sports Performance",
@@ -22,7 +23,7 @@ export default function SportsPerformancePage() {
             description={sportsCopy.intro}
           />
           <div className="mt-8">
-            <ButtonLink href="/book?type=sports-performance">
+            <ButtonLink href={siteConfig.booking.path}>
               Schedule Your Training Today
             </ButtonLink>
           </div>

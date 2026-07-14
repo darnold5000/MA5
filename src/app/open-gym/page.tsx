@@ -30,7 +30,7 @@ export default function OpenGymPage() {
             ))}
           </ul>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/book?type=open-gym">Sign up today</ButtonLink>
+            <ButtonLink href={siteConfig.booking.path}>Sign up today</ButtonLink>
             <ButtonLink
               href={`mailto:${siteConfig.contact.email}?subject=Open%20Gym%20Sign%20up`}
               variant="secondary"

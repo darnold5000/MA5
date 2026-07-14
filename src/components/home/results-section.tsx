@@ -1,5 +1,8 @@
+import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { TransformationGallery } from "@/components/transformations/transformation-gallery";
 import { siteConfig } from "@/content/site-config";
+import { featuredTransformations } from "@/content/transformations";
 import { testimonials } from "@/content/testimonials";
 
 export function ResultsSection() {
@@ -8,12 +11,23 @@ export function ResultsSection() {
       <div className="mx-auto max-w-7xl">
         <SectionHeading
           eyebrow="Results"
-          title="Transformations and Testimonials"
-          description={`“${siteConfig.tagline}” Client stories will appear here once MA5 provides approved quotes and transformation photos.`}
+          title="Transformations"
+          description={`“${siteConfig.tagline}” Real client progress from coaching at MA5.`}
         />
 
+        <TransformationGallery
+          items={featuredTransformations}
+          className="mt-12"
+        />
+
+        <div className="mt-8">
+          <ButtonLink href="/transformations" variant="secondary">
+            View all transformations
+          </ButtonLink>
+        </div>
+
         {testimonials.length > 0 ? (
-          <div className="mt-12 grid gap-6 md:grid-cols-2">
+          <div className="mt-16 grid gap-6 md:grid-cols-2">
             {testimonials.map((item) => (
               <blockquote
                 key={item.id}
@@ -28,15 +42,7 @@ export function ResultsSection() {
               </blockquote>
             ))}
           </div>
-        ) : (
-          <div className="mt-12 border border-dashed border-border bg-surface p-8">
-            <p className="text-sm leading-relaxed text-muted">
-              No public testimonials are published on the current MA5 website.
-              This section stays empty until verified client content is
-              available.
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
     </section>
   );

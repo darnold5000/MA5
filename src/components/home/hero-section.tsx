@@ -5,19 +5,36 @@ import { siteConfig } from "@/content/site-config";
 
 export function HeroSection() {
   return (
-    <section className="relative isolate min-h-[88vh] overflow-hidden">
-      <Image
-        src="/images/hero/fitness-room.jpg"
-        alt="Training floor at MA5 Performance"
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/35" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/30" />
+    <section className="relative isolate overflow-hidden bg-background">
+      {/* Mobile: show the full wide gym photo, then content below */}
+      <div className="relative aspect-[2/1] w-full md:hidden">
+        <Image
+          src="/images/hero/fitness-room.jpg"
+          alt="Training floor at MA5 Performance"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/25" />
+      </div>
 
-      <div className="relative mx-auto flex min-h-[88vh] max-w-7xl flex-col justify-end px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+      {/* Desktop: full-bleed background */}
+      <div className="absolute inset-0 hidden md:block">
+        <Image
+          src="/images/hero/fitness-room.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+          aria-hidden
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/30" />
+      </div>
+
+      <div className="relative mx-auto flex max-w-7xl flex-col justify-end px-4 pt-8 pb-16 sm:px-6 md:min-h-[88vh] md:pt-28 md:pb-20 lg:px-8">
         <div className="mb-6 flex items-center gap-4">
           <Image
             src="/images/brand/ma5-logo.jpeg"
@@ -42,7 +59,7 @@ export function HeroSection() {
           {siteConfig.description}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href="/book?type=assessment">Book an Assessment</ButtonLink>
+          <ButtonLink href={siteConfig.booking.path}>Book an Assessment</ButtonLink>
           <ButtonLink href="/training" variant="secondary">
             Explore Training
           </ButtonLink>

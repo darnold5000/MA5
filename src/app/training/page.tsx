@@ -3,6 +3,8 @@ import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { TrainingPricingSection } from "@/components/training/training-pricing-section";
+import { siteConfig } from "@/content/site-config";
 import { trainingCopy } from "@/content/services";
 
 export const metadata: Metadata = {
@@ -40,7 +42,7 @@ export default function TrainingPage() {
             ))}
           </ul>
           <div className="mt-6">
-            <ButtonLink href="/book?type=assessment">Book NOW</ButtonLink>
+            <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
           </div>
         </article>
 
@@ -66,10 +68,12 @@ export default function TrainingPage() {
             ))}
           </ul>
           <div className="mt-6">
-            <ButtonLink href="/book?type=small-group">Book NOW</ButtonLink>
+            <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
           </div>
         </article>
       </div>
+
+      <TrainingPricingSection />
 
       <section className="mt-12 grid gap-8 border border-border bg-surface p-6 sm:p-8 lg:grid-cols-2 lg:items-center">
         <div className="relative aspect-[4/3] overflow-hidden">
@@ -89,7 +93,7 @@ export default function TrainingPage() {
             {trainingCopy.assessment.body}
           </p>
           <div className="mt-6">
-            <ButtonLink href="/book?type=assessment">Schedule Now</ButtonLink>
+            <ButtonLink href={siteConfig.booking.path}>Schedule Now</ButtonLink>
           </div>
         </div>
       </section>

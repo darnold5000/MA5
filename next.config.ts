@@ -4,6 +4,12 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/book",
+        destination:
+          "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
+        permanent: false,
+      },
+      {
         source: "/tour-ma5",
         destination: "/facility",
         permanent: true,

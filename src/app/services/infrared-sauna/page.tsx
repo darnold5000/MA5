@@ -27,7 +27,7 @@ export default function SaunaPage() {
               {saunaCopy.intro}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/book?type=sauna">Book Sauna</ButtonLink>
+              <ButtonLink href={siteConfig.booking.path}>Book Sauna</ButtonLink>
               <ButtonLink
                 href={`mailto:${siteConfig.contact.email}?subject=Infrared%20Sauna%20Pricing`}
                 variant="secondary"
@@ -94,7 +94,7 @@ export default function SaunaPage() {
               availability.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <ButtonLink href="/book?type=sauna">Book Sauna</ButtonLink>
+              <ButtonLink href={siteConfig.booking.path}>Book Sauna</ButtonLink>
               <ButtonLink
                 href={`mailto:${siteConfig.contact.email}?subject=Infrared%20Sauna%20Pricing`}
                 variant="secondary"

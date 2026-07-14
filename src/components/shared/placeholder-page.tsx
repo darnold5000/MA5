@@ -1,5 +1,6 @@
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { siteConfig } from "@/content/site-config";
 
 type PlaceholderPageProps = {
   title: string;
@@ -16,7 +17,7 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
         verified copy are available.
       </p>
       <div className="mt-8">
-        <ButtonLink href="/book">Book Now</ButtonLink>
+        <ButtonLink href={siteConfig.booking.path}>Book Now</ButtonLink>
       </div>
     </section>
   );

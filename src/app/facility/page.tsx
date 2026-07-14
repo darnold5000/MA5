@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { siteConfig } from "@/content/site-config";
 
 export const metadata: Metadata = {
   title: "Facility",
@@ -56,7 +57,7 @@ export default function FacilityPage() {
       </div>
 
       <div className="mt-10 flex flex-wrap gap-3">
-        <ButtonLink href="/book">Join our community today</ButtonLink>
+        <ButtonLink href={siteConfig.booking.path}>Join our community today</ButtonLink>
         <ButtonLink href="/open-gym" variant="secondary">
           Learn about Open Gym
         </ButtonLink>

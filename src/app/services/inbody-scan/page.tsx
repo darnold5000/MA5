@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { inbodyPricing } from "@/content/services";
+import { siteConfig } from "@/content/site-config";
 
 export const metadata: Metadata = {
   title: "InBody Scan",
@@ -40,7 +41,7 @@ export default function InBodyPage() {
             ))}
           </div>
           <div className="mt-8">
-            <ButtonLink href="/book?type=inbody">
+            <ButtonLink href={siteConfig.booking.path}>
               Schedule your InBody Scan Today
             </ButtonLink>
           </div>

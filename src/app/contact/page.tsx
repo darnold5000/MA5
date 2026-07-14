@@ -71,7 +71,7 @@ export default function ContactPage() {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <ButtonLink href="/book">Book Now or Schedule a Consultation</ButtonLink>
+        <ButtonLink href={siteConfig.booking.path}>Book Now or Schedule a Consultation</ButtonLink>
         <ButtonLink
           href={`mailto:${siteConfig.contact.email}?subject=MA5%20Inquiry`}
           variant="secondary"

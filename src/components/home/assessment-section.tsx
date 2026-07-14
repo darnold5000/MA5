@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { trainingCopy } from "@/content/services";
+import { siteConfig } from "@/content/site-config";
 
 export function AssessmentSection() {
   return (
@@ -29,7 +30,7 @@ export function AssessmentSection() {
             program around your goals.
           </p>
           <div className="mt-8">
-            <ButtonLink href="/book?type=assessment">
+            <ButtonLink href={siteConfig.booking.path}>
               Schedule an Assessment
             </ButtonLink>
           </div>

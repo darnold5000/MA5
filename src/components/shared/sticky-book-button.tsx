@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-
+import { ButtonLink } from "@/components/shared/button-link";
 import { trackEvent } from "@/lib/analytics";
 import { siteConfig } from "@/content/site-config";
 import { cn } from "@/lib/utils";
@@ -18,13 +17,13 @@ export function StickyBookButton({ className }: StickyBookButtonProps) {
         className,
       )}
     >
-      <Link
+      <ButtonLink
         href={siteConfig.booking.path}
         onClick={() => trackEvent("sticky_book_click")}
-        className="flex min-h-11 w-full items-center justify-center bg-brand px-4 text-sm font-semibold tracking-wide text-brand-foreground uppercase"
+        className="w-full"
       >
         Book Now
-      </Link>
+      </ButtonLink>
     </div>
   );
 }

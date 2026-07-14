@@ -53,7 +53,7 @@ export default function AboutPage() {
             </a>
           </div>
           <div className="mt-8">
-            <ButtonLink href="/book?type=assessment">Book an Assessment</ButtonLink>
+            <ButtonLink href={siteConfig.booking.path}>Book an Assessment</ButtonLink>
           </div>
         </div>
       </div>

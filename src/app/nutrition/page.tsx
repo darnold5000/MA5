@@ -31,7 +31,7 @@ export default function NutritionPage() {
             Let&apos;s start eating to live, not living to eat.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/book">Schedule Nutrition Consultation</ButtonLink>
+            <ButtonLink href={siteConfig.booking.path}>Schedule Nutrition Consultation</ButtonLink>
             <ButtonLink
               href={`mailto:${siteConfig.contact.email}?subject=Nutrition%20Consultation`}
               variant="secondary"
