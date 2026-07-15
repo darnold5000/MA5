@@ -22,21 +22,33 @@ export function CheckoutButton({
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function startCheckout() {
     setPending(true);
+    setError(null);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productSlug }),
       });
-      const data = await res.json();
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
       if (res.ok && data.url) {
-        window.location.href = data.url as string;
+        window.location.href = data.url;
         return;
       }
-      // No live Stripe / auth — show a realistic demo checkout preview.
+      // Real auth/Stripe misconfig — surface it. Demo persona gets the preview.
+      const message =
+        data.error ?? `Checkout failed (${res.status}). Sign in with a real account to pay.`;
+      if (res.status === 401) {
+        setError(message);
+        setPending(false);
+        return;
+      }
       setDemoMode(true);
       setOpen(true);
       setPending(false);
@@ -49,14 +61,21 @@ export function CheckoutButton({
 
   return (
     <>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={startCheckout}
-        className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
-      >
-        {pending ? "Starting…" : label}
-      </button>
+      <div className="space-y-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={startCheckout}
+          className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+        >
+          {pending ? "Starting…" : label}
+        </button>
+        {error ? (
+          <p className="text-sm text-brand" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
 
       {open ? (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center">

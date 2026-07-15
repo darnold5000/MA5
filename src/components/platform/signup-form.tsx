@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
@@ -10,7 +9,6 @@ import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
 export function SignupForm() {
-  const router = useRouter();
   const configured = isSupabasePublicConfigured();
 
   const [fullName, setFullName] = useState("");
@@ -28,7 +26,9 @@ export function SignupForm() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!configured) {
-      continueAsClient();
+      setError(
+        "Supabase is not configured on this deploy. Redeploy after setting NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, or use Continue as Demo Client.",
+      );
       return;
     }
 
@@ -53,8 +53,8 @@ export function SignupForm() {
       }
 
       if (data.session) {
-        router.push("/app");
-        router.refresh();
+        document.cookie = `${DEMO_PERSONA_COOKIE}=; path=/; max-age=0; samesite=lax`;
+        window.location.assign("/app");
         return;
       }
 
