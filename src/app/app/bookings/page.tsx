@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 
+import { BookingsPanel } from "@/components/booking/bookings-panel";
+import { readDemoBookings } from "@/features/booking/demo-store";
+import type { BookingItem } from "@/features/scheduling/fallback-data";
+import { listUserBookings } from "@/features/scheduling/queries";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
-import { readDemoBookings } from "@/features/booking/demo-store";
-import {
-  formatMoney,
-  formatSessionWhen,
-  listUserBookings,
-} from "@/features/scheduling/queries";
-import type { BookingItem } from "@/features/scheduling/fallback-data";
 
 export const metadata: Metadata = {
   title: "My bookings",
@@ -28,7 +25,7 @@ function mergeBookings(
     byId.set(booking.id, booking);
   }
   return Array.from(byId.values()).sort((a, b) =>
-    (b.startsAt || "").localeCompare(a.startsAt || ""),
+    (a.startsAt || "").localeCompare(b.startsAt || ""),
   );
 }
 
@@ -39,15 +36,13 @@ export default async function BookingsPage({ searchParams }: PageProps) {
   const stored = configured
     ? await listUserBookings(session?.id ?? null)
     : [];
-  // In demo mode, only show bookings the visitor actually made (cookie),
-  // not the static sample roster.
   const demoCookie = await readDemoBookings();
   const bookings = configured
     ? mergeBookings(
         stored.filter((b) => b.source === "database"),
         demoCookie,
       )
-    : demoCookie;
+    : mergeBookings([], demoCookie);
 
   const justBooked = params.booked
     ? bookings.find((b) => b.confirmationNumber === params.booked)
@@ -60,7 +55,8 @@ export default async function BookingsPage({ searchParams }: PageProps) {
           My bookings
         </h2>
         <p className="mt-2 text-sm text-muted">
-          Confirmed sessions on the MA5 platform.
+          Upcoming sessions first, with calendar days marked for anything you’ve
+          reserved.
         </p>
         {params.booked ? (
           <p
@@ -86,53 +82,10 @@ export default async function BookingsPage({ searchParams }: PageProps) {
         ) : null}
       </div>
 
-      <div className="space-y-3">
-        {bookings.length === 0 ? (
-          <p className="text-sm text-muted">
-            No bookings yet. Pick a session from the schedule to reserve a spot.
-          </p>
-        ) : (
-          bookings.map((booking) => {
-            const isNew = params.booked === booking.confirmationNumber;
-            return (
-              <article
-                key={booking.id}
-                className={
-                  isNew
-                    ? "border border-brand bg-surface p-5"
-                    : "border border-border bg-surface p-5"
-                }
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-                    {booking.confirmationNumber}
-                  </p>
-                  {isNew ? (
-                    <span className="text-[10px] font-semibold tracking-wide text-brand uppercase">
-                      Just booked
-                    </span>
-                  ) : null}
-                </div>
-                <h3 className="mt-1 font-display text-xl tracking-wide uppercase">
-                  {booking.sessionTitle}
-                </h3>
-                <p className="mt-2 text-sm text-muted">
-                  {booking.startsAt
-                    ? formatSessionWhen(booking.startsAt)
-                    : "Time TBD"}{" "}
-                  · {booking.status}
-                  {booking.paymentStatus === "pay_at_facility"
-                    ? " · pay at facility"
-                    : ` · ${booking.paymentStatus}`}
-                  {booking.amountCents > 0
-                    ? ` · ${formatMoney(booking.amountCents)}`
-                    : ""}
-                </p>
-              </article>
-            );
-          })
-        )}
-      </div>
+      <BookingsPanel
+        bookings={bookings}
+        justBookedConfirmation={params.booked}
+      />
     </div>
   );
 }
