@@ -76,38 +76,53 @@ export function BookingsPanel({
 
   const todayKey = toSessionDayKey(new Date().toISOString());
 
+  const clearDayFilter = () => setSelectedDay(null);
+
+  const selectedLabel = selectedDay
+    ? new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "America/Indiana/Indianapolis",
+      }).format(new Date(`${selectedDay}T12:00:00`))
+    : null;
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="space-y-3">
         {selectedDay ? (
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <p className="text-muted">
-              Showing{" "}
-              <span className="text-foreground">
-                {new Intl.DateTimeFormat("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  timeZone: "America/Indiana/Indianapolis",
-                }).format(new Date(`${selectedDay}T12:00:00`))}
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-3 border border-brand bg-surface px-4 py-3">
+            <p className="text-sm text-foreground">
+              Filtered to{" "}
+              <span className="font-semibold">{selectedLabel}</span>
             </p>
             <button
               type="button"
-              onClick={() => setSelectedDay(null)}
-              className="text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+              onClick={clearDayFilter}
+              className="inline-flex min-h-10 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
             >
-              Show all
+              All bookings
             </button>
           </div>
         ) : null}
 
         {visible.length === 0 ? (
-          <p className="text-sm text-muted">
-            {ordered.length === 0
-              ? "No bookings yet. Pick a session from the schedule to reserve a spot."
-              : "No bookings on this day."}
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted">
+              {ordered.length === 0
+                ? "No bookings yet. Pick a session from the schedule to reserve a spot."
+                : "No bookings on this day."}
+            </p>
+            {selectedDay && ordered.length > 0 ? (
+              <button
+                type="button"
+                onClick={clearDayFilter}
+                className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
+              >
+                Back to all bookings
+              </button>
+            ) : null}
+          </div>
         ) : (
           visible.map((booking) => {
             const isNew = justBookedConfirmation === booking.confirmationNumber;
@@ -153,6 +168,19 @@ export function BookingsPanel({
       </div>
 
       <aside className="border border-border bg-surface p-4 lg:sticky lg:top-24 lg:self-start">
+        <button
+          type="button"
+          onClick={clearDayFilter}
+          className={cn(
+            "mb-4 inline-flex min-h-10 w-full items-center justify-center px-3 text-xs font-semibold tracking-wide uppercase transition",
+            selectedDay
+              ? "border border-border text-foreground hover:border-brand"
+              : "bg-brand text-brand-foreground",
+          )}
+        >
+          {selectedDay ? "Show all bookings" : "All bookings"}
+        </button>
+
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
@@ -179,7 +207,7 @@ export function BookingsPanel({
                 return { year: d.getFullYear(), month: d.getMonth() };
               })
             }
-            className="inline-flex h-9 w-9 items-center justify-center border border-border text-sm text-muted hover:border-brand hover:text-foreground"
+            className="inline-flex min-h-9 w-9 items-center justify-center border border-border text-sm text-muted hover:border-brand hover:text-foreground"
           >
             ›
           </button>
@@ -242,8 +270,9 @@ export function BookingsPanel({
         </div>
 
         <p className="mt-4 text-xs leading-relaxed text-muted">
-          Days with a red mark have bookings. Click a marked day to filter the
-          list.
+          Marked days have bookings. Tap a day to filter, or use{" "}
+          <span className="text-foreground">Show all bookings</span> above to
+          clear the filter.
         </p>
       </aside>
     </div>
