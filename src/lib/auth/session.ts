@@ -12,6 +12,7 @@ export type Ma5Profile = {
   full_name: string | null;
   phone: string | null;
   active: boolean;
+  stripe_customer_id: string | null;
 };
 
 export type SessionUser = {
@@ -43,7 +44,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     const [{ data: profile }, { data: roleRows }] = await Promise.all([
       supabase
         .from(MA5_TABLES.profiles)
-        .select("id, email, full_name, phone, active")
+        .select("id, email, full_name, phone, active, stripe_customer_id")
         .eq("id", user.id)
         .maybeSingle(),
       supabase

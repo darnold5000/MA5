@@ -1,12 +1,11 @@
 import Link from "next/link";
 
-import { cn } from "@/lib/utils";
+import { ClientAppNav } from "@/components/platform/platform-nav";
 
 type AppShellProps = {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
-  nav: Array<{ href: string; label: string; active?: boolean }>;
   footerNote?: string;
 };
 
@@ -14,7 +13,6 @@ export function AppShell({
   title,
   subtitle,
   children,
-  nav,
   footerNote,
 }: AppShellProps) {
   return (
@@ -39,27 +37,12 @@ export function AppShell({
             Public site
           </Link>
         </div>
-        <nav
-          aria-label="Client app"
-          className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8"
-        >
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "inline-flex min-h-10 shrink-0 items-center border px-3 text-xs font-semibold tracking-wide uppercase transition",
-                item.active
-                  ? "border-brand bg-brand text-brand-foreground"
-                  : "border-border text-muted hover:border-brand hover:text-foreground",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <ClientAppNav />
       </header>
-      <main id="main-content" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <main
+        id="main-content"
+        className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8"
+      >
         {children}
       </main>
       {footerNote ? (

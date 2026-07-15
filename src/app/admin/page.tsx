@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { StatusBanner } from "@/components/platform/status-banner";
-import { getSessionUser } from "@/lib/auth/session";
-import { isSupabasePublicConfigured } from "@/lib/env";
-import { canAccessAdmin } from "@/lib/permissions/roles";
+import {
+  formatMoney,
+  formatSessionWhen,
+  listPublishedSessions,
+  listProducts,
+} from "@/features/scheduling/queries";
+import { FALLBACK_BOOKINGS } from "@/features/scheduling/fallback-data";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -12,50 +16,68 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminOverviewPage() {
-  const configured = isSupabasePublicConfigured();
-  const session = configured ? await getSessionUser() : null;
-  const allowed = session ? canAccessAdmin(session.roles) : false;
+  const [sessions, products] = await Promise.all([
+    listPublishedSessions(),
+    listProducts(),
+  ]);
 
   return (
     <div className="space-y-6">
-      <StatusBanner title="Admin foundation">
-        Schedule management, check-in, products, media, messaging, and analytics
-        screens will be added on the feature demo branches. This overview only
-        establishes the staff shell and role gates.
+      <StatusBanner title="Staff overview">
+        Demo admin tools for schedule, bookings, and membership products. Full
+        CRUD editors can deepen after this flow is approved.
       </StatusBanner>
 
-      {configured && session && !allowed ? (
-        <StatusBanner tone="warning" title="Staff role required">
-          Signed in as {session.email} with roles: {session.roles.join(", ")}.
-          Ask an owner/admin to grant a staff-oriented role in{" "}
-          <code>ma5_user_roles</code>.
-        </StatusBanner>
-      ) : null}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="border border-border bg-surface p-5">
+          <p className="text-xs tracking-wide text-muted uppercase">Sessions</p>
+          <p className="mt-2 font-display text-3xl">{sessions.length}</p>
+        </div>
+        <div className="border border-border bg-surface p-5">
+          <p className="text-xs tracking-wide text-muted uppercase">Products</p>
+          <p className="mt-2 font-display text-3xl">{products.length}</p>
+        </div>
+        <div className="border border-border bg-surface p-5">
+          <p className="text-xs tracking-wide text-muted uppercase">
+            Demo bookings
+          </p>
+          <p className="mt-2 font-display text-3xl">{FALLBACK_BOOKINGS.length}</p>
+        </div>
+      </div>
 
-      <section className="border border-border bg-surface p-6">
-        <h2 className="font-display text-2xl tracking-wide uppercase">
-          Coming next
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/admin/schedule"
+          className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+        >
+          Manage schedule
+        </Link>
+        <Link
+          href="/admin/products"
+          className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+        >
+          Products
+        </Link>
+        <Link
+          href="/admin/bookings"
+          className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+        >
+          Bookings
+        </Link>
+      </div>
+
+      <section className="border border-border bg-surface p-5">
+        <h2 className="font-display text-xl tracking-wide uppercase">
+          Next up on the schedule
         </h2>
         <ul className="mt-4 space-y-2 text-sm text-muted">
-          <li>Clients, attendance, and class schedule (Mindbody replacement)</li>
-          <li>Products, memberships, and billing review (Stripe)</li>
-          <li>Exercises, workouts, programs, and media library</li>
-          <li>Messaging and AI analytics demos</li>
+          {sessions.slice(0, 5).map((s) => (
+            <li key={s.id}>
+              {formatSessionWhen(s.startsAt)} — {s.title}
+              {s.priceCents > 0 ? ` (${formatMoney(s.priceCents)})` : ""}
+            </li>
+          ))}
         </ul>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link
-            href="/platform-preview"
-            className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-          >
-            View demo roadmap
-          </Link>
-          <Link
-            href="/app"
-            className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-          >
-            Client app
-          </Link>
-        </div>
       </section>
     </div>
   );

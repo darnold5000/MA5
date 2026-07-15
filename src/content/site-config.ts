@@ -36,8 +36,9 @@ export const siteConfig = {
     linkedin: "https://www.linkedin.com/in/robert-anderson-818997104/",
   },
   booking: {
-    // All CTAs go directly to Mindbody Explore (same as the current MA5 site).
-    path: "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
+    // Demo branch: primary CTAs go to native /book (then /app/schedule).
+    // Mindbody Explore stays available as fallbackUrl.
+    path: "/book",
     fallbackUrl:
       "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
   },

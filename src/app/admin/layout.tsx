@@ -8,14 +8,7 @@ export default function AdminLayout({
   return (
     <AdminShell
       title="Operations"
-      subtitle="Staff tools for clients, schedule, products, and analytics."
-      nav={[
-        { href: "/admin", label: "Overview", active: true },
-        { href: "/admin#clients", label: "Clients" },
-        { href: "/admin#schedule", label: "Schedule" },
-        { href: "/admin#products", label: "Products" },
-        { href: "/admin#analytics", label: "Analytics" },
-      ]}
+      subtitle="Schedule, bookings, and products for the Mindbody-replacement demo."
     >
       {children}
     </AdminShell>

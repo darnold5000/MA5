@@ -7,16 +7,9 @@ export default function ClientAppLayout({
 }>) {
   return (
     <AppShell
-      title="Dashboard"
-      subtitle="Your bookings, memberships, and programs will live here."
-      nav={[
-        { href: "/app", label: "Dashboard", active: true },
-        { href: "/app#schedule", label: "Schedule" },
-        { href: "/app#billing", label: "Billing" },
-        { href: "/app#programs", label: "Programs" },
-        { href: "/login", label: "Account" },
-      ]}
-      footerNote="Platform foundation preview — marketing site design is unchanged."
+      title="Client portal"
+      subtitle="Book sessions, view bookings, and manage memberships — native MA5, not Mindbody."
+      footerNote="Mindbody-replacement demo — public marketing look and feel is unchanged."
     >
       {children}
     </AppShell>

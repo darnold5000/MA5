@@ -6,7 +6,7 @@ export type PlatformPreviewItem = {
   evaluates: string[];
   /** Vercel preview URL when available; null means not deployed yet */
   href: string | null;
-  status: "foundation" | "planned" | "preview-ready";
+  status: "foundation" | "planned" | "preview-ready" | "built";
 };
 
 /**
@@ -41,7 +41,7 @@ export const platformPreviews: PlatformPreviewItem[] = [
       "Client booking UX",
     ],
     href: null,
-    status: "planned",
+    status: "built",
   },
   {
     id: "external-training",

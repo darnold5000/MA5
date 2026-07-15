@@ -3,12 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      {
-        source: "/book",
-        destination:
-          "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
-        permanent: false,
-      },
+      // /book stays on-site for the Mindbody-replacement demo (native schedule).
+      // Mindbody Explore remains linked as a fallback from booking UI.
       {
         source: "/tour-ma5",
         destination: "/facility",

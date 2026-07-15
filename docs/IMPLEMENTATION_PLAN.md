@@ -11,8 +11,8 @@ Companion to the product plan. Paths below reflect the **post-audit** repository
 | Branch | Purpose | Status |
 | --- | --- | --- |
 | `main` | Approved marketing website | Live |
-| `feature/platform-foundation` | Auth, roles, schema, app shells, `/platform-preview` | **In progress** |
-| `demo/mindbody-replacement` | Booking, memberships, Stripe, client portal | Planned |
+| `feature/platform-foundation` | Auth, roles, schema, app shells, `/platform-preview` | Done |
+| `demo/mindbody-replacement` | Booking, memberships, Stripe, client portal | **In progress** |
 | `demo/external-training-platform` | Placeholder TrainHeroic/Trainerize cards | Planned |
 | `demo/ma5-programs` | Exercises, workouts, programs, progress | Planned |
 | `demo/ma5-messaging` | Coach/client messaging + notifications | Planned |
