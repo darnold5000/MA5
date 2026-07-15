@@ -26,8 +26,8 @@ export function LoginForm() {
 
   function continueAs(persona: "client" | "staff") {
     setDemoPersona(persona);
-    router.push(persona === "staff" ? "/admin" : "/app");
-    router.refresh();
+    // Hard navigation so the demo cookie is present on the next middleware check.
+    window.location.assign(persona === "staff" ? "/admin" : "/app");
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {

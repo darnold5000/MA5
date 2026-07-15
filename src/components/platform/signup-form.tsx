@@ -22,8 +22,7 @@ export function SignupForm() {
 
   function continueAsClient() {
     document.cookie = `${DEMO_PERSONA_COOKIE}=client; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
-    router.push("/app");
-    router.refresh();
+    window.location.assign("/app");
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
