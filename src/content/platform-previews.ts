@@ -26,8 +26,8 @@ export const platformPreviews: PlatformPreviewItem[] = [
       "App / admin route shells",
       "Database foundation (ma5_*)",
     ],
-    href: null,
-    status: "foundation",
+    href: "https://ma5.hiresignalworks.com",
+    status: "preview-ready",
   },
   {
     id: "mindbody",
