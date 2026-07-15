@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { DemoPreviewChrome } from "@/components/platform/demo-preview";
+import { SignOutButton } from "@/components/platform/sign-out-button";
 import { siteConfig } from "@/content/site-config";
 import { cn } from "@/lib/utils";
 
@@ -15,15 +16,14 @@ const SIDEBAR = [
   { href: "/app/billing", label: "Membership", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
   { href: "/app/messages", label: "Messages", match: "prefix" as const },
-  { href: "/login", label: "Account", match: "prefix" as const },
 ] as const;
 
 const MOBILE = [
   { href: "/app", label: "Home", match: "exact" as const },
   { href: "/app/schedule", label: "Book", match: "prefix" as const },
   { href: "/app/bookings", label: "Schedule", match: "prefix" as const },
+  { href: "/app/billing", label: "Plans", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
-  { href: "/login", label: "Account", match: "prefix" as const },
 ] as const;
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix") {
@@ -70,10 +70,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="border-t border-border p-4">
+        <div className="space-y-3 border-t border-border p-4">
+          <SignOutButton className="block w-full px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground" />
           <Link
             href="/"
-            className="text-xs text-muted transition hover:text-foreground"
+            className="block text-xs text-muted transition hover:text-foreground"
           >
             ← Public website
           </Link>
@@ -95,9 +96,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {siteConfig.shortName}
               </span>
             </Link>
-            <Link href="/" className="text-xs text-muted">
-              Website
-            </Link>
+            <div className="flex items-center gap-3">
+              <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground" />
+              <Link href="/" className="text-xs text-muted">
+                Website
+              </Link>
+            </div>
           </div>
         </header>
 

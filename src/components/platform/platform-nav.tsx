@@ -10,7 +10,6 @@ const CLIENT_NAV = [
   { href: "/app/schedule", label: "Schedule" },
   { href: "/app/bookings", label: "Bookings" },
   { href: "/app/billing", label: "Billing" },
-  { href: "/login", label: "Account" },
 ] as const;
 
 const ADMIN_NAV = [

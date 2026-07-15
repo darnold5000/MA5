@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AdminAppNav } from "@/components/platform/platform-nav";
 import { DemoPreviewChrome } from "@/components/platform/demo-preview";
+import { SignOutButton } from "@/components/platform/sign-out-button";
 
 type AdminShellProps = {
   title: string;
@@ -38,6 +39,7 @@ export function AdminShell({ title, subtitle, children }: AdminShellProps) {
             >
               Website
             </Link>
+            <SignOutButton className="text-sm text-muted transition hover:text-foreground" />
           </div>
         </div>
         <AdminAppNav />
