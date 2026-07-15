@@ -16,7 +16,8 @@ const CLIENT_NAV = [
 const ADMIN_NAV = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/schedule", label: "Schedule" },
-  { href: "/admin/bookings", label: "Bookings" },
+  { href: "/admin/bookings", label: "Roster" },
+  { href: "/admin/clients", label: "Clients" },
   { href: "/admin/products", label: "Products" },
 ] as const;
 

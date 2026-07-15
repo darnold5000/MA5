@@ -68,6 +68,12 @@ export default async function AdminOverviewPage() {
           Check-in roster
         </Link>
         <Link
+          href="/admin/clients"
+          className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+        >
+          Clients
+        </Link>
+        <Link
           href="/admin/products"
           className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
         >

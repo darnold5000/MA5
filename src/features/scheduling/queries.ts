@@ -1,16 +1,14 @@
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
-import {
-  FALLBACK_SESSIONS,
-  type BookingItem,
-  type SessionItem,
-} from "@/features/scheduling/fallback-data";
+import { mergeSessions, readOpsState } from "@/features/admin/ops-store";
+import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
 import { getCatalogProducts } from "@/features/memberships/catalog";
 import type { ProductItem, MembershipItem } from "@/features/scheduling/fallback-data";
 
-export async function listPublishedSessions(): Promise<SessionItem[]> {
+export async function listAllSessions(): Promise<SessionItem[]> {
   if (!isSupabaseConfigured()) {
-    return FALLBACK_SESSIONS.filter((s) => s.status === "published" || s.status === "full");
+    const state = await readOpsState();
+    return mergeSessions(state);
   }
 
   try {
@@ -18,12 +16,11 @@ export async function listPublishedSessions(): Promise<SessionItem[]> {
     const { data, error } = await supabase
       .from(MA5_TABLES.sessions)
       .select("*")
-      .in("status", ["published", "full"])
-      .gte("starts_at", new Date().toISOString())
       .order("starts_at", { ascending: true });
 
     if (error || !data?.length) {
-      return FALLBACK_SESSIONS.filter((s) => s.status === "published" || s.status === "full");
+      const state = await readOpsState();
+      return mergeSessions(state);
     }
 
     return data.map((row) => ({
@@ -42,8 +39,14 @@ export async function listPublishedSessions(): Promise<SessionItem[]> {
       source: "database" as const,
     }));
   } catch {
-    return FALLBACK_SESSIONS.filter((s) => s.status === "published" || s.status === "full");
+    const state = await readOpsState();
+    return mergeSessions(state);
   }
+}
+
+export async function listPublishedSessions(): Promise<SessionItem[]> {
+  const all = await listAllSessions();
+  return all.filter((s) => s.status === "published" || s.status === "full");
 }
 
 export async function getSessionById(id: string): Promise<SessionItem | null> {
