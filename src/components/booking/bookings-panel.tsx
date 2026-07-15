@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import type { BookingItem } from "@/features/scheduling/fallback-data";
+import { paymentStatusLabel } from "@/features/booking/labels";
 import {
   formatMoney,
   formatMonthLabel,
@@ -126,6 +127,13 @@ export function BookingsPanel({
         ) : (
           visible.map((booking) => {
             const isNew = justBookedConfirmation === booking.confirmationNumber;
+            const paymentLabel = paymentStatusLabel(
+              booking.amountCents === 0 ? "included" : booking.paymentStatus,
+            );
+            const calendarUrl = booking.startsAt
+              ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.sessionTitle)}&dates=${new Date(booking.startsAt).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}/${new Date(new Date(booking.startsAt).getTime() + 60 * 60 * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`
+              : null;
+
             return (
               <article
                 key={booking.id}
@@ -137,14 +145,15 @@ export function BookingsPanel({
                 }
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-                    {booking.confirmationNumber}
-                  </p>
                   {isNew ? (
                     <span className="text-[10px] font-semibold tracking-wide text-brand uppercase">
                       Just booked
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                      Confirmed
+                    </span>
+                  )}
                 </div>
                 <h3 className="mt-1 font-display text-xl tracking-wide uppercase">
                   {booking.sessionTitle}
@@ -152,15 +161,43 @@ export function BookingsPanel({
                 <p className="mt-2 text-sm text-muted">
                   {booking.startsAt
                     ? formatSessionWhen(booking.startsAt)
-                    : "Time TBD"}{" "}
-                  · {booking.status}
-                  {booking.paymentStatus === "pay_at_facility"
-                    ? " · pay at facility"
-                    : ` · ${booking.paymentStatus}`}
+                    : "Time TBD"}
+                  {" · "}
+                  {paymentLabel}
                   {booking.amountCents > 0
                     ? ` · ${formatMoney(booking.amountCents)}`
                     : ""}
                 </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {calendarUrl ? (
+                    <a
+                      href={calendarUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                    >
+                      Add to calendar
+                    </a>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                  >
+                    Reschedule
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                  >
+                    Cancel
+                  </button>
+                  <a
+                    href="/app/messages"
+                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                  >
+                    Message coach
+                  </a>
+                </div>
               </article>
             );
           })

@@ -1,38 +1,31 @@
 import type { Metadata } from "next";
 
-import { ScheduleSessionList } from "@/components/booking/schedule-session-list";
-import { StatusBanner } from "@/components/platform/status-banner";
+import { ScheduleBrowser } from "@/components/booking/schedule-browser";
 import { listPublishedSessions } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
-  title: "Schedule",
+  title: "Book",
   robots: { index: false, follow: false },
 };
 
 export default async function SchedulePage() {
   const sessions = await listPublishedSessions();
-  const usingDemo = sessions.every((s) => s.source === "demo");
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-3xl tracking-wide uppercase">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Book
+        </p>
+        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
           Upcoming sessions
-        </h2>
+        </h1>
         <p className="mt-2 text-sm text-muted">
-          Native MA5 schedule — assessments, small group, sports performance,
-          InBody, and sauna.
+          Reserve assessments, small group training, sports performance, InBody,
+          and sauna sessions.
         </p>
       </div>
-
-      {usingDemo ? (
-        <StatusBanner tone="warning" title="Demo schedule">
-          Showing sample sessions so you can evaluate booking UX before Supabase
-          is connected.
-        </StatusBanner>
-      ) : null}
-
-      <ScheduleSessionList sessions={sessions} />
+      <ScheduleBrowser sessions={sessions} />
     </div>
   );
 }

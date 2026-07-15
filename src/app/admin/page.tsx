@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { StatusBanner } from "@/components/platform/status-banner";
 import {
   formatMoney,
   formatSessionWhen,
   listPublishedSessions,
   listProducts,
 } from "@/features/scheduling/queries";
-import { FALLBACK_BOOKINGS } from "@/features/scheduling/fallback-data";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -23,14 +21,20 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <StatusBanner title="Staff overview">
-        Demo admin tools for schedule, bookings, and membership products. Full
-        CRUD editors can deepen after this flow is approved.
-      </StatusBanner>
+      <div>
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Operations
+        </p>
+        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+          Today at MA5
+        </h1>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="border border-border bg-surface p-5">
-          <p className="text-xs tracking-wide text-muted uppercase">Sessions</p>
+          <p className="text-xs tracking-wide text-muted uppercase">
+            Sessions live
+          </p>
           <p className="mt-2 font-display text-3xl">{sessions.length}</p>
         </div>
         <div className="border border-border bg-surface p-5">
@@ -39,9 +43,14 @@ export default async function AdminOverviewPage() {
         </div>
         <div className="border border-border bg-surface p-5">
           <p className="text-xs tracking-wide text-muted uppercase">
-            Demo bookings
+            Open capacity
           </p>
-          <p className="mt-2 font-display text-3xl">{FALLBACK_BOOKINGS.length}</p>
+          <p className="mt-2 font-display text-3xl">
+            {sessions.reduce(
+              (sum, s) => sum + Math.max(s.capacity - s.bookedCount, 0),
+              0,
+            )}
+          </p>
         </div>
       </div>
 
@@ -53,22 +62,22 @@ export default async function AdminOverviewPage() {
           Manage schedule
         </Link>
         <Link
+          href="/admin/bookings"
+          className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+        >
+          Check-in roster
+        </Link>
+        <Link
           href="/admin/products"
           className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
         >
           Products
         </Link>
-        <Link
-          href="/admin/bookings"
-          className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-        >
-          Bookings
-        </Link>
       </div>
 
       <section className="border border-border bg-surface p-5">
         <h2 className="font-display text-xl tracking-wide uppercase">
-          Next up on the schedule
+          Next up
         </h2>
         <ul className="mt-4 space-y-2 text-sm text-muted">
           {sessions.slice(0, 5).map((s) => (

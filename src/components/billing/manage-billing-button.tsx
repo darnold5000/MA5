@@ -4,33 +4,27 @@ import { useState } from "react";
 
 export function ManageBillingButton() {
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
 
   async function onClick() {
     setPending(true);
-    setError(null);
     try {
       const res = await fetch("/api/stripe/portal", { method: "POST" });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Portal unavailable");
-        setPending(false);
-        return;
-      }
-      if (data.url) {
+      if (res.ok && data.url) {
         window.location.href = data.url as string;
         return;
       }
-      setError("No portal URL returned");
+      setOpen(true);
       setPending(false);
     } catch {
-      setError("Could not open billing portal");
+      setOpen(true);
       setPending(false);
     }
   }
 
   return (
-    <div className="space-y-2">
+    <>
       <button
         type="button"
         disabled={pending}
@@ -39,11 +33,34 @@ export function ManageBillingButton() {
       >
         {pending ? "Opening…" : "Manage billing"}
       </button>
-      {error ? (
-        <p className="max-w-sm text-xs leading-relaxed text-brand" role="alert">
-          {error}
-        </p>
+      {open ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md border border-border bg-background p-6"
+          >
+            <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+              Demo billing portal
+            </p>
+            <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
+              Manage membership
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              In production this opens the Stripe Customer Portal so members can
+              update payment methods, view invoices, and cancel. No live billing
+              portal is connected in this preview.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="mt-6 inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AdminAppNav } from "@/components/platform/platform-nav";
+import { DemoPreviewChrome } from "@/components/platform/demo-preview";
 
 type AdminShellProps = {
   title: string;
@@ -15,7 +16,7 @@ export function AdminShell({ title, subtitle, children }: AdminShellProps) {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div>
             <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-              MA5 Admin
+              MA5 Staff
             </p>
             <h1 className="font-display text-2xl tracking-wide uppercase">
               {title}
@@ -29,13 +30,13 @@ export function AdminShell({ title, subtitle, children }: AdminShellProps) {
               href="/app"
               className="text-muted transition hover:text-foreground"
             >
-              Client app
+              Client portal
             </Link>
             <Link
               href="/"
               className="text-muted transition hover:text-foreground"
             >
-              Public site
+              Website
             </Link>
           </div>
         </div>
@@ -47,6 +48,7 @@ export function AdminShell({ title, subtitle, children }: AdminShellProps) {
       >
         {children}
       </main>
+      <DemoPreviewChrome />
     </div>
   );
 }
