@@ -32,9 +32,7 @@ export function BookSessionButton({
         return;
       }
       const conf = data.booking?.confirmationNumber as string;
-      router.push(
-        `/app/bookings?booked=${encodeURIComponent(conf)}${data.demo ? "&demo=1" : ""}`,
-      );
+      router.push(`/app/bookings?booked=${encodeURIComponent(conf)}`);
       router.refresh();
     } catch {
       setError("Booking failed");
