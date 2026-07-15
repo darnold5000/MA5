@@ -23,6 +23,7 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-focus: var(--focus);
+  --color-accent-gold: var(--accent-gold);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-oswald);
 }

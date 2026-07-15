@@ -1,6 +1,6 @@
 /**
  * Public environment values used by the client.
- * Never put Mindbody API secrets or staff credentials here.
+ * Never put Mindbody API secrets, Stripe secrets, or service-role keys here.
  */
 function readPublic(name: string): string | undefined {
   const value = process.env[name];
@@ -21,6 +21,12 @@ export const env = {
     sauna: readPublic("NEXT_PUBLIC_MINDBODY_SAUNA_WIDGET_ID"),
   },
   gaMeasurementId: readPublic("NEXT_PUBLIC_GA_MEASUREMENT_ID"),
+  supabaseUrl: readPublic("NEXT_PUBLIC_SUPABASE_URL"),
+  supabaseAnonKey: readPublic("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
 } as const;
+
+export function isSupabasePublicConfigured(): boolean {
+  return Boolean(env.supabaseUrl && env.supabaseAnonKey);
+}
 
 export type BookingWidgetKey = keyof typeof env.mindbodyWidgets;

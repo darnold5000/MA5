@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import { Manrope, Oswald } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
-import { StickyBookButton } from "@/components/shared/sticky-book-button";
-import { siteConfig } from "@/content/site-config";
 import { env } from "@/lib/env";
+import { siteConfig } from "@/content/site-config";
 
 import "./globals.css";
 
@@ -62,12 +59,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <SiteHeader />
-        <main id="main-content" className="flex-1 pb-20 md:pb-0">
-          {children}
-        </main>
-        <SiteFooter />
-        <StickyBookButton />
+        {children}
         <Analytics />
       </body>
     </html>
