@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { BookSessionButton } from "@/components/booking/book-session-button";
+import { ScheduleSessionList } from "@/components/booking/schedule-session-list";
 import { StatusBanner } from "@/components/platform/status-banner";
 import {
   formatMoney,
@@ -37,44 +36,11 @@ export default async function SchedulePage() {
         </StatusBanner>
       ) : null}
 
-      <div className="space-y-3">
-        {sessions.map((session) => {
-          const spots = Math.max(session.capacity - session.bookedCount, 0);
-          const full = spots <= 0 || session.status === "full";
-          return (
-            <article
-              key={session.id}
-              className="flex flex-col gap-4 border border-border bg-surface p-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-                  {formatSessionWhen(session.startsAt)}
-                </p>
-                <h3 className="mt-1 font-display text-xl tracking-wide uppercase">
-                  {session.title}
-                </h3>
-                <p className="mt-1 text-sm text-muted">{session.description}</p>
-                <p className="mt-2 text-xs text-muted">
-                  {session.coachName} · {session.locationName} ·{" "}
-                  {full ? "Full" : `${spots} spots left`} ·{" "}
-                  {session.priceCents > 0
-                    ? formatMoney(session.priceCents)
-                    : "Included / inquire"}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                <BookSessionButton sessionId={session.id} disabled={full} />
-                <Link
-                  href={`/app/schedule/${session.id}`}
-                  className="text-xs text-muted hover:text-foreground"
-                >
-                  Details
-                </Link>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      <ScheduleSessionList
+        sessions={sessions}
+        formatWhen={formatSessionWhen}
+        formatMoney={formatMoney}
+      />
     </div>
   );
 }
