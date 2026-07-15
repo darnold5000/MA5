@@ -4,19 +4,17 @@ import { useState } from "react";
 
 import { BookSessionButton } from "@/components/booking/book-session-button";
 import type { SessionItem } from "@/features/scheduling/fallback-data";
+import {
+  formatMoney,
+  formatSessionWhen,
+} from "@/features/scheduling/format";
 import { cn } from "@/lib/utils";
 
 type ScheduleSessionListProps = {
   sessions: SessionItem[];
-  formatWhen: (iso: string) => string;
-  formatMoney: (cents: number) => string;
 };
 
-export function ScheduleSessionList({
-  sessions,
-  formatWhen,
-  formatMoney,
-}: ScheduleSessionListProps) {
+export function ScheduleSessionList({ sessions }: ScheduleSessionListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
@@ -37,7 +35,7 @@ export function ScheduleSessionList({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-                  {formatWhen(session.startsAt)}
+                  {formatSessionWhen(session.startsAt)}
                 </p>
                 <h3 className="mt-1 font-display text-xl tracking-wide uppercase">
                   {session.title}

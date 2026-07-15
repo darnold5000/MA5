@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 
 import { ScheduleSessionList } from "@/components/booking/schedule-session-list";
 import { StatusBanner } from "@/components/platform/status-banner";
-import {
-  formatMoney,
-  formatSessionWhen,
-  listPublishedSessions,
-} from "@/features/scheduling/queries";
+import { listPublishedSessions } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
   title: "Schedule",
@@ -36,11 +32,7 @@ export default async function SchedulePage() {
         </StatusBanner>
       ) : null}
 
-      <ScheduleSessionList
-        sessions={sessions}
-        formatWhen={formatSessionWhen}
-        formatMoney={formatMoney}
-      />
+      <ScheduleSessionList sessions={sessions} />
     </div>
   );
 }
