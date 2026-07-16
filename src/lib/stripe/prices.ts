@@ -20,6 +20,18 @@ export function getStripePriceIdForProduct(slug: string): string | undefined {
   return value && value.trim() ? value.trim() : undefined;
 }
 
+export function getProductSlugForStripePriceId(
+  priceId: string,
+): string | undefined {
+  const target = priceId.trim();
+  if (!target) return undefined;
+  for (const [slug, envName] of Object.entries(MEMBERSHIP_PRICE_ENV)) {
+    const value = process.env[envName]?.trim();
+    if (value && value === target) return slug;
+  }
+  return undefined;
+}
+
 export function parsePriceToCents(price: string): number {
   const cleaned = price.replace(/[^0-9.]/g, "");
   const dollars = Number.parseFloat(cleaned);

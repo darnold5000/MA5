@@ -3,6 +3,12 @@ import type { Metadata } from "next";
 import { CheckoutButton } from "@/components/billing/checkout-button";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { demoClient } from "@/content/demo-persona";
+import { getSessionUser } from "@/lib/auth/session";
+import { isSupabasePublicConfigured } from "@/lib/env";
+import {
+  getActiveMembershipForUser,
+  syncMembershipFromCheckoutSession,
+} from "@/lib/stripe/sync-membership";
 import { formatMoney, listProducts } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
@@ -57,11 +63,68 @@ const PLAN_COPY: Record<
   },
 };
 
-export default async function BillingPage() {
+type BillingPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function BillingPage({ searchParams }: BillingPageProps) {
+  const params = (await searchParams) ?? {};
+  const checkout = typeof params.checkout === "string" ? params.checkout : null;
+  const sessionId =
+    typeof params.session_id === "string" ? params.session_id : null;
+
+  const sessionUser = isSupabasePublicConfigured()
+    ? await getSessionUser()
+    : null;
+
+  let activeMembership = sessionUser
+    ? await getActiveMembershipForUser(sessionUser.id)
+    : null;
+
+  let justActivated = false;
+  if (sessionUser && checkout === "success" && sessionId) {
+    try {
+      const synced = await syncMembershipFromCheckoutSession(
+        sessionId,
+        sessionUser.id,
+      );
+      if (synced) {
+        activeMembership = synced;
+        justActivated = true;
+      } else if (activeMembership) {
+        justActivated = true;
+      }
+    } catch {
+      if (checkout === "success") justActivated = true;
+    }
+  } else if (checkout === "success") {
+    justActivated = true;
+  }
+
   const products = await listProducts();
   const membershipsOnly = products.filter(
     (p) => p.productType === "membership" || p.productType === "addon",
   );
+
+  const currentPlanName =
+    activeMembership?.productName ??
+    (sessionUser ? "No active plan" : demoClient.membership.name);
+  const currentPlanDetail = activeMembership
+    ? `${activeMembership.status === "trialing" ? "Trialing" : "Active"}${
+        activeMembership.currentPeriodEnd
+          ? ` · renews ${new Date(activeMembership.currentPeriodEnd).toLocaleDateString(
+              "en-US",
+              { month: "long", day: "numeric" },
+            )}`
+          : ""
+      }`
+    : sessionUser
+      ? "Choose a plan below to get started."
+      : `${demoClient.membership.sessionsRemaining} of ${demoClient.membership.sessionsIncluded} sessions remaining · renews ${demoClient.membership.renewsOn}`;
+
+  const currentSlug =
+    activeMembership?.productSlug ||
+    (!sessionUser ? "sg-14" : null);
 
   return (
     <div className="space-y-8">
@@ -77,6 +140,26 @@ export default async function BillingPage() {
         </p>
       </div>
 
+      {justActivated ? (
+        <div
+          className="border border-brand bg-brand/10 px-4 py-3 text-sm text-foreground"
+          role="status"
+        >
+          You&apos;re all set — your membership is active
+          {activeMembership ? ` (${activeMembership.productName})` : ""}.
+          Manage billing anytime below.
+        </div>
+      ) : null}
+
+      {checkout === "cancelled" ? (
+        <div
+          className="border border-border bg-surface px-4 py-3 text-sm text-muted"
+          role="status"
+        >
+          Checkout was cancelled. No payment was taken.
+        </div>
+      ) : null}
+
       <section className="border border-border bg-surface p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -84,13 +167,9 @@ export default async function BillingPage() {
               Current plan
             </p>
             <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
-              {demoClient.membership.name}
+              {currentPlanName}
             </h2>
-            <p className="mt-2 text-sm text-muted">
-              {demoClient.membership.sessionsRemaining} of{" "}
-              {demoClient.membership.sessionsIncluded} sessions remaining ·
-              renews {demoClient.membership.renewsOn}
-            </p>
+            <p className="mt-2 text-sm text-muted">{currentPlanDetail}</p>
           </div>
           <ManageBillingButton />
         </div>
@@ -103,13 +182,18 @@ export default async function BillingPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {membershipsOnly.map((product) => {
             const copy = PLAN_COPY[product.slug];
+            const isCurrent = currentSlug === product.slug;
             return (
               <article
                 key={product.id}
                 className="relative flex flex-col justify-between gap-4 border border-border bg-surface p-5"
               >
-                {copy?.popular ? (
+                {isCurrent ? (
                   <span className="absolute top-0 right-0 bg-brand px-3 py-1 text-[10px] font-semibold tracking-wide text-brand-foreground uppercase">
+                    Current plan
+                  </span>
+                ) : copy?.popular ? (
+                  <span className="absolute top-0 right-0 border border-border bg-background px-3 py-1 text-[10px] font-semibold tracking-wide uppercase">
                     Most popular
                   </span>
                 ) : null}
@@ -139,7 +223,8 @@ export default async function BillingPage() {
                   productName={product.name}
                   priceCents={product.priceCents}
                   billingInterval={product.billingInterval}
-                  label="Choose plan"
+                  label={isCurrent ? "Current plan" : "Choose plan"}
+                  disabled={isCurrent}
                 />
               </article>
             );

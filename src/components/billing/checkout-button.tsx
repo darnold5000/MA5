@@ -10,6 +10,7 @@ type CheckoutButtonProps = {
   priceCents: number;
   billingInterval: "month" | "one_time" | null;
   label?: string;
+  disabled?: boolean;
 };
 
 export function CheckoutButton({
@@ -18,6 +19,7 @@ export function CheckoutButton({
   priceCents,
   billingInterval,
   label = "Choose plan",
+  disabled = false,
 }: CheckoutButtonProps) {
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
@@ -25,6 +27,7 @@ export function CheckoutButton({
   const [error, setError] = useState<string | null>(null);
 
   async function startCheckout() {
+    if (disabled) return;
     setPending(true);
     setError(null);
     try {
@@ -64,9 +67,9 @@ export function CheckoutButton({
       <div className="space-y-2">
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || disabled}
           onClick={startCheckout}
-          className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+          className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:cursor-not-allowed disabled:opacity-50"
         >
           {pending ? "Starting…" : label}
         </button>
