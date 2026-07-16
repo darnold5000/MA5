@@ -92,22 +92,78 @@ export function DemoPreviewChrome() {
 
           <div className="space-y-6 overflow-y-auto px-5 py-5 text-sm leading-relaxed text-muted">
             <p>
-              This preview includes the client **Fitness Hub** and staff
-              **Operations** center: schedule, reserve, memberships, Stripe
-              Checkout (test mode), and Inbox. Use a real signed-in account for
-              payments — demo-cookie browsing alone cannot complete Stripe.
+              This preview is MA5’s Mindbody replacement: the public website,
+              the member <span className="text-foreground">Fitness Hub</span>,
+              and staff <span className="text-foreground">Operations</span>,
+              including Stripe test Checkout.
             </p>
 
             <section>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
-                Sign in (required)
+                Client login → Fitness Hub
+              </p>
+              <p className="mt-2">
+                On the marketing site header,{" "}
+                <span className="text-foreground">Client login</span> opens
+                sign-in. After you authenticate (or if you’re already signed
+                in), it becomes{" "}
+                <span className="text-foreground">Fitness Hub</span> and takes
+                you into the member app.
+              </p>
+              <p className="mt-2">
+                The Fitness Hub is where members live day to day — not a
+                separate website.{" "}
+                <span className="text-foreground">Book Now</span> also lands in
+                Reserve (schedule) inside the hub.
+              </p>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5">
+                <li>
+                  <span className="text-foreground">Home</span> — greeting,
+                  sessions used / streak, next workout with status chips, coach
+                  message
+                </li>
+                <li>
+                  <span className="text-foreground">Reserve</span> — browse and
+                  book sessions (pay online or at facility)
+                </li>
+                <li>
+                  <span className="text-foreground">My Training</span> —
+                  upcoming bookings, paid / confirmed, cancel unpaid
+                </li>
+                <li>
+                  <span className="text-foreground">Plan</span> — memberships +
+                  Stripe Checkout
+                </li>
+                <li>
+                  <span className="text-foreground">Programs</span> — program /
+                  workout placeholder
+                </li>
+                <li>
+                  <span className="text-foreground">Inbox</span> — Activity +
+                  Messages (coach, booking, payment notices)
+                </li>
+                <li>
+                  Top bell → Inbox;{" "}
+                  <span className="text-foreground">Back to Website</span>{" "}
+                  returns to the marketing site (you stay signed in)
+                </li>
+              </ul>
+            </section>
+
+            <section>
+              <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
+                Sign in for payments
+              </p>
+              <p className="mt-2">
+                Use a real account for Stripe. “Continue as Demo Client” can
+                explore the hub but cannot complete Checkout.
               </p>
               <p className="mt-2">
                 Go to{" "}
                 <a href="/login" className="text-brand underline">
                   /login
                 </a>{" "}
-                and use the client test account:
+                (or Client login) with:
               </p>
               <dl className="mt-3 space-y-2 border border-border bg-surface p-3 text-foreground">
                 <div>
@@ -125,40 +181,53 @@ export function DemoPreviewChrome() {
                   <dd className="mt-0.5 font-mono text-sm">1Password</dd>
                 </div>
               </dl>
-              <p className="mt-2 text-xs">
-                Sign out first if you entered as “Continue as client” (demo
-                persona) — that path skips Stripe auth.
-              </p>
             </section>
 
             <section>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
-                What you can try
+                Operations (staff)
               </p>
-              <ul className="mt-2 list-disc space-y-1.5 pl-5">
+              <p className="mt-2">
+                From{" "}
+                <a href="/login" className="text-brand underline">
+                  /login
+                </a>
+                , choose{" "}
+                <span className="text-foreground">
+                  Continue as Operations Demo
+                </span>{" "}
+                — or open{" "}
+                <a href="/admin" className="text-brand underline">
+                  /admin
+                </a>{" "}
+                after staff access. This is the owner / coach board: “what needs
+                my attention today?”
+              </p>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5">
                 <li>
-                  <span className="text-foreground">Home</span> — next workout,
-                  monthly progress, coach message
+                  <span className="text-foreground">Home</span> — today’s
+                  snapshot (sessions, check-ins, revenue placeholder, messages),
+                  Needs Attention list, upcoming session cards with View roster
                 </li>
                 <li>
-                  <span className="text-foreground">Reserve</span> — browse
-                  schedule, reserve a spot (pay online or at facility)
+                  <span className="text-foreground">Schedule</span> — create /
+                  edit / cancel classes (start time + length in minutes)
                 </li>
                 <li>
-                  <span className="text-foreground">My Training</span> —
-                  confirmed / paid bookings, cancel unpaid
+                  <span className="text-foreground">Clients</span> — add
+                  clients, activate / deactivate, notes
                 </li>
                 <li>
-                  <span className="text-foreground">Plan</span> — membership
-                  catalog + Stripe Checkout
+                  <span className="text-foreground">Inbox</span> — messages
+                  waiting for coach reply
                 </li>
                 <li>
-                  <span className="text-foreground">Programs</span> — program
-                  placeholder
+                  <span className="text-foreground">Settings</span> — products &
+                  pricing, check-in roster, schedule tools
                 </li>
                 <li>
-                  <span className="text-foreground">Inbox</span> — Activity +
-                  Messages (demo feed)
+                  <span className="text-foreground">Preview client view</span> —
+                  Fitness Hub in a modal (Close preview returns to Operations)
                 </li>
               </ul>
             </section>
@@ -168,7 +237,7 @@ export function DemoPreviewChrome() {
                 End-to-end: book a session
               </p>
               <ol className="mt-2 list-decimal space-y-2 pl-5">
-                <li>Sign in with the credentials above.</li>
+                <li>Sign in with the client credentials above.</li>
                 <li>
                   Open <span className="text-foreground">Reserve</span> and pick
                   a session.
@@ -182,9 +251,9 @@ export function DemoPreviewChrome() {
                   below.
                 </li>
                 <li>
-                  Confirm the booking on{" "}
+                  Confirm on{" "}
                   <span className="text-foreground">My Training</span> (Paid
-                  online badge when applicable).
+                  online when applicable).
                 </li>
               </ol>
             </section>
@@ -198,13 +267,11 @@ export function DemoPreviewChrome() {
                 <li>
                   Open <span className="text-foreground">Plan</span>.
                 </li>
-                <li>
-                  Choose a plan and start Checkout (Stripe test mode).
-                </li>
+                <li>Choose a plan and start Checkout.</li>
                 <li>Pay with the test card below.</li>
                 <li>
-                  Return to the app — Plan should show your active membership
-                  and disable “Choose plan” on the current plan.
+                  Return — Plan should show the active membership and disable
+                  “Choose plan” on the current plan.
                 </li>
               </ol>
             </section>
