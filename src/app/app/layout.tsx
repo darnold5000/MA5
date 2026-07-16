@@ -1,5 +1,8 @@
 import { AppShell } from "@/components/platform/app-shell";
-import { demoClient } from "@/content/demo-persona";
+import {
+  demoClient,
+  resolveClientFullName,
+} from "@/content/demo-persona";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
@@ -16,8 +19,10 @@ export default async function ClientAppLayout({
     ? await getActiveMembershipForUser(session.id)
     : null;
 
-  const memberName =
-    session?.profile?.full_name ?? demoClient.fullName;
+  const memberName = resolveClientFullName({
+    email: session?.email ?? session?.profile?.email,
+    fullName: session?.profile?.full_name,
+  });
   const memberPlan =
     membership?.productName
       ?.replace(/Monthly\s+/i, "")

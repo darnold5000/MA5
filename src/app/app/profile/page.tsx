@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
-import { demoClient } from "@/content/demo-persona";
+import {
+  demoClient,
+  resolveClientFullName,
+} from "@/content/demo-persona";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 
 export const metadata: Metadata = {
@@ -16,7 +19,10 @@ export default async function ProfilePage() {
     ? await getSessionUser()
     : null;
 
-  const name = session?.profile?.full_name ?? demoClient.fullName;
+  const name = resolveClientFullName({
+    email: session?.email ?? session?.profile?.email,
+    fullName: session?.profile?.full_name,
+  });
   const email = session?.email ?? demoClient.email;
 
   return (

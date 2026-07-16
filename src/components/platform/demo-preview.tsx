@@ -168,6 +168,12 @@ export function DemoPreviewChrome() {
               <dl className="mt-3 space-y-2 border border-border bg-surface p-3 text-foreground">
                 <div>
                   <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Name
+                  </dt>
+                  <dd className="mt-0.5 text-sm">Alex</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
                     Email
                   </dt>
                   <dd className="mt-0.5 font-mono text-sm break-all">

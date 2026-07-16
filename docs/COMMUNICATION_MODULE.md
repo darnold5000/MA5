@@ -114,6 +114,8 @@ Define **Communication**, not a one-off “messaging feature”:
 
 Every future tenant (gym, salon, baseball academy, etc.) enables only what they need — no rebuild.
 
+**Booking** (Hub + Operations + Stripe schedule/pay) is a separate portable kit: `../signalworks-booking/` — see `docs/SIGNALWORKS_BOOKING.md`. Inbox basics stay with Booking; this doc covers Communication+.
+
 ---
 
 ## Build sequence reminder

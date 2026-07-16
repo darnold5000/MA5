@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 const THREADS = [
   {
-    from: "Alex Rivera",
+    from: "Alex",
     preview: "Can I switch Thursday to Friday?",
     when: "12 min ago",
     unread: true,

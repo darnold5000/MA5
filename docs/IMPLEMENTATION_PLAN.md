@@ -4,6 +4,8 @@ Companion to the product plan. Paths below reflect the **post-audit** repository
 
 **Constraint:** Keep the existing marketing site look and feel. Platform UI reuses MA5 tokens (brand red, dark surfaces, Oswald/Manrope) but lives under separate route groups so marketing chrome is unchanged.
 
+**Reusable module:** Booking for future Signal Works tenants is documented in `../signalworks-booking/` (portable `swb_*` schema). MA5 remains the first branded deploy on `ma5_*` — see `docs/SIGNALWORKS_BOOKING.md`. Do not migrate this repo onto `swb_*` unless explicitly planned.
+
 ---
 
 ## 1. Branch strategy

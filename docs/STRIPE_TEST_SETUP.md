@@ -57,6 +57,7 @@ Checkout requires a signed-in user (not the “Continue as client” demo cookie
 
 | | |
 | --- | --- |
+| Name | Alex |
 | Email | `ma5client@example.com` |
 | Password | `1Password` |
 

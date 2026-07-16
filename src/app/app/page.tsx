@@ -14,7 +14,7 @@ import {
   listPublishedSessions,
   listUserBookings,
 } from "@/features/scheduling/queries";
-import { demoClient } from "@/content/demo-persona";
+import { demoClient, resolveClientFirstName } from "@/content/demo-persona";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
@@ -85,8 +85,10 @@ export default async function ClientDashboardPage() {
     ? await getActiveMembershipForUser(session.id)
     : null;
 
-  const firstName =
-    session?.profile?.full_name?.split(" ")[0] ?? demoClient.firstName;
+  const firstName = resolveClientFirstName({
+    email: session?.email ?? session?.profile?.email,
+    fullName: session?.profile?.full_name,
+  });
 
   const used =
     demoClient.membership.sessionsIncluded -

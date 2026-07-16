@@ -49,8 +49,8 @@ export type AdminOpsState = {
 const DEFAULT_CLIENTS: StaffClient[] = [
   {
     id: "client-alex",
-    fullName: "Alex Rivera",
-    email: "alex@example.com",
+    fullName: "Alex",
+    email: "ma5client@example.com",
     phone: "(317) 555-0142",
     status: "active",
     notes: "14x membership",
@@ -76,8 +76,8 @@ const DEFAULT_CLIENTS: StaffClient[] = [
 function defaultRoster(): RosterEntry[] {
   return FALLBACK_BOOKINGS.map((b) => ({
     ...b,
-    clientName: "Alex Rivera",
-    clientEmail: "alex@example.com",
+    clientName: "Alex",
+    clientEmail: "ma5client@example.com",
   }));
 }
 
