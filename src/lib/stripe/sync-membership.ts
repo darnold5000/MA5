@@ -147,6 +147,11 @@ export async function getActiveMembershipForUser(
   if (!isSupabaseConfigured()) return null;
 
   try {
+    // Stripe is source of truth for “current plan” (avoids locking Plan after
+    // a cancel that still has remaining period / stale DB rows).
+    const fromStripe = await hydrateMembershipFromStripeCustomer(userId);
+    if (fromStripe) return fromStripe;
+
     const supabase = createServiceClient();
     const { data } = await supabase
       .from(MA5_TABLES.memberships)
@@ -157,23 +162,20 @@ export async function getActiveMembershipForUser(
       .limit(1)
       .maybeSingle();
 
-    if (data) {
-      const product = data.ma5_products as
-        | { name?: string; slug?: string }
-        | { name?: string; slug?: string }[]
-        | null;
-      const prod = Array.isArray(product) ? product[0] : product;
+    if (!data) return null;
 
-      return {
-        productSlug: prod?.slug ?? "",
-        productName: prod?.name ?? "Membership",
-        status: data.status as string,
-        currentPeriodEnd: (data.current_period_end as string) ?? null,
-      };
-    }
+    const product = data.ma5_products as
+      | { name?: string; slug?: string }
+      | { name?: string; slug?: string }[]
+      | null;
+    const prod = Array.isArray(product) ? product[0] : product;
 
-    // Fallback: subscription exists in Stripe but webhook/DB sync never ran.
-    return hydrateMembershipFromStripeCustomer(userId);
+    return {
+      productSlug: prod?.slug ?? "",
+      productName: prod?.name ?? "Membership",
+      status: data.status as string,
+      currentPeriodEnd: (data.current_period_end as string) ?? null,
+    };
   } catch {
     return null;
   }
@@ -217,9 +219,28 @@ async function hydrateMembershipFromStripeCustomer(
   });
 
   const active = subs.data.find(
-    (s) => s.status === "active" || s.status === "trialing",
+    (s) =>
+      (s.status === "active" || s.status === "trialing") &&
+      !s.canceled_at &&
+      !s.cancel_at_period_end,
   );
-  if (!active) return null;
+  if (!active) {
+    // Subscription canceled or scheduled to end — clear local "active" rows
+    // so Plan can be chosen again for demos.
+    const ending = subs.data.find(
+      (s) =>
+        s.status === "active" ||
+        s.status === "trialing" ||
+        s.status === "canceled",
+    );
+    if (ending?.id) {
+      await supabase
+        .from(MA5_TABLES.memberships)
+        .update({ status: "canceled" })
+        .eq("stripe_subscription_id", ending.id);
+    }
+    return null;
+  }
 
   const priceId = active.items.data[0]?.price?.id;
   const productSlug = priceId
