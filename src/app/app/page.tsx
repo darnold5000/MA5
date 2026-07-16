@@ -25,6 +25,7 @@ export default async function ClientDashboardPage() {
     ? await listUserBookings(session?.id ?? null)
     : [];
   const bookings = [...demoBookings, ...dbBookings.filter((b) => b.source === "database")]
+    .filter((b) => b.status !== "cancelled" && b.status !== "refunded")
     .sort((a, b) => (a.startsAt || "").localeCompare(b.startsAt || ""));
 
   const next = bookings.find((b) => b.startsAt && new Date(b.startsAt) >= new Date())
@@ -69,12 +70,6 @@ export default async function ClientDashboardPage() {
                 className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
               >
                 View details
-              </Link>
-              <Link
-                href="/app/bookings"
-                className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-              >
-                Cancel booking
               </Link>
               <Link
                 href="/app/schedule"

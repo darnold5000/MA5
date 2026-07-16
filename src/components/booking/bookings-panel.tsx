@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { BookingItem } from "@/features/scheduling/fallback-data";
 import { paymentStatusLabel } from "@/features/booking/labels";
@@ -31,11 +32,15 @@ export function BookingsPanel({
   bookings,
   justBookedConfirmation,
 }: BookingsPanelProps) {
+  const router = useRouter();
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
   const ordered = useMemo(
     () =>
-      [...bookings].sort((a, b) =>
-        (a.startsAt || "").localeCompare(b.startsAt || ""),
-      ),
+      [...bookings]
+        .filter((b) => b.status !== "cancelled" && b.status !== "refunded")
+        .sort((a, b) => (a.startsAt || "").localeCompare(b.startsAt || "")),
     [bookings],
   );
 
@@ -88,9 +93,40 @@ export function BookingsPanel({
       }).format(new Date(`${selectedDay}T12:00:00`))
     : null;
 
+  async function cancelBooking(booking: BookingItem) {
+    if (!window.confirm(`Cancel your booking for ${booking.sessionTitle}?`)) {
+      return;
+    }
+    setCancellingId(booking.id);
+    setCancelError(null);
+    try {
+      const res = await fetch("/api/bookings/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setCancelError(data.error ?? "Could not cancel booking");
+        setCancellingId(null);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setCancelError("Could not cancel booking");
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="space-y-3">
+        {cancelError ? (
+          <p className="text-sm text-brand" role="alert">
+            {cancelError}
+          </p>
+        ) : null}
         {selectedDay ? (
           <div className="flex flex-wrap items-center justify-between gap-3 border border-brand bg-surface px-4 py-3">
             <p className="text-sm text-foreground">
@@ -130,9 +166,6 @@ export function BookingsPanel({
             const paymentLabel = paymentStatusLabel(
               booking.amountCents === 0 ? "included" : booking.paymentStatus,
             );
-            const calendarUrl = booking.startsAt
-              ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.sessionTitle)}&dates=${new Date(booking.startsAt).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}/${new Date(new Date(booking.startsAt).getTime() + 60 * 60 * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`
-              : null;
 
             return (
               <article
@@ -174,27 +207,13 @@ export function BookingsPanel({
                     : ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {calendarUrl ? (
-                    <a
-                      href={calendarUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                    >
-                      Add to calendar
-                    </a>
-                  ) : null}
                   <button
                     type="button"
-                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                    disabled={cancellingId === booking.id}
+                    onClick={() => cancelBooking(booking)}
+                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase disabled:opacity-50"
                   >
-                    Reschedule
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                  >
-                    Cancel
+                    {cancellingId === booking.id ? "Cancelling…" : "Cancel"}
                   </button>
                   <a
                     href="/app/messages"
