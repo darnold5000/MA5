@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 
 type ScheduleBrowserProps = {
   sessions: SessionItem[];
-  enrolledSessionIds?: string[];
+  /** sessionId → payment_status for the client's active booking */
+  enrolledBySessionId?: Record<string, string>;
 };
 
 type WeekFilter = "this" | "next" | "all";
@@ -43,12 +44,12 @@ function endOfWeek(d: Date) {
 
 export function ScheduleBrowser({
   sessions,
-  enrolledSessionIds = [],
+  enrolledBySessionId = {},
 }: ScheduleBrowserProps) {
   const router = useRouter();
   const enrolled = useMemo(
-    () => new Set(enrolledSessionIds),
-    [enrolledSessionIds],
+    () => new Set(Object.keys(enrolledBySessionId)),
+    [enrolledBySessionId],
   );
   const [week, setWeek] = useState<WeekFilter>("this");
   const [service, setService] = useState<string>("all");
@@ -211,6 +212,7 @@ export function ScheduleBrowser({
             const spots = Math.max(session.capacity - session.bookedCount, 0);
             const full = spots <= 0 || session.status === "full";
             const isEnrolled = enrolled.has(session.id);
+            const paymentStatus = enrolledBySessionId[session.id];
             const open = expandedId === session.id;
             return (
               <article
@@ -235,6 +237,21 @@ export function ScheduleBrowser({
                           Enrolled
                         </span>
                       ) : null}
+                      {isEnrolled && paymentStatus === "paid" ? (
+                        <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                          Paid online
+                        </span>
+                      ) : null}
+                      {isEnrolled && paymentStatus === "pay_at_facility" ? (
+                        <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
+                          Pay at facility
+                        </span>
+                      ) : null}
+                      {isEnrolled && paymentStatus === "included" ? (
+                        <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
+                          Included
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm text-foreground">
                       {formatSessionWhen(session.startsAt)}
@@ -248,9 +265,11 @@ export function ScheduleBrowser({
                           ? "Full"
                           : `${spots} spots remaining`}
                       {" · "}
-                      {session.priceCents > 0
-                        ? `${formatMoney(session.priceCents)} · pay online or at facility`
-                        : "Included / inquire"}
+                      {isEnrolled && paymentStatus === "paid"
+                        ? "Paid online"
+                        : session.priceCents > 0
+                          ? `${formatMoney(session.priceCents)} · pay online or at facility`
+                          : "Included / inquire"}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">

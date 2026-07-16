@@ -154,6 +154,11 @@ export function BookingsPanel({
                       Confirmed
                     </span>
                   )}
+                  {booking.paymentStatus === "paid" ? (
+                    <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                      Paid online
+                    </span>
+                  ) : null}
                 </div>
                 <h3 className="mt-1 font-display text-xl tracking-wide uppercase">
                   {booking.sessionTitle}

@@ -5,7 +5,7 @@ export function paymentStatusLabel(status: string): string {
     case "pay_at_facility":
       return "Pay at facility";
     case "paid":
-      return "Paid";
+      return "Paid online";
     case "pending":
       return "Payment pending";
     case "refunded":

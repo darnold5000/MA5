@@ -23,13 +23,14 @@ export default async function SchedulePage() {
     : [];
   const demoBookings = await readDemoBookings();
 
-  const enrolledSessionIds = [
-    ...new Set(
-      [...demoBookings, ...dbBookings]
-        .filter((b) => b.status !== "cancelled" && b.status !== "refunded")
-        .map((b) => b.sessionId),
-    ),
-  ];
+  const activeBookings = [...demoBookings, ...dbBookings].filter(
+    (b) => b.status !== "cancelled" && b.status !== "refunded",
+  );
+
+  const enrolledBySessionId: Record<string, string> = {};
+  for (const b of activeBookings) {
+    enrolledBySessionId[b.sessionId] = b.paymentStatus;
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +49,7 @@ export default async function SchedulePage() {
       </div>
       <ScheduleBrowser
         sessions={sessions}
-        enrolledSessionIds={enrolledSessionIds}
+        enrolledBySessionId={enrolledBySessionId}
       />
     </div>
   );
