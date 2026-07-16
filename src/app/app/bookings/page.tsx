@@ -13,7 +13,10 @@ export const metadata: Metadata = {
 };
 
 type PageProps = {
-  searchParams: Promise<{ booked?: string }>;
+  searchParams: Promise<{
+    booked?: string;
+    paid?: string;
+  }>;
 };
 
 function mergeBookings(
@@ -61,7 +64,23 @@ export default async function BookingsPage({ searchParams }: PageProps) {
           Sessions listed in the order they happen. Use the calendar to jump to
           a day.
         </p>
-        {params.booked && justBooked ? (
+        {params.paid === "1" ? (
+          <p
+            className="mt-3 border border-brand bg-brand/10 px-3 py-2 text-sm text-foreground"
+            role="status"
+          >
+            Payment received
+            {justBooked ? (
+              <>
+                {" "}
+                — you&apos;re booked for{" "}
+                <span className="font-semibold">{justBooked.sessionTitle}</span>
+              </>
+            ) : null}
+            .
+          </p>
+        ) : null}
+        {params.booked && justBooked && params.paid !== "1" ? (
           <p className="mt-3 text-sm text-foreground" role="status">
             You’re booked for{" "}
             <span className="font-semibold">{justBooked.sessionTitle}</span>.

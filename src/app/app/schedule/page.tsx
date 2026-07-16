@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 
 import { ScheduleBrowser } from "@/components/booking/schedule-browser";
-import { listPublishedSessions } from "@/features/scheduling/queries";
+import { readDemoBookings } from "@/features/booking/demo-store";
+import {
+  listPublishedSessions,
+  listUserBookings,
+} from "@/features/scheduling/queries";
+import { getSessionUser } from "@/lib/auth/session";
+import { isSupabasePublicConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Book",
@@ -10,6 +16,20 @@ export const metadata: Metadata = {
 
 export default async function SchedulePage() {
   const sessions = await listPublishedSessions();
+  const configured = isSupabasePublicConfigured();
+  const session = configured ? await getSessionUser() : null;
+  const dbBookings = configured
+    ? await listUserBookings(session?.id ?? null)
+    : [];
+  const demoBookings = await readDemoBookings();
+
+  const enrolledSessionIds = [
+    ...new Set(
+      [...demoBookings, ...dbBookings]
+        .filter((b) => b.status !== "cancelled" && b.status !== "refunded")
+        .map((b) => b.sessionId),
+    ),
+  ];
 
   return (
     <div className="space-y-6">
@@ -22,10 +42,14 @@ export default async function SchedulePage() {
         </h1>
         <p className="mt-2 text-sm text-muted">
           Reserve assessments, small group training, sports performance, InBody,
-          and sauna sessions.
+          and sauna sessions. Paid sessions can be settled online or at the
+          facility.
         </p>
       </div>
-      <ScheduleBrowser sessions={sessions} />
+      <ScheduleBrowser
+        sessions={sessions}
+        enrolledSessionIds={enrolledSessionIds}
+      />
     </div>
   );
 }

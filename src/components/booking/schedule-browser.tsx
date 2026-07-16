@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 type ScheduleBrowserProps = {
   sessions: SessionItem[];
+  enrolledSessionIds?: string[];
 };
 
 type WeekFilter = "this" | "next" | "all";
@@ -40,13 +41,22 @@ function endOfWeek(d: Date) {
   return e;
 }
 
-export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
+export function ScheduleBrowser({
+  sessions,
+  enrolledSessionIds = [],
+}: ScheduleBrowserProps) {
   const router = useRouter();
+  const enrolled = useMemo(
+    () => new Set(enrolledSessionIds),
+    [enrolledSessionIds],
+  );
   const [week, setWeek] = useState<WeekFilter>("this");
   const [service, setService] = useState<string>("all");
   const [availableOnly, setAvailableOnly] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [bookingSession, setBookingSession] = useState<SessionItem | null>(null);
+  const [bookingSession, setBookingSession] = useState<SessionItem | null>(
+    null,
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,13 +72,21 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
       if (week === "this" && (start < thisStart || start >= thisEnd)) return false;
       if (week === "next" && (start < thisEnd || start >= nextEnd)) return false;
       if (service !== "all" && s.classTypeId !== service) return false;
+      const isEnrolled = enrolled.has(s.id);
       const spots = s.capacity - s.bookedCount;
-      if (availableOnly && (spots <= 0 || s.status === "full")) return false;
+      // Keep enrolled sessions visible even when "available only" is on.
+      if (
+        availableOnly &&
+        !isEnrolled &&
+        (spots <= 0 || s.status === "full")
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [sessions, week, service, availableOnly]);
+  }, [sessions, week, service, availableOnly, enrolled]);
 
-  async function confirmBooking() {
+  async function confirmBooking(payAtFacility: boolean) {
     if (!bookingSession) return;
     setPending(true);
     setError(null);
@@ -76,7 +94,15 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: bookingSession.id }),
+        body: JSON.stringify({
+          sessionId: bookingSession.id,
+          paymentStatus:
+            bookingSession.priceCents > 0 && payAtFacility
+              ? "pay_at_facility"
+              : bookingSession.priceCents > 0
+                ? "pending"
+                : "not_required",
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -90,6 +116,35 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
       router.refresh();
     } catch {
       setError("Booking failed");
+      setPending(false);
+    }
+  }
+
+  async function payAndBook() {
+    if (!bookingSession) return;
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/stripe/session-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: bookingSession.id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError(
+        data.error ??
+          "Online payment unavailable. You can still book and pay at the facility.",
+      );
+      setPending(false);
+    } catch {
+      setError("Could not start payment");
       setPending(false);
     }
   }
@@ -155,30 +210,46 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
           filtered.map((session) => {
             const spots = Math.max(session.capacity - session.bookedCount, 0);
             const full = spots <= 0 || session.status === "full";
+            const isEnrolled = enrolled.has(session.id);
             const open = expandedId === session.id;
             return (
               <article
                 key={session.id}
                 className={cn(
                   "border bg-surface p-5",
-                  open ? "border-brand" : "border-border",
+                  isEnrolled
+                    ? "border-brand"
+                    : open
+                      ? "border-brand"
+                      : "border-border",
                 )}
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="font-display text-xl tracking-wide uppercase">
-                      {session.title}
-                    </h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-display text-xl tracking-wide uppercase">
+                        {session.title}
+                      </h3>
+                      {isEnrolled ? (
+                        <span className="bg-brand px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand-foreground uppercase">
+                          Enrolled
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-sm text-foreground">
                       {formatSessionWhen(session.startsAt)}
                     </p>
                     <p className="mt-1 text-sm text-muted">
                       Coach {session.coachName}
                       {" · "}
-                      {full ? "Full" : `${spots} spots remaining`}
+                      {isEnrolled
+                        ? "You’re on the roster"
+                        : full
+                          ? "Full"
+                          : `${spots} spots remaining`}
                       {" · "}
                       {session.priceCents > 0
-                        ? `${formatMoney(session.priceCents)} or included with membership`
+                        ? `${formatMoney(session.priceCents)} · pay online or at facility`
                         : "Included / inquire"}
                     </p>
                   </div>
@@ -186,23 +257,35 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
                     <button
                       type="button"
                       onClick={() =>
-                        setExpandedId((c) => (c === session.id ? null : session.id))
+                        setExpandedId((c) =>
+                          c === session.id ? null : session.id,
+                        )
                       }
                       className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
                     >
                       {open ? "Hide details" : "View details"}
                     </button>
-                    <button
-                      type="button"
-                      disabled={full}
-                      onClick={() => {
-                        setError(null);
-                        setBookingSession(session);
-                      }}
-                      className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
-                    >
-                      Book
-                    </button>
+                    {isEnrolled ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="inline-flex min-h-11 items-center border border-brand px-4 text-xs font-semibold tracking-wide text-brand uppercase disabled:opacity-80"
+                      >
+                        Enrolled
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={full}
+                        onClick={() => {
+                          setError(null);
+                          setBookingSession(session);
+                        }}
+                        className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                      >
+                        Book
+                      </button>
+                    )}
                   </div>
                 </div>
                 {open ? (
@@ -241,7 +324,7 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
             </p>
             <p className="mt-2 text-sm text-muted">
               {bookingSession.priceCents > 0
-                ? `${formatMoney(bookingSession.priceCents)} · pay at facility or use membership`
+                ? `${formatMoney(bookingSession.priceCents)} · pay online now or at the facility`
                 : "Included with membership / inquire"}
             </p>
             {error ? (
@@ -249,20 +332,41 @@ export function ScheduleBrowser({ sessions }: ScheduleBrowserProps) {
                 {error}
               </p>
             ) : null}
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col gap-3">
+              {bookingSession.priceCents > 0 ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={payAndBook}
+                  className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                >
+                  {pending ? "Starting…" : "Pay online & book"}
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={pending}
-                onClick={confirmBooking}
-                className="inline-flex min-h-11 flex-1 items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                onClick={() =>
+                  confirmBooking(bookingSession.priceCents > 0)
+                }
+                className={cn(
+                  "inline-flex min-h-11 w-full items-center justify-center px-4 text-xs font-semibold tracking-wide uppercase disabled:opacity-50",
+                  bookingSession.priceCents > 0
+                    ? "border border-border"
+                    : "bg-brand text-brand-foreground",
+                )}
               >
-                {pending ? "Booking…" : "Confirm"}
+                {pending
+                  ? "Booking…"
+                  : bookingSession.priceCents > 0
+                    ? "Book · pay at facility"
+                    : "Confirm"}
               </button>
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => setBookingSession(null)}
-                className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
+                className="inline-flex min-h-11 w-full items-center justify-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
               >
                 Cancel
               </button>

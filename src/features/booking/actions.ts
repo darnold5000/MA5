@@ -18,6 +18,8 @@ export async function createBooking(input: {
   userId: string | null;
   email?: string;
   fullName?: string;
+  paymentStatus?: string;
+  stripeCheckoutSessionId?: string;
 }): Promise<CreateBookingResult> {
   const session = await getSessionById(input.sessionId);
   if (!session) {
@@ -28,6 +30,36 @@ export async function createBooking(input: {
     throw new Error("This session is full");
   }
 
+  // Block duplicate enrollment for the same class/session.
+  if (input.userId && isSupabaseConfigured() && session.source !== "demo") {
+    try {
+      const supabase = await createClient();
+      const { data: existing } = await supabase
+        .from(MA5_TABLES.bookings)
+        .select("id, confirmation_number, status, payment_status, amount_cents")
+        .eq("session_id", session.id)
+        .eq("user_id", input.userId)
+        .not("status", "in", '("cancelled","refunded")')
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error("You’re already enrolled in this session");
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message === "You’re already enrolled in this session"
+      ) {
+        throw err;
+      }
+      // Fall through to booking if the duplicate check itself fails.
+    }
+  }
+
+  const paymentStatus =
+    input.paymentStatus ??
+    (session.priceCents > 0 ? "pay_at_facility" : "not_required");
+
   const demoBooking: BookingItem = {
     id: `book-${Date.now()}`,
     sessionId: session.id,
@@ -35,7 +67,7 @@ export async function createBooking(input: {
     startsAt: session.startsAt,
     confirmationNumber: confirmationNumber(),
     status: "confirmed",
-    paymentStatus: session.priceCents > 0 ? "pay_at_facility" : "not_required",
+    paymentStatus,
     amountCents: session.priceCents,
     source: "demo",
   };
@@ -53,13 +85,21 @@ export async function createBooking(input: {
         user_id: input.userId,
         confirmation_number: demoBooking.confirmationNumber,
         status: "confirmed",
-        payment_status: demoBooking.paymentStatus,
+        payment_status: paymentStatus,
         amount_cents: session.priceCents,
+        stripe_checkout_session_id: input.stripeCheckoutSessionId ?? null,
       })
       .select("*")
       .single();
 
-    if (error || !data) {
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("You’re already enrolled in this session");
+      }
+      return { booking: demoBooking, demo: true };
+    }
+
+    if (!data) {
       return { booking: demoBooking, demo: true };
     }
 
@@ -77,7 +117,13 @@ export async function createBooking(input: {
       },
       demo: false,
     };
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message === "You’re already enrolled in this session"
+    ) {
+      throw err;
+    }
     return { booking: demoBooking, demo: true };
   }
 }
