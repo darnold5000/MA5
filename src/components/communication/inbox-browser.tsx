@@ -156,6 +156,34 @@ export function InboxBrowser() {
         <p className="mt-2 text-sm text-muted">
           Talk with your coach and see booking updates.
         </p>
+        <button
+          type="button"
+          onClick={() => {
+            setTab("conversations");
+            const existing = items.find((i) => i.kind === "conversation");
+            if (existing) {
+              openConversation(existing.id);
+              return;
+            }
+            const id = `c-${Date.now()}`;
+            setItems((prev) => [
+              {
+                id,
+                kind: "conversation",
+                title: "Coach Robert",
+                body: "Start a conversation with your coach.",
+                when: "Just now",
+                unread: false,
+              },
+              ...prev,
+            ]);
+            setOpenId(id);
+            setDraft("");
+          }}
+          className="mt-4 inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+        >
+          Message coach
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
