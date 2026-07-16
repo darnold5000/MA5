@@ -51,11 +51,24 @@ Without Supabase, Checkout can still open; membership “active” status won’
 
 ## 4. Auth for Checkout
 
-Checkout requires a signed-in user. That means Supabase must also be configured (`NEXT_PUBLIC_SUPABASE_*` + migrations). Then:
+Checkout requires a signed-in user (not the “Continue as client” demo cookie).
 
-1. `/signup` → create account  
-2. `/app/billing` → **Start membership**  
-3. Pay with test card `4242 4242 4242 4242`, any future expiry, any CVC
+**Demo client account**
+
+| | |
+| --- | --- |
+| Email | `ma5client@example.com` |
+| Password | `1Password` |
+
+Then:
+
+1. `/login` → sign in with the account above  
+2. `/app/billing` (Plan) → choose a membership  
+3. Pay with test card `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP  
+
+Same card works for **Pay online** on a session from Reserve.
+
+The in-app **Demo guide** button (bottom right) repeats these steps for visitors.
 
 ## 5. Local optional
 

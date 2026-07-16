@@ -4,8 +4,6 @@ import { useEffect, useId, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "ma5_demo_preview_open";
-
 export function DemoPreviewChrome() {
   const [open, setOpen] = useState(false);
   const titleId = useId();
@@ -26,9 +24,24 @@ export function DemoPreviewChrome() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-3 bottom-20 z-[60] border border-border bg-surface px-3 py-2 text-[10px] font-semibold tracking-[0.18em] text-muted uppercase shadow-lg transition hover:border-brand hover:text-foreground md:bottom-4"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="group fixed right-3 bottom-20 z-[60] flex items-center gap-2 border border-brand bg-surface px-3 py-2.5 text-left shadow-lg transition hover:bg-brand hover:text-brand-foreground md:bottom-4"
       >
-        Demo Preview
+        <span
+          className="flex size-6 shrink-0 items-center justify-center border border-current text-[11px] font-semibold"
+          aria-hidden
+        >
+          ?
+        </span>
+        <span className="leading-tight">
+          <span className="block text-[10px] font-semibold tracking-[0.16em] uppercase">
+            Demo guide
+          </span>
+          <span className="block text-[10px] opacity-70 group-hover:opacity-100">
+            Open walkthrough
+          </span>
+        </span>
       </button>
 
       <div
@@ -44,7 +57,7 @@ export function DemoPreviewChrome() {
             "absolute inset-0 bg-black/60 transition",
             open ? "opacity-100" : "opacity-0",
           )}
-          aria-label="Close demo information"
+          aria-label="Close demo guide"
           onClick={() => setOpen(false)}
         />
         <aside
@@ -59,10 +72,13 @@ export function DemoPreviewChrome() {
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <div>
               <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-                Preview info
+                How to test
               </p>
-              <h2 id={titleId} className="font-display text-xl tracking-wide uppercase">
-                Demo Preview
+              <h2
+                id={titleId}
+                className="font-display text-xl tracking-wide uppercase"
+              >
+                Demo guide
               </h2>
             </div>
             <button
@@ -73,36 +89,168 @@ export function DemoPreviewChrome() {
               Close
             </button>
           </div>
-          <div className="space-y-5 overflow-y-auto px-5 py-5 text-sm leading-relaxed text-muted">
+
+          <div className="space-y-6 overflow-y-auto px-5 py-5 text-sm leading-relaxed text-muted">
             <p>
-              This preview uses sample data so you can experience the client
-              portal the way members would. Payments and live account creation
-              are disabled until production credentials are connected.
+              This preview is a Mindbody-replacement Fitness Hub: schedule,
+              reserve sessions, memberships, Stripe Checkout (test mode), and
+              Inbox. Use a real signed-in account for payments — demo-cookie
+              browsing alone cannot complete Stripe.
             </p>
-            <div>
+
+            <section>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
-                Working in this preview
+                Sign in (required)
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                <li>Browse schedule and reserve sessions</li>
-                <li>View bookings with calendar filters</li>
-                <li>Explore membership plans</li>
-                <li>Staff admin overview screens</li>
-              </ul>
-            </div>
-            <div>
+              <p className="mt-2">
+                Go to{" "}
+                <a href="/login" className="text-brand underline">
+                  /login
+                </a>{" "}
+                and use the client test account:
+              </p>
+              <dl className="mt-3 space-y-2 border border-border bg-surface p-3 text-foreground">
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Email
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm break-all">
+                    ma5client@example.com
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Password
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm">1Password</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-xs">
+                Sign out first if you entered as “Continue as client” (demo
+                persona) — that path skips Stripe auth.
+              </p>
+            </section>
+
+            <section>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
-                Production would connect
+                What you can try
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                <li>MA5 database for real accounts and bookings</li>
-                <li>Stripe for memberships and billing</li>
-                <li>Email notifications and coach messaging</li>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5">
+                <li>
+                  <span className="text-foreground">Home</span> — next workout,
+                  monthly progress, coach message
+                </li>
+                <li>
+                  <span className="text-foreground">Reserve</span> — browse
+                  schedule, reserve a spot (pay online or at facility)
+                </li>
+                <li>
+                  <span className="text-foreground">My Training</span> —
+                  confirmed / paid bookings, cancel unpaid
+                </li>
+                <li>
+                  <span className="text-foreground">Plan</span> — membership
+                  catalog + Stripe Checkout
+                </li>
+                <li>
+                  <span className="text-foreground">Programs</span> — program
+                  placeholder
+                </li>
+                <li>
+                  <span className="text-foreground">Inbox</span> — Activity +
+                  Messages (demo feed)
+                </li>
               </ul>
-            </div>
-            <p>
+            </section>
+
+            <section>
+              <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
+                End-to-end: book a session
+              </p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>Sign in with the credentials above.</li>
+                <li>
+                  Open <span className="text-foreground">Reserve</span> and pick
+                  a session.
+                </li>
+                <li>
+                  Choose <span className="text-foreground">Pay online</span> or{" "}
+                  <span className="text-foreground">Pay at facility</span>.
+                </li>
+                <li>
+                  If paying online, complete Stripe Checkout with the test card
+                  below.
+                </li>
+                <li>
+                  Confirm the booking on{" "}
+                  <span className="text-foreground">My Training</span> (Paid
+                  online badge when applicable).
+                </li>
+              </ol>
+            </section>
+
+            <section>
+              <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
+                End-to-end: membership (Stripe)
+              </p>
+              <ol className="mt-2 list-decimal space-y-2 pl-5">
+                <li>Stay signed in as the client test account.</li>
+                <li>
+                  Open <span className="text-foreground">Plan</span>.
+                </li>
+                <li>
+                  Choose a plan and start Checkout (Stripe test mode).
+                </li>
+                <li>Pay with the test card below.</li>
+                <li>
+                  Return to the app — Plan should show your active membership
+                  and disable “Choose plan” on the current plan.
+                </li>
+              </ol>
+            </section>
+
+            <section>
+              <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
+                Stripe test card
+              </p>
+              <dl className="mt-3 space-y-2 border border-border bg-surface p-3 text-foreground">
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Card number
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm">
+                    4242 4242 4242 4242
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Expiry
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm">
+                    Any future date (e.g. 12/34)
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    CVC
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm">Any 3 digits</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    ZIP
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm">Any</dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-xs">
+                No real charges — Stripe test mode only.
+              </p>
+            </section>
+
+            <p className="border-t border-border pt-4 text-xs">
               Direction: replace Mindbody for booking, memberships, and client
-              management while keeping the public MA5 website look and feel.
+              ops while keeping the public MA5 marketing site unchanged.
             </p>
           </div>
         </aside>
@@ -110,6 +258,3 @@ export function DemoPreviewChrome() {
     </>
   );
 }
-
-// Keep unused key referenced for future persistence if needed.
-void STORAGE_KEY;

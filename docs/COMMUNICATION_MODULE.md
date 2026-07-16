@@ -35,8 +35,9 @@ What this is **not** (yet): broadcasts, group chats, segments, AI, campaigns, an
 
 ### MA5 demo / near-term
 
-- Ship **basic messaging + notifications** under **Inbox** (or Communication label).
-- Keep the UI honest: conversations + notification list first.
+- Ship under **Inbox** with tabs **Activity** (everything) and **Messages** (conversations only).
+- Visual cues by type (coach vs booking / payment / reminder / facility) + unread dots.
+- Near-term: **pinned coach reminders** on Home until dismissed.
 - Activity-style unified feed, announcements, coach console, push for chat — evolve toward the premium module.
 
 ---
@@ -73,6 +74,7 @@ What this is **not** (yet): broadcasts, group chats, segments, AI, campaigns, an
 | Segments (baseball athletes, parents, Gold members) | Targeted reach |
 | Automated reminders (24h before, missed session follow-up) | Ops without manual chase |
 | AI reply suggestions | Coach time saver |
+| AI announcement draft | Owner types what happened → polished broadcast copy |
 | Video / PDF / file sharing | Programming assets in-thread |
 | Message templates (class cancelled, welcome) | Consistency |
 | Message analytics (read rates, engagement) | Prove value |

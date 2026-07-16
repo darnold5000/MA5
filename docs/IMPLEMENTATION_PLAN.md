@@ -146,6 +146,6 @@ Ideas that fit the Fitness Hub but are **not** in the core Mindbody-replacement 
 | Program cards → workouts | Strength / Speed / Recovery style hubs competing with TrainHeroic. |
 | Membership → included sessions | Active plan credits auto-mark covered classes as “Included in membership.” |
 | Booking celebration animations | Premium success moments beyond the current success banner. |
-| Profile tab | Client profile: goals, membership, waivers, payment methods, notification prefs. Stub at `/app/profile`. |
+| Profile tab | Client profile: goals, membership, waivers, payment methods, notification prefs. Stub exists at `/app/profile` but **hidden from nav** until ready. |
 | Pinned coach reminders | Coach pins a message → shows on Home until client dismisses. |
 | AI announcement draft | Owner types what happened → AI drafts facility announcement (Communication+). |

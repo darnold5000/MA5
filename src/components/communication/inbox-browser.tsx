@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -256,24 +255,13 @@ export function InboxBrowser() {
                           {isOpen ? "Close" : "Reply"}
                         </button>
                       ) : (
-                        <>
-                          {item.href ? (
-                            <Link
-                              href={item.href}
-                              onClick={() => markRead(item.id)}
-                              className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                            >
-                              View
-                            </Link>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => dismiss(item.id)}
-                            className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                          >
-                            Dismiss
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => dismiss(item.id)}
+                          className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                        >
+                          Dismiss
+                        </button>
                       )}
                     </div>
 
