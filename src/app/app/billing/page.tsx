@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { CheckoutButton } from "@/components/billing/checkout-button";
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
-import { demoClient } from "@/content/demo-persona";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import {
@@ -107,8 +106,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   );
 
   const currentPlanName =
-    activeMembership?.productName ??
-    (sessionUser ? "No active plan" : demoClient.membership.name);
+    activeMembership?.productName ?? "No active plan";
   const currentPlanDetail = activeMembership
     ? `${activeMembership.status === "trialing" ? "Trialing" : "Active"}${
         activeMembership.currentPeriodEnd
@@ -118,13 +116,10 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             )}`
           : ""
       }`
-    : sessionUser
-      ? "Choose a plan below to get started."
-      : `${demoClient.membership.sessionsRemaining} of ${demoClient.membership.sessionsIncluded} sessions remaining · renews ${demoClient.membership.renewsOn}`;
+    : "Choose a plan below to get started.";
 
-  const currentSlug =
-    activeMembership?.productSlug ||
-    (!sessionUser ? "sg-14" : null);
+  // Only a real Stripe/DB membership disables that plan's Choose button
+  const currentSlug = activeMembership?.productSlug ?? null;
 
   return (
     <div className="space-y-8">

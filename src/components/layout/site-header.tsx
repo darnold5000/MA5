@@ -163,16 +163,6 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
               Client login
             </ButtonLink>
           )}
-          <ButtonLink
-            href={siteConfig.booking.path}
-            onClick={() => {
-              closeMenu();
-              trackEvent("nav_book_click", { location: "mobile" });
-            }}
-            className="mt-2 w-full"
-          >
-            Book Now
-          </ButtonLink>
         </nav>
       </div>
     </header>

@@ -27,7 +27,7 @@ export default async function ClientAppLayout({
     membership?.productName
       ?.replace(/Monthly\s+/i, "")
       .replace(/\s+Membership$/i, " Membership")
-      .trim() ?? demoClient.membership.shortLabel;
+      .trim() ?? "No plan";
 
   return (
     <AppShell

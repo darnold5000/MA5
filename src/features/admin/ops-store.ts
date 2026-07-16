@@ -53,7 +53,7 @@ const DEFAULT_CLIENTS: StaffClient[] = [
     email: "ma5client@example.com",
     phone: "(317) 555-0142",
     status: "active",
-    notes: "14x membership",
+    notes: "Demo client",
   },
   {
     id: "client-jordan",

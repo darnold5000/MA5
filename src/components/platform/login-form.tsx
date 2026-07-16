@@ -61,27 +61,27 @@ export function LoginForm() {
 
   return (
     <AuthCard
-      title="Explore the MA5 client portal"
-      description="Preview accounts use sample data. No payment is processed."
+      title="Client portal"
+      description="Demo accounts use sample data. No payment is processed."
     >
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         <button
           type="button"
           onClick={() => continueAs("client")}
-          className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+          className="inline-flex min-h-10 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase sm:min-h-11"
         >
           Continue as Demo Client
         </button>
         <button
           type="button"
           onClick={() => continueAs("staff")}
-          className="inline-flex min-h-11 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+          className="inline-flex min-h-10 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase sm:min-h-11"
         >
           Continue as Operations Demo
         </button>
       </div>
 
-      <div className="my-8 border-t border-border pt-6">
+      <div className="my-4 border-t border-border pt-4 sm:my-8 sm:pt-6">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">
           Or sign in with your account
         </p>
@@ -89,18 +89,18 @@ export function LoginForm() {
           Stay signed in until you sign out — including while browsing the
           website.
         </p>
-        <form className="mt-4 space-y-4" onSubmit={onSubmit}>
-          <label className="block space-y-2 text-sm">
+        <form className="mt-3 space-y-3 sm:mt-4 sm:space-y-4" onSubmit={onSubmit}>
+          <label className="block space-y-1.5 text-sm sm:space-y-2">
             <span className="font-semibold tracking-wide uppercase">Email</span>
             <input
               type="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand"
+              className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
             />
           </label>
-          <label className="block space-y-2 text-sm">
+          <label className="block space-y-1.5 text-sm sm:space-y-2">
             <span className="font-semibold tracking-wide uppercase">
               Password
             </span>
@@ -109,7 +109,7 @@ export function LoginForm() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand"
+              className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
             />
           </label>
           {error ? (
@@ -120,7 +120,7 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex min-h-11 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
+            className="inline-flex min-h-10 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase disabled:opacity-50 sm:min-h-11"
           >
             {pending ? "Signing in…" : "Sign in"}
           </button>
