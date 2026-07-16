@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import type { BookingItem } from "@/features/scheduling/fallback-data";
@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 type BookingsPanelProps = {
   bookings: BookingItem[];
   justBookedConfirmation?: string;
+  /** Shown above the list in the left column so the calendar stays top-right */
+  lead?: ReactNode;
 };
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
@@ -31,6 +33,7 @@ function daysInMonth(year: number, monthIndex: number) {
 export function BookingsPanel({
   bookings,
   justBookedConfirmation,
+  lead,
 }: BookingsPanelProps) {
   const router = useRouter();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -120,15 +123,17 @@ export function BookingsPanel({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="space-y-3">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17.5rem] lg:items-start">
+      <div className="min-w-0 space-y-3">
+        {lead}
+
         {cancelError ? (
           <p className="text-sm text-brand" role="alert">
             {cancelError}
           </p>
         ) : null}
         {selectedDay ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border border-brand bg-surface px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border border-brand bg-surface px-3 py-2.5">
             <p className="text-sm text-foreground">
               Filtered to{" "}
               <span className="font-semibold">{selectedLabel}</span>
@@ -136,7 +141,7 @@ export function BookingsPanel({
             <button
               type="button"
               onClick={clearDayFilter}
-              className="inline-flex min-h-10 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+              className="inline-flex min-h-9 items-center bg-brand px-3 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase"
             >
               All bookings
             </button>
@@ -154,7 +159,7 @@ export function BookingsPanel({
               <button
                 type="button"
                 onClick={clearDayFilter}
-                className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
+                className="inline-flex min-h-9 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
               >
                 Back to all bookings
               </button>
@@ -173,20 +178,20 @@ export function BookingsPanel({
                 id={`booking-${booking.confirmationNumber}`}
                 className={
                   isNew
-                    ? "border border-brand bg-surface p-5"
-                    : "border border-border bg-surface p-5"
+                    ? "border border-brand bg-surface px-4 py-3.5"
+                    : "border border-border bg-surface px-4 py-3.5"
                 }
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 border border-emerald-700/40 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 border border-emerald-700/40 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">
                     <span aria-hidden>●</span> Confirmed
                   </span>
                   {booking.paymentStatus === "paid" ? (
-                    <span className="inline-flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                    <span className="inline-flex items-center border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
                       Paid
                     </span>
                   ) : booking.paymentStatus === "pay_at_facility" ? (
-                    <span className="inline-flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    <span className="inline-flex items-center border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
                       Pay at facility
                     </span>
                   ) : isNew ? (
@@ -195,10 +200,10 @@ export function BookingsPanel({
                     </span>
                   ) : null}
                 </div>
-                <h3 className="mt-2 font-display text-xl tracking-wide uppercase">
+                <h3 className="mt-1.5 font-display text-lg tracking-wide uppercase">
                   {booking.sessionTitle}
                 </h3>
-                <p className="mt-2 text-sm text-muted">
+                <p className="mt-1 text-sm text-muted">
                   {booking.startsAt
                     ? formatSessionWhen(booking.startsAt)
                     : "Time TBD"}
@@ -208,20 +213,20 @@ export function BookingsPanel({
                     ? ` · ${formatMoney(booking.amountCents)}`
                     : ""}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {booking.paymentStatus !== "paid" ? (
                     <button
                       type="button"
                       disabled={cancellingId === booking.id}
                       onClick={() => cancelBooking(booking)}
-                      className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase disabled:opacity-50"
+                      className="inline-flex min-h-9 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase disabled:opacity-50"
                     >
                       {cancellingId === booking.id ? "Cancelling…" : "Cancel"}
                     </button>
                   ) : null}
                   <a
                     href="/app/inbox"
-                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                    className="inline-flex min-h-9 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
                   >
                     Message coach
                   </a>
@@ -232,12 +237,12 @@ export function BookingsPanel({
         )}
       </div>
 
-      <aside className="border border-border bg-surface p-4 lg:sticky lg:top-24 lg:self-start">
+      <aside className="border border-border bg-surface p-3.5 lg:sticky lg:top-24 lg:self-start">
         <button
           type="button"
           onClick={clearDayFilter}
           className={cn(
-            "mb-4 inline-flex min-h-10 w-full items-center justify-center px-3 text-xs font-semibold tracking-wide uppercase transition",
+            "mb-3 inline-flex min-h-9 w-full items-center justify-center px-3 text-[11px] font-semibold tracking-wide uppercase transition",
             selectedDay
               ? "border border-border text-foreground hover:border-brand"
               : "bg-brand text-brand-foreground",
@@ -256,7 +261,7 @@ export function BookingsPanel({
                 return { year: d.getFullYear(), month: d.getMonth() };
               })
             }
-            className="inline-flex h-9 w-9 items-center justify-center border border-border text-sm text-muted hover:border-brand hover:text-foreground"
+            className="inline-flex h-8 w-8 items-center justify-center border border-border text-sm text-muted hover:border-brand hover:text-foreground"
           >
             ‹
           </button>
@@ -272,13 +277,13 @@ export function BookingsPanel({
                 return { year: d.getFullYear(), month: d.getMonth() };
               })
             }
-            className="inline-flex min-h-9 w-9 items-center justify-center border border-border text-sm text-muted hover:border-brand hover:text-foreground"
+            className="inline-flex h-8 w-8 items-center justify-center border border-border text-sm text-muted hover:border-brand hover:text-foreground"
           >
             ›
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[10px] tracking-wide text-muted uppercase">
+        <div className="mt-3 grid grid-cols-7 gap-0.5 text-center text-[10px] tracking-wide text-muted uppercase">
           {WEEKDAYS.map((d) => (
             <div key={d} className="py-1">
               {d}
@@ -286,10 +291,10 @@ export function BookingsPanel({
           ))}
         </div>
 
-        <div className="mt-1 grid grid-cols-7 gap-1">
+        <div className="mt-0.5 grid grid-cols-7 gap-0.5">
           {cells.map((day, index) => {
             if (day == null) {
-              return <div key={`empty-${index}`} className="h-9" />;
+              return <div key={`empty-${index}`} className="h-8" />;
             }
 
             const key = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -307,7 +312,7 @@ export function BookingsPanel({
                   setSelectedDay((current) => (current === key ? null : key))
                 }
                 className={cn(
-                  "relative flex h-9 flex-col items-center justify-center text-xs transition",
+                  "relative flex h-8 flex-col items-center justify-center text-xs transition",
                   hasBooking
                     ? "text-foreground hover:bg-brand/15"
                     : "text-muted/50",
@@ -324,7 +329,7 @@ export function BookingsPanel({
                 {hasBooking ? (
                   <span
                     className={cn(
-                      "absolute bottom-1 h-1 w-1 rounded-full",
+                      "absolute bottom-0.5 h-1 w-1 rounded-full",
                       isSelected ? "bg-brand-foreground" : "bg-brand",
                     )}
                   />
@@ -334,10 +339,8 @@ export function BookingsPanel({
           })}
         </div>
 
-        <p className="mt-4 text-xs leading-relaxed text-muted">
-          Marked days have bookings. Tap a day to filter, or use{" "}
-          <span className="text-foreground">Show all bookings</span> above to
-          clear the filter.
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          Marked days have bookings. Tap a day to filter.
         </p>
       </aside>
     </div>

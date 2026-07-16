@@ -20,38 +20,30 @@ export function BookingCelebration({
 }: BookingCelebrationProps) {
   return (
     <div
-      className="border border-brand bg-brand/10 px-5 py-6"
+      className="border border-brand bg-brand/10 px-4 py-4"
       role="status"
       aria-live="polite"
     >
-      <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+      <p className="text-[10px] font-semibold tracking-[0.2em] text-brand uppercase">
         {paid ? "Payment complete" : "You’re booked"}
       </p>
-      <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
+      <h2 className="mt-1.5 font-display text-xl tracking-wide uppercase">
         {title}
       </h2>
       {startsAt ? (
-        <>
-          <p className="mt-3 text-base text-foreground">
-            {formatSessionDay(startsAt)}
-          </p>
-          <p className="mt-1 text-xl text-foreground">
-            {formatSessionTime(startsAt)}
-          </p>
-        </>
+        <p className="mt-2 text-sm text-foreground">
+          {formatSessionDay(startsAt)}
+          <span className="text-muted"> · </span>
+          {formatSessionTime(startsAt)}
+        </p>
       ) : null}
-      <p className="mt-3 text-sm text-muted">Coach Robert</p>
-      <p className="mt-2 text-sm text-muted">Added to your training schedule.</p>
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href="/app/bookings"
-          className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-        >
-          View my training
-        </Link>
+      <p className="mt-1 text-xs text-muted">
+        Coach Robert · Added to your schedule
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
         <Link
           href="/app/schedule"
-          className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
+          className="inline-flex min-h-9 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
         >
           Reserve another
         </Link>

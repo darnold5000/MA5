@@ -66,17 +66,18 @@ export default async function BookingsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {justBooked || params.paid === "1" ? (
-        <BookingCelebration
-          title={justBooked?.sessionTitle ?? "Your session"}
-          startsAt={justBooked?.startsAt}
-          paid={params.paid === "1"}
-        />
-      ) : null}
-
       <BookingsPanel
         bookings={bookings}
         justBookedConfirmation={params.booked}
+        lead={
+          justBooked || params.paid === "1" ? (
+            <BookingCelebration
+              title={justBooked?.sessionTitle ?? "Your session"}
+              startsAt={justBooked?.startsAt}
+              paid={params.paid === "1"}
+            />
+          ) : null
+        }
       />
     </div>
   );
