@@ -61,6 +61,15 @@ export function formatSessionTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+export function formatCalendarDate(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Indiana/Indianapolis",
+  }).format(date);
+}
+
 export function greetingForNow(): string {
   const hour = Number(
     new Intl.DateTimeFormat("en-US", {

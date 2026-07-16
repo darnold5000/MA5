@@ -8,11 +8,14 @@ export const demoClient = {
   email: "alex@example.com",
   membership: {
     name: "14x Monthly Membership",
+    shortLabel: "14x Member",
     sessionsRemaining: 8,
     sessionsIncluded: 14,
     renewsOn: "August 1",
     status: "Active",
+    streakWeeks: 2,
   },
+  inboxUnread: 2,
   coachMessage: {
     from: "Robert Anderson",
     preview:
