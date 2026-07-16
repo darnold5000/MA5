@@ -131,3 +131,18 @@ owner | admin | staff | coach | client
 3. Enable Email auth (and optionally Google) in Supabase Auth.
 4. Create Vercel preview deployments per demo branch.
 5. Paste preview URLs into `src/content/platform-previews.ts`.
+
+---
+
+## 8. Optional modules / later features
+
+Ideas that fit the Fitness Hub but are **not** in the core Mindbody-replacement demo yet:
+
+| Module | Notes |
+| --- | --- |
+| **Add to calendar** | One-tap Google/Apple/Outlook invite from My Training after reserve. Valuable on mobile; defer as an add-on module so booking cards stay lean. |
+| Coach profiles | Photo, bio, specialties, upcoming availability — personalizes Reserve. |
+| Program cards → workouts | Strength / Speed / Recovery style hubs competing with TrainHeroic. |
+| Membership → included sessions | Active plan credits auto-mark covered classes as “Included in membership.” |
+| Booking celebration animations | Premium success moments beyond the current success banner. |
+| Profile tab | Client account/settings surface in the hub nav. |

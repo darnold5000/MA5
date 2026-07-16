@@ -166,9 +166,6 @@ export function BookingsPanel({
             const paymentLabel = paymentStatusLabel(
               booking.amountCents === 0 ? "included" : booking.paymentStatus,
             );
-            const calendarUrl = booking.startsAt
-              ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.sessionTitle)}&dates=${new Date(booking.startsAt).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}/${new Date(new Date(booking.startsAt).getTime() + 60 * 60 * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`
-              : null;
 
             return (
               <article
@@ -212,16 +209,6 @@ export function BookingsPanel({
                     : ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {calendarUrl ? (
-                    <a
-                      href={calendarUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                    >
-                      Add to calendar
-                    </a>
-                  ) : null}
                   {booking.paymentStatus !== "paid" ? (
                     <button
                       type="button"
