@@ -225,14 +225,7 @@ export function ScheduleBrowser({
             return (
               <article
                 key={session.id}
-                className={cn(
-                  "border bg-surface p-5",
-                  isEnrolled
-                    ? "border-brand"
-                    : open
-                      ? "border-brand"
-                      : "border-border",
-                )}
+                className="border border-border bg-surface p-5"
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">

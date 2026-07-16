@@ -20,11 +20,11 @@ export function BookingCelebration({
 }: BookingCelebrationProps) {
   return (
     <div
-      className="border border-brand bg-brand/10 px-4 py-4"
+      className="border border-border bg-surface px-4 py-4"
       role="status"
       aria-live="polite"
     >
-      <p className="text-[10px] font-semibold tracking-[0.2em] text-brand uppercase">
+      <p className="text-[10px] font-semibold tracking-[0.2em] text-muted uppercase">
         {paid ? "Payment complete" : "You’re booked"}
       </p>
       <h2 className="mt-1.5 font-display text-xl tracking-wide uppercase">

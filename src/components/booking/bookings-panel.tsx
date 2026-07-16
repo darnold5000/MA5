@@ -176,11 +176,7 @@ export function BookingsPanel({
               <article
                 key={booking.id}
                 id={`booking-${booking.confirmationNumber}`}
-                className={
-                  isNew
-                    ? "border border-brand bg-surface px-4 py-3.5"
-                    : "border border-border bg-surface px-4 py-3.5"
-                }
+                className="border border-border bg-surface px-4 py-3.5"
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 border border-emerald-700/40 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">
