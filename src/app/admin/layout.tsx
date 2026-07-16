@@ -5,9 +5,5 @@ export default function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <AdminShell title="Operations" subtitle="Schedule, clients, and products.">
-      {children}
-    </AdminShell>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

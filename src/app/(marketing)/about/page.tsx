@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { getBookingHref } from "@/content/booking";
 import { aboutCopy, fitnessPillars } from "@/content/services";
 import { siteConfig } from "@/content/site-config";
 
@@ -53,7 +54,9 @@ export default function AboutPage() {
             </a>
           </div>
           <div className="mt-8">
-            <ButtonLink href={siteConfig.booking.path}>Book an Assessment</ButtonLink>
+            <ButtonLink href={getBookingHref("assessment")}>
+              Book an Assessment
+            </ButtonLink>
           </div>
         </div>
       </div>

@@ -28,13 +28,13 @@ export default function PlatformPreviewPage() {
             href="/app"
             className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
           >
-            Open client shell
+            Open Fitness Hub
           </Link>
           <Link
             href="/admin"
             className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
           >
-            Open admin shell
+            Open Operations
           </Link>
           <Link
             href="/login"

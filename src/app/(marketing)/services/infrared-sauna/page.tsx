@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { getBookingHref } from "@/content/booking";
 import { saunaCopy } from "@/content/services";
 import { siteConfig } from "@/content/site-config";
 
@@ -27,7 +28,7 @@ export default function SaunaPage() {
               {saunaCopy.intro}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href={siteConfig.booking.path}>Book Sauna</ButtonLink>
+              <ButtonLink href={getBookingHref("sauna")}>Book Sauna</ButtonLink>
               <ButtonLink
                 href={`mailto:${siteConfig.contact.email}?subject=Infrared%20Sauna%20Pricing`}
                 variant="secondary"
@@ -94,7 +95,7 @@ export default function SaunaPage() {
               availability.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <ButtonLink href={siteConfig.booking.path}>Book Sauna</ButtonLink>
+              <ButtonLink href={getBookingHref("sauna")}>Book Sauna</ButtonLink>
               <ButtonLink
                 href={`mailto:${siteConfig.contact.email}?subject=Infrared%20Sauna%20Pricing`}
                 variant="secondary"

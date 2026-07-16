@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
+import { getBookingHref } from "@/content/booking";
 import { siteConfig } from "@/content/site-config";
 
 export function HeroSection() {
@@ -59,7 +60,9 @@ export function HeroSection() {
           {siteConfig.description}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href={siteConfig.booking.path}>Book an Assessment</ButtonLink>
+          <ButtonLink href={getBookingHref("assessment")}>
+            Book an Assessment
+          </ButtonLink>
           <ButtonLink href="/training" variant="secondary">
             Explore Training
           </ButtonLink>

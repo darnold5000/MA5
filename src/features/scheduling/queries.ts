@@ -4,6 +4,7 @@ import { mergeSessions, readOpsState } from "@/features/admin/ops-store";
 import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
 import { getCatalogProducts } from "@/features/memberships/catalog";
 import type { ProductItem, MembershipItem } from "@/features/scheduling/fallback-data";
+import { durationFromRange } from "@/features/scheduling/format";
 
 export async function listAllSessions(): Promise<SessionItem[]> {
   if (!isSupabaseConfigured()) {
@@ -23,21 +24,26 @@ export async function listAllSessions(): Promise<SessionItem[]> {
       return mergeSessions(state);
     }
 
-    return data.map((row) => ({
-      id: row.id as string,
-      classTypeId: (row.class_type_id as string) ?? "",
-      title: row.title as string,
-      description: (row.description as string) ?? "",
-      startsAt: row.starts_at as string,
-      endsAt: row.ends_at as string,
-      capacity: row.capacity as number,
-      bookedCount: 0,
-      priceCents: row.price_cents as number,
-      locationName: (row.location_name as string) ?? "MA5 Performance",
-      status: row.status as SessionItem["status"],
-      coachName: (row.coach_name as string) ?? "MA5 Coach",
-      source: "database" as const,
-    }));
+    return data.map((row) => {
+      const startsAt = row.starts_at as string;
+      const endsAt = row.ends_at as string;
+      return {
+        id: row.id as string,
+        classTypeId: (row.class_type_id as string) ?? "",
+        title: row.title as string,
+        description: (row.description as string) ?? "",
+        startsAt,
+        endsAt,
+        durationMinutes: durationFromRange(startsAt, endsAt),
+        capacity: row.capacity as number,
+        bookedCount: 0,
+        priceCents: row.price_cents as number,
+        locationName: (row.location_name as string) ?? "MA5 Performance",
+        status: row.status as SessionItem["status"],
+        coachName: (row.coach_name as string) ?? "MA5 Coach",
+        source: "database" as const,
+      };
+    });
   } catch {
     const state = await readOpsState();
     return mergeSessions(state);

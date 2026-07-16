@@ -3,8 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      // /book stays on-site for the Mindbody-replacement demo (native schedule).
-      // Mindbody Explore remains linked as a fallback from booking UI.
+      // Legacy /book → Fitness Hub Reserve (handled in app/(marketing)/book/page.tsx).
+      // Mindbody Explore remains linked as fallbackUrl from siteConfig.
       {
         source: "/tour-ma5",
         destination: "/facility",

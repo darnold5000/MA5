@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { formatMoney, listProducts } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
-  title: "Admin products",
+  title: "Products · Operations",
   robots: { index: false, follow: false },
 };
 

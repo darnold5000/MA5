@@ -10,7 +10,12 @@ import { siteConfig } from "@/content/site-config";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  /** Session or demo cookie already grants Fitness Hub access */
+  hubAccess?: boolean;
+};
+
+export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -58,6 +63,23 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          {hubAccess ? (
+            <ButtonLink
+              href="/app"
+              variant="secondary"
+              className="min-h-11 px-5 text-xs"
+            >
+              Fitness Hub
+            </ButtonLink>
+          ) : (
+            <ButtonLink
+              href="/login?next=/app"
+              variant="secondary"
+              className="min-h-11 px-5 text-xs"
+            >
+              Client login
+            </ButtonLink>
+          )}
           <ButtonLink
             href={siteConfig.booking.path}
             onClick={() => trackEvent("nav_book_click", { location: "desktop" })}
@@ -122,6 +144,25 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          {hubAccess ? (
+            <ButtonLink
+              href="/app"
+              variant="secondary"
+              onClick={closeMenu}
+              className="mt-2 w-full"
+            >
+              Fitness Hub
+            </ButtonLink>
+          ) : (
+            <ButtonLink
+              href="/login?next=/app"
+              variant="secondary"
+              onClick={closeMenu}
+              className="mt-2 w-full"
+            >
+              Client login
+            </ButtonLink>
+          )}
           <ButtonLink
             href={siteConfig.booking.path}
             onClick={() => {

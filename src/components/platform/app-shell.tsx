@@ -35,85 +35,73 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-full flex-1 bg-background">
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-        <div className="border-b border-border px-4 py-5">
-          <Link href="/app" className="flex items-center gap-3">
+    <div className="flex min-h-full flex-1 flex-col bg-background">
+      {/* Same brand bar as the public site — keeps website ↔ hub one product */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/app" className="flex items-center gap-3 text-foreground">
             <Image
               src="/images/brand/ma5-logo.jpeg"
               alt=""
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-full object-cover"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-full object-cover"
             />
-            <div>
-              <span className="block font-display text-lg tracking-[0.08em] uppercase">
-                {siteConfig.shortName}
-              </span>
-              <span className="text-[10px] tracking-wide text-muted uppercase">
-                Fitness Hub
-              </span>
-            </div>
+            <span className="font-display text-xl tracking-[0.08em] uppercase sm:text-2xl">
+              {siteConfig.shortName}
+              <span className="text-brand"> Performance</span>
+            </span>
           </Link>
-        </div>
-        <nav aria-label="Client app" className="flex flex-1 flex-col gap-1 p-3">
-          {SIDEBAR.map((item) => {
-            const active = isActive(pathname, item.href, item.match);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "px-3 py-2.5 text-sm tracking-wide transition",
-                  active
-                    ? "border-l-2 border-brand bg-brand/10 text-foreground"
-                    : "border-l-2 border-transparent text-muted hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="space-y-3 border-t border-border p-4">
-          <SignOutButton className="block w-full px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground" />
-          <Link
-            href="/"
-            className="block text-xs text-muted transition hover:text-foreground"
-          >
-            ← Public website
-          </Link>
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col pb-20 lg:pb-0">
-        <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur lg:hidden">
-          <div className="flex items-center justify-between px-4 py-3">
-            <Link href="/app" className="flex items-center gap-2">
-              <Image
-                src="/images/brand/ma5-logo.jpeg"
-                alt=""
-                width={32}
-                height={32}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-              <span className="font-display text-base tracking-[0.08em] uppercase">
-                {siteConfig.shortName}
-              </span>
+          <div className="flex items-center gap-3 sm:gap-5">
+            <span className="hidden text-[10px] font-semibold tracking-[0.18em] text-muted uppercase sm:inline">
+              Fitness Hub
+            </span>
+            <Link
+              href="/"
+              className="text-xs tracking-wide text-muted transition hover:text-foreground sm:text-sm"
+            >
+              Website
             </Link>
-            <div className="flex items-center gap-3">
-              <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground" />
-            </div>
+            <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground" />
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          {children}
-        </main>
+      <div className="flex min-h-0 flex-1">
+        <aside className="sticky top-[57px] hidden h-[calc(100vh-57px)] w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+          <nav aria-label="Fitness Hub" className="flex flex-1 flex-col gap-1 p-3">
+            {SIDEBAR.map((item) => {
+              const active = isActive(pathname, item.href, item.match);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "px-3 py-2.5 text-sm tracking-wide transition",
+                    active
+                      ? "border-l-2 border-brand bg-brand/10 text-foreground"
+                      : "border-l-2 border-transparent text-muted hover:text-foreground",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col pb-20 lg:pb-0">
+          <main
+            id="main-content"
+            className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8"
+          >
+            {children}
+          </main>
+        </div>
       </div>
 
       <nav
-        aria-label="Mobile"
+        aria-label="Fitness Hub mobile"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 backdrop-blur lg:hidden"
       >
         <div className="mx-auto grid max-w-lg grid-cols-5">

@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { DEMO_PERSONA_COOKIE, isDemoPersona } from "@/content/demo-persona";
 
+/**
+ * Refresh the Auth session on (almost) every navigation so clients stay signed
+ * in until they explicitly sign out. Redirects only apply to /app and /admin.
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -11,17 +15,13 @@ export async function updateSession(request: NextRequest) {
   const hasDemoAccess = Boolean(demoPersona);
   const hasDemoStaffAccess = demoPersona === "staff";
 
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
-    return supabaseResponse;
-  }
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
+  let user: { id: string } | null = null;
+
+  if (url && anonKey) {
+    const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -32,16 +32,22 @@ export async function updateSession(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              path: "/",
+              sameSite: "lax",
+            }),
           );
         },
       },
-    },
-  );
+    });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // Touches / refreshes the session cookie on every matched request.
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  }
 
   const pathname = request.nextUrl.pathname;
   const isAppRoute = pathname.startsWith("/app");
@@ -49,26 +55,36 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
 
-  // Demo persona cookies let owners explore without a real Supabase session.
   if (isAppRoute && !user && !hasDemoAccess) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
+    redirectUrl.search = "";
+    const nextTarget = `${pathname}${request.nextUrl.search}`;
+    redirectUrl.searchParams.set("next", nextTarget);
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (isAdminRoute && !user && !hasDemoStaffAccess) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/login";
+    redirectUrl.search = "";
+    const nextTarget = `${pathname}${request.nextUrl.search}`;
+    redirectUrl.searchParams.set("next", nextTarget);
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (isAuthRoute && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/app";
-    url.search = "";
-    return NextResponse.redirect(url);
+    const next = request.nextUrl.searchParams.get("next");
+    const redirectUrl = request.nextUrl.clone();
+    if (next && next.startsWith("/") && !next.startsWith("//")) {
+      const dest = new URL(next, request.nextUrl.origin);
+      redirectUrl.pathname = dest.pathname;
+      redirectUrl.search = dest.search;
+    } else {
+      redirectUrl.pathname = "/app";
+      redirectUrl.search = "";
+    }
+    return NextResponse.redirect(redirectUrl);
   }
 
   return supabaseResponse;

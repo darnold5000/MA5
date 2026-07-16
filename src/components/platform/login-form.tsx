@@ -23,7 +23,13 @@ export function LoginForm() {
   function continueAs(persona: "client" | "staff") {
     setDemoPersona(persona);
     // Hard navigation so the demo cookie is present on the next middleware check.
-    window.location.assign(persona === "staff" ? "/admin" : "/app");
+    if (persona === "staff") {
+      window.location.assign("/admin");
+      return;
+    }
+    const dest =
+      next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+    window.location.assign(dest);
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -71,13 +77,17 @@ export function LoginForm() {
           onClick={() => continueAs("staff")}
           className="inline-flex min-h-11 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
         >
-          Continue as Staff Demo
+          Continue as Operations Demo
         </button>
       </div>
 
       <div className="my-8 border-t border-border pt-6">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">
           Or sign in with your account
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          Stay signed in until you sign out — including while browsing the
+          website.
         </p>
         <form className="mt-4 space-y-4" onSubmit={onSubmit}>
           <label className="block space-y-2 text-sm">

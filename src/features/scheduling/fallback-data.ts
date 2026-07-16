@@ -15,6 +15,8 @@ export type SessionItem = {
   description: string;
   startsAt: string;
   endsAt: string;
+  /** Session length in minutes (shown on cards; drives endsAt). */
+  durationMinutes: number;
   capacity: number;
   bookedCount: number;
   priceCents: number;
@@ -129,6 +131,7 @@ function makeSession(
     description: classType.description,
     startsAt: start.toISOString(),
     endsAt: end.toISOString(),
+    durationMinutes: classType.defaultDurationMinutes,
     capacity: classType.defaultCapacity,
     bookedCount,
     priceCents: classType.defaultPriceCents,

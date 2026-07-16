@@ -12,6 +12,7 @@ import {
 const createSchema = z.object({
   classTypeId: z.string().min(1),
   startsAt: z.string().min(1),
+  durationMinutes: z.number().int().positive().max(480).optional(),
   capacity: z.number().int().positive().optional(),
   priceCents: z.number().int().min(0).optional(),
   coachName: z.string().optional(),
@@ -21,6 +22,7 @@ const patchSchema = z.object({
   sessionId: z.string().min(1),
   title: z.string().optional(),
   startsAt: z.string().optional(),
+  durationMinutes: z.number().int().positive().max(480).optional(),
   capacity: z.number().int().positive().optional(),
   priceCents: z.number().int().min(0).optional(),
   coachName: z.string().optional(),
@@ -73,16 +75,35 @@ export async function PATCH(request: Request) {
   const state = await readOpsState();
   const { sessionId, ...changes } = parsed.data;
 
+  function withEndsAt(
+    current: { startsAt: string; durationMinutes: number; endsAt: string },
+    patch: typeof changes,
+  ) {
+    const startsAt = patch.startsAt ?? current.startsAt;
+    const durationMinutes = patch.durationMinutes ?? current.durationMinutes;
+    const endsAt = new Date(
+      new Date(startsAt).getTime() + durationMinutes * 60_000,
+    ).toISOString();
+    return { ...patch, startsAt, durationMinutes, endsAt };
+  }
+
   const customIdx = state.customSessions.findIndex((s) => s.id === sessionId);
   if (customIdx >= 0) {
+    const current = state.customSessions[customIdx];
     state.customSessions[customIdx] = {
-      ...state.customSessions[customIdx],
-      ...changes,
+      ...current,
+      ...withEndsAt(current, changes),
     };
   } else {
+    const existing = mergeSessions(state).find((s) => s.id === sessionId);
+    const base = existing ?? {
+      startsAt: changes.startsAt ?? new Date().toISOString(),
+      durationMinutes: changes.durationMinutes ?? 60,
+      endsAt: new Date().toISOString(),
+    };
     state.sessionPatches[sessionId] = {
       ...(state.sessionPatches[sessionId] ?? {}),
-      ...changes,
+      ...withEndsAt(base, changes),
     };
   }
 

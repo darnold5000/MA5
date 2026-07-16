@@ -14,7 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function SchedulePage() {
+type SchedulePageProps = {
+  searchParams: Promise<{ service?: string }>;
+};
+
+export default async function SchedulePage({ searchParams }: SchedulePageProps) {
+  const params = await searchParams;
   const sessions = await listPublishedSessions();
   const configured = isSupabasePublicConfigured();
   const session = configured ? await getSessionUser() : null;
@@ -49,6 +54,7 @@ export default async function SchedulePage() {
       <ScheduleBrowser
         sessions={sessions}
         enrolledBySessionId={enrolledBySessionId}
+        initialService={params.service}
       />
     </div>
   );

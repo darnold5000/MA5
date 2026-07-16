@@ -4,7 +4,7 @@ import { AdminClientsManager } from "@/components/admin/clients-manager";
 import { readOpsState } from "@/features/admin/ops-store";
 
 export const metadata: Metadata = {
-  title: "Clients",
+  title: "Clients · Operations",
   robots: { index: false, follow: false },
 };
 

@@ -2,14 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/shared/button-link";
+import { getBookingHref } from "@/content/booking";
 import type { Service } from "@/content/services";
-import { siteConfig } from "@/content/site-config";
 
 type ServiceCardProps = {
   service: Service;
 };
 
 export function ServiceCard({ service }: ServiceCardProps) {
+  const bookHref = getBookingHref(service.bookingType);
+
   return (
     <article className="group flex h-full flex-col border border-border bg-surface">
       <div className="relative aspect-[4/3] overflow-hidden bg-surface-strong">
@@ -30,10 +32,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
       <div className="flex flex-1 flex-col gap-5 p-5">
         <p className="text-sm leading-relaxed text-muted">{service.summary}</p>
         <div className="mt-auto flex flex-wrap gap-3">
-          <ButtonLink
-            href={siteConfig.booking.path}
-            className="min-h-11 px-4 text-xs"
-          >
+          <ButtonLink href={bookHref} className="min-h-11 px-4 text-xs">
             Book Now
           </ButtonLink>
           <Link

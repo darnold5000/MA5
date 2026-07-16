@@ -13,11 +13,12 @@ const CLIENT_NAV = [
 ] as const;
 
 const ADMIN_NAV = [
-  { href: "/admin", label: "Overview" },
+  { href: "/admin", label: "Home" },
   { href: "/admin/schedule", label: "Schedule" },
-  { href: "/admin/bookings", label: "Roster" },
   { href: "/admin/clients", label: "Clients" },
-  { href: "/admin/products", label: "Products" },
+  { href: "/admin/programs", label: "Programs" },
+  { href: "/admin/inbox", label: "Inbox" },
+  { href: "/admin/analytics", label: "Analytics" },
 ] as const;
 
 export function ClientAppNav() {
@@ -55,7 +56,7 @@ export function AdminAppNav() {
   const pathname = usePathname();
   return (
     <nav
-      aria-label="Admin"
+      aria-label="Operations"
       className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8"
     >
       {ADMIN_NAV.map((item) => {

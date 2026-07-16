@@ -27,12 +27,13 @@ export type AdminOpsState = {
   customSessions: SessionItem[];
   sessionPatches: Record<
     string,
-    Partial<Pick<
+      Partial<Pick<
       SessionItem,
       | "title"
       | "description"
       | "startsAt"
       | "endsAt"
+      | "durationMinutes"
       | "capacity"
       | "priceCents"
       | "status"
@@ -135,6 +136,7 @@ export function classTypeOptions() {
 export function createSessionDraft(input: {
   classTypeId: string;
   startsAt: string;
+  durationMinutes?: number;
   capacity?: number;
   priceCents?: number;
   coachName?: string;
@@ -142,10 +144,10 @@ export function createSessionDraft(input: {
   const classType =
     FALLBACK_CLASS_TYPES.find((c) => c.id === input.classTypeId) ??
     FALLBACK_CLASS_TYPES[1];
+  const durationMinutes =
+    input.durationMinutes ?? classType.defaultDurationMinutes;
   const start = new Date(input.startsAt);
-  const end = new Date(
-    start.getTime() + classType.defaultDurationMinutes * 60_000,
-  );
+  const end = new Date(start.getTime() + durationMinutes * 60_000);
   return {
     id: `sess-custom-${Date.now()}`,
     classTypeId: classType.id,
@@ -153,6 +155,7 @@ export function createSessionDraft(input: {
     description: classType.description,
     startsAt: start.toISOString(),
     endsAt: end.toISOString(),
+    durationMinutes,
     capacity: input.capacity ?? classType.defaultCapacity,
     bookedCount: 0,
     priceCents: input.priceCents ?? classType.defaultPriceCents,

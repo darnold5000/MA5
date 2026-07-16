@@ -5,7 +5,7 @@ import { readOpsState } from "@/features/admin/ops-store";
 import { listAllSessions } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
-  title: "Check-in roster",
+  title: "Check-in · Operations",
   robots: { index: false, follow: false },
 };
 

@@ -31,8 +31,8 @@ npm run build
 
 - Public marketing pages — unchanged URLs and design
 - `/login`, `/signup` — account auth (requires Supabase env)
-- `/app` — client portal shell
-- `/admin` — staff portal shell
+- `/app` — Fitness Hub (client)
+- `/admin` — Operations (staff)
 - `/platform-preview` — internal demo index (not in public nav)
 
 ## Docs

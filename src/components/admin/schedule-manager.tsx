@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { SessionItem } from "@/features/scheduling/fallback-data";
 import { FALLBACK_CLASS_TYPES } from "@/features/scheduling/fallback-data";
 import {
+  formatDurationMinutes,
   formatMoney,
   formatSessionWhen,
 } from "@/features/scheduling/format";
@@ -29,6 +30,9 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
 
   const [classTypeId, setClassTypeId] = useState(FALLBACK_CLASS_TYPES[1].id);
   const [startsAt, setStartsAt] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState(
+    FALLBACK_CLASS_TYPES[1].defaultDurationMinutes,
+  );
   const [capacity, setCapacity] = useState(10);
   const [coachName, setCoachName] = useState("Robert Anderson");
 
@@ -36,6 +40,15 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
     () => [...sessions].sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
     [sessions],
   );
+
+  function onClassTypeChange(id: string) {
+    setClassTypeId(id);
+    const ct = FALLBACK_CLASS_TYPES.find((c) => c.id === id);
+    if (ct) {
+      setDurationMinutes(ct.defaultDurationMinutes);
+      setCapacity(ct.defaultCapacity);
+    }
+  }
 
   async function createSession() {
     if (!startsAt) {
@@ -50,6 +63,7 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
       body: JSON.stringify({
         classTypeId,
         startsAt: new Date(startsAt).toISOString(),
+        durationMinutes,
         capacity,
         coachName,
       }),
@@ -116,12 +130,12 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
             </span>
             <select
               value={classTypeId}
-              onChange={(e) => setClassTypeId(e.target.value)}
+              onChange={(e) => onClassTypeChange(e.target.value)}
               className="min-h-11 w-full border border-border bg-background px-3"
             >
               {FALLBACK_CLASS_TYPES.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {c.name} ({c.defaultDurationMinutes} min)
                 </option>
               ))}
             </select>
@@ -139,6 +153,20 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-xs font-semibold tracking-wide uppercase">
+              Length (min)
+            </span>
+            <input
+              type="number"
+              min={15}
+              max={480}
+              step={15}
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(Number(e.target.value))}
+              className="min-h-11 w-full border border-border bg-background px-3"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase">
               Capacity
             </span>
             <input
@@ -149,7 +177,7 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
               className="min-h-11 w-full border border-border bg-background px-3"
             />
           </label>
-          <label className="space-y-1 text-sm sm:col-span-2">
+          <label className="space-y-1 text-sm">
             <span className="text-xs font-semibold tracking-wide uppercase">
               Coach
             </span>
@@ -187,9 +215,10 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
                     {session.title}
                   </h3>
                   <p className="mt-1 text-sm text-muted">
-                    {formatSessionWhen(session.startsAt)} · Coach{" "}
-                    {session.coachName} · {session.bookedCount}/{session.capacity}{" "}
-                    booked
+                    {formatSessionWhen(session.startsAt)} ·{" "}
+                    {formatDurationMinutes(session.durationMinutes)} · Coach{" "}
+                    {session.coachName} · {session.bookedCount}/
+                    {session.capacity} booked
                     {session.priceCents > 0
                       ? ` · ${formatMoney(session.priceCents)}`
                       : ""}
@@ -199,7 +228,9 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
                   <button
                     type="button"
                     onClick={() =>
-                      setEditingId((id) => (id === session.id ? null : session.id))
+                      setEditingId((id) =>
+                        id === session.id ? null : session.id,
+                      )
                     }
                     className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
                   >
@@ -251,6 +282,18 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
                     />
                   </label>
                   <label className="space-y-1 text-sm">
+                    <span className="text-xs uppercase">Length (min)</span>
+                    <input
+                      id={`dur-${session.id}`}
+                      type="number"
+                      min={15}
+                      max={480}
+                      step={15}
+                      defaultValue={session.durationMinutes}
+                      className="min-h-10 w-full border border-border bg-background px-3"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm">
                     <span className="text-xs uppercase">Capacity</span>
                     <input
                       id={`cap-${session.id}`}
@@ -260,7 +303,7 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
                       className="min-h-10 w-full border border-border bg-background px-3"
                     />
                   </label>
-                  <label className="space-y-1 text-sm">
+                  <label className="space-y-1 text-sm sm:col-span-2">
                     <span className="text-xs uppercase">Coach</span>
                     <input
                       id={`coach-${session.id}`}
@@ -282,6 +325,13 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
                           `starts-${session.id}`,
                         ) as HTMLInputElement
                       ).value;
+                      const dur = Number(
+                        (
+                          document.getElementById(
+                            `dur-${session.id}`,
+                          ) as HTMLInputElement
+                        ).value,
+                      );
                       const cap = Number(
                         (
                           document.getElementById(
@@ -297,6 +347,7 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
                       patchSession(session.id, {
                         title,
                         startsAt: new Date(starts).toISOString(),
+                        durationMinutes: dur,
                         capacity: cap,
                         coachName: coach,
                       });

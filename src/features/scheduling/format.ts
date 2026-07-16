@@ -35,6 +35,23 @@ export function formatSessionDay(iso: string): string {
   }).format(target);
 }
 
+/** e.g. "45 min" */
+export function formatDurationMinutes(minutes: number): string {
+  if (minutes <= 0) return "";
+  if (minutes % 60 === 0 && minutes >= 60) {
+    const hours = minutes / 60;
+    return hours === 1 ? "1 hr" : `${hours} hr`;
+  }
+  return `${minutes} min`;
+}
+
+/** Derive length from start/end when duration isn't stored. */
+export function durationFromRange(startsAt: string, endsAt: string): number {
+  const ms = new Date(endsAt).getTime() - new Date(startsAt).getTime();
+  if (!Number.isFinite(ms) || ms <= 0) return 60;
+  return Math.max(1, Math.round(ms / 60_000));
+}
+
 /** e.g. "6:00 PM" */
 export function formatSessionTime(iso: string): string {
   return new Intl.DateTimeFormat("en-US", {

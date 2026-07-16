@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BookSessionButton } from "@/components/booking/book-session-button";
 import type { SessionItem } from "@/features/scheduling/fallback-data";
 import {
+  formatDurationMinutes,
   formatMoney,
   formatSessionWhen,
 } from "@/features/scheduling/format";
@@ -42,6 +43,7 @@ export function ScheduleSessionList({ sessions }: ScheduleSessionListProps) {
                 </h3>
                 <p className="mt-1 text-sm text-muted">{session.description}</p>
                 <p className="mt-2 text-xs text-muted">
+                  {formatDurationMinutes(session.durationMinutes)} ·{" "}
                   {session.coachName} · {session.locationName} ·{" "}
                   {full ? "Full" : `${spots} spots left`} ·{" "}
                   {session.priceCents > 0
@@ -81,6 +83,14 @@ export function ScheduleSessionList({ sessions }: ScheduleSessionListProps) {
                     </dt>
                     <dd className="mt-1 text-foreground">
                       {session.locationName}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs tracking-wide text-muted uppercase">
+                      Length
+                    </dt>
+                    <dd className="mt-1 text-foreground">
+                      {formatDurationMinutes(session.durationMinutes)}
                     </dd>
                   </div>
                   <div>

@@ -4,7 +4,7 @@ import { AdminScheduleManager } from "@/components/admin/schedule-manager";
 import { listAllSessions } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
-  title: "Staff schedule",
+  title: "Schedule · Operations",
   robots: { index: false, follow: false },
 };
 

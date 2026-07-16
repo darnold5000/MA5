@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { readDemoBookings } from "@/features/booking/demo-store";
 import {
+  formatDurationMinutes,
   formatSessionDay,
   formatSessionTime,
   greetingForNow,
@@ -88,6 +89,12 @@ export default async function ClientDashboardPage() {
               {formatSessionDay(heroStarts)}
               <span className="text-muted"> · </span>
               {formatSessionTime(heroStarts)}
+              {heroSession ? (
+                <>
+                  <span className="text-muted"> · </span>
+                  {formatDurationMinutes(heroSession.durationMinutes)}
+                </>
+              ) : null}
             </p>
             <p className="mt-4 text-base text-muted">Coach Robert</p>
             {spotsLeft != null && !heroIsBooked ? (

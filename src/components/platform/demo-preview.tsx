@@ -92,10 +92,10 @@ export function DemoPreviewChrome() {
 
           <div className="space-y-6 overflow-y-auto px-5 py-5 text-sm leading-relaxed text-muted">
             <p>
-              This preview is a Mindbody-replacement Fitness Hub: schedule,
-              reserve sessions, memberships, Stripe Checkout (test mode), and
-              Inbox. Use a real signed-in account for payments — demo-cookie
-              browsing alone cannot complete Stripe.
+              This preview includes the client **Fitness Hub** and staff
+              **Operations** center: schedule, reserve, memberships, Stripe
+              Checkout (test mode), and Inbox. Use a real signed-in account for
+              payments — demo-cookie browsing alone cannot complete Stripe.
             </p>
 
             <section>

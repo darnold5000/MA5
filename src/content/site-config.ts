@@ -36,9 +36,9 @@ export const siteConfig = {
     linkedin: "https://www.linkedin.com/in/robert-anderson-818997104/",
   },
   booking: {
-    // Demo branch: primary CTAs go to native /book (then /app/schedule).
+    // Native Fitness Hub schedule (auth required — middleware sends to login).
     // Mindbody Explore stays available as fallbackUrl.
-    path: "/book",
+    path: "/app/schedule",
     fallbackUrl:
       "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
   },

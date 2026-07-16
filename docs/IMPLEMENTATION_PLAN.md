@@ -61,7 +61,7 @@ Each under `src/features/<domain>/` with `types.ts` and README-style stub export
 | Marketing pages | `src/app/(marketing)/**` | Same URLs; same header/footer |
 | `/login`, `/signup` | `src/app/(auth)/**` | Minimal chrome; brand tokens |
 | `/app` | `src/app/app/**` | Client shell (stub until Mindbody demo) |
-| `/admin` | `src/app/admin/**` | Staff shell (stub) |
+| `/admin` | `src/app/admin/**` | **Operations** (staff ops center — not “admin panel”) |
 | `/platform-preview` | `src/app/platform-preview/**` | Internal; `noindex` |
 
 ### Layouts
@@ -149,3 +149,27 @@ Ideas that fit the Fitness Hub but are **not** in the core Mindbody-replacement 
 | Profile tab | Client profile: goals, membership, waivers, payment methods, notification prefs. Stub exists at `/app/profile` but **hidden from nav** until ready. |
 | Pinned coach reminders | Coach pins a message → shows on Home until client dismisses. |
 | AI announcement draft | Owner types what happened → AI drafts facility announcement (Communication+). |
+| Global search (Operations) | Top-right search across clients, memberships, bookings, messages, payments. |
+| Payments nav | Dedicated Operations payments surface (beyond Plan / Stripe Checkout). |
+
+---
+
+## 9. Product language: Fitness Hub vs Operations
+
+Stop calling the staff side an “admin dashboard” internally.
+
+| Audience | Product name | Question it answers |
+| --- | --- | --- |
+| Client | **Fitness Hub** | What do I need today? |
+| Staff / owner | **Operations** | What needs my attention today? |
+
+Shared pillars (Signal Works platform story):
+
+| Pillar | Surfaces |
+| --- | --- |
+| **Client Experience** | Home, Reserve, Programs, Inbox, Profile |
+| **Operations** | Schedule, Clients, Staff, Products, Check-in |
+| **Business** | Memberships, Billing, Payments, Reports, Analytics |
+| **Growth** | Communication, AI Insights, Marketing, Reviews, Automations |
+
+Related nav (not identical): both keep **Home · Programs · Inbox**; middle of the nav is role-specific.

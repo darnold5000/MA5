@@ -8,9 +8,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/app/:path*",
-    "/admin/:path*",
-    "/login",
-    "/signup",
+    /*
+     * Refresh auth cookies site-wide so Fitness Hub stays signed in while
+     * browsing the marketing site. Skip static assets.
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

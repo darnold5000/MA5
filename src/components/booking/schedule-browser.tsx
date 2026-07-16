@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { SessionItem } from "@/features/scheduling/fallback-data";
 import {
+  formatDurationMinutes,
   formatMoney,
   formatSessionDay,
   formatSessionTime,
@@ -15,6 +16,8 @@ type ScheduleBrowserProps = {
   sessions: SessionItem[];
   /** sessionId → payment_status for the client's active booking */
   enrolledBySessionId?: Record<string, string>;
+  /** Pre-select a service filter (e.g. from /book?type=… → /app/schedule?service=) */
+  initialService?: string;
 };
 
 type WeekFilter = "this" | "next" | "all";
@@ -46,6 +49,7 @@ function endOfWeek(d: Date) {
 export function ScheduleBrowser({
   sessions,
   enrolledBySessionId = {},
+  initialService = "all",
 }: ScheduleBrowserProps) {
   const router = useRouter();
   const enrolled = useMemo(
@@ -53,7 +57,10 @@ export function ScheduleBrowser({
     [enrolledBySessionId],
   );
   const [week, setWeek] = useState<WeekFilter>("this");
-  const [service, setService] = useState<string>("all");
+  const [service, setService] = useState<string>(() => {
+    const valid = SERVICE_FILTERS.some((f) => f.id === initialService);
+    return valid ? initialService : "all";
+  });
   const [availableOnly, setAvailableOnly] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bookingSession, setBookingSession] = useState<SessionItem | null>(
@@ -249,6 +256,10 @@ export function ScheduleBrowser({
                     </p>
                     <p className="mt-1 text-xl text-foreground">
                       {formatSessionTime(session.startsAt)}
+                      <span className="text-muted">
+                        {" "}
+                        · {formatDurationMinutes(session.durationMinutes)}
+                      </span>
                     </p>
                     <div className="mt-4 space-y-1 text-sm text-muted">
                       <p>Coach {session.coachName.split(" ")[0]}</p>
@@ -333,6 +344,10 @@ export function ScheduleBrowser({
             </p>
             <p className="mt-1 text-xl text-foreground">
               {formatSessionTime(bookingSession.startsAt)}
+              <span className="text-muted">
+                {" "}
+                · {formatDurationMinutes(bookingSession.durationMinutes)}
+              </span>
             </p>
             <p className="mt-4 font-display text-lg tracking-wide uppercase">
               {bookingSession.title}
