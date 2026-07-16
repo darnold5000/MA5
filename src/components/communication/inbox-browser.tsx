@@ -213,13 +213,7 @@ export function InboxBrowser() {
           visible.map((item) => {
             const isOpen = openId === item.id;
             return (
-              <article
-                key={item.id}
-                className={cn(
-                  "px-5 py-4",
-                  item.unread && "bg-brand/5",
-                )}
-              >
+              <article key={item.id} className="px-5 py-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="inline-flex items-center gap-2 text-[10px] font-semibold tracking-wide text-brand uppercase">
                     {item.unread ? (
