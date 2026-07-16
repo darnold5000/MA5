@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const CLIENT_NAV = [
-  { href: "/app", label: "Dashboard" },
-  { href: "/app/schedule", label: "Schedule" },
-  { href: "/app/bookings", label: "Bookings" },
-  { href: "/app/billing", label: "Billing" },
+  { href: "/app", label: "Home" },
+  { href: "/app/schedule", label: "Reserve" },
+  { href: "/app/bookings", label: "My Training" },
+  { href: "/app/billing", label: "Plan" },
 ] as const;
 
 const ADMIN_NAV = [

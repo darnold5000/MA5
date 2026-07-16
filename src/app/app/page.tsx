@@ -2,18 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { readDemoBookings } from "@/features/booking/demo-store";
-import { paymentStatusLabel } from "@/features/booking/labels";
 import {
-  formatMoney,
-  formatSessionWhen,
+  formatSessionDay,
+  formatSessionTime,
+  greetingForNow,
 } from "@/features/scheduling/format";
-import { listUserBookings } from "@/features/scheduling/queries";
+import {
+  listPublishedSessions,
+  listUserBookings,
+} from "@/features/scheduling/queries";
 import { demoClient } from "@/content/demo-persona";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
+import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
 
 export const metadata: Metadata = {
-  title: "Overview",
+  title: "Home",
   robots: { index: false, follow: false },
 };
 
@@ -24,178 +28,150 @@ export default async function ClientDashboardPage() {
   const dbBookings = configured
     ? await listUserBookings(session?.id ?? null)
     : [];
-  const bookings = [...demoBookings, ...dbBookings.filter((b) => b.source === "database")]
+  const bookings = [
+    ...demoBookings,
+    ...dbBookings.filter((b) => b.source === "database"),
+  ]
     .filter((b) => b.status !== "cancelled" && b.status !== "refunded")
     .sort((a, b) => (a.startsAt || "").localeCompare(b.startsAt || ""));
 
-  const next = bookings.find((b) => b.startsAt && new Date(b.startsAt) >= new Date())
-    ?? bookings[0]
-    ?? null;
+  const nextBooking =
+    bookings.find((b) => b.startsAt && new Date(b.startsAt) >= new Date()) ??
+    null;
+
+  const published = await listPublishedSessions();
+  const suggested =
+    published
+      .filter((s) => new Date(s.startsAt) >= new Date() && s.status !== "full")
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null;
+
+  const activeMembership = session
+    ? await getActiveMembershipForUser(session.id)
+    : null;
 
   const firstName =
     session?.profile?.full_name?.split(" ")[0] ?? demoClient.firstName;
 
+  const heroTitle = nextBooking?.sessionTitle ?? suggested?.title ?? null;
+  const heroStarts = nextBooking?.startsAt ?? suggested?.startsAt ?? null;
+  const heroIsBooked = Boolean(nextBooking);
+
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Overview
+      <section className="border border-border bg-surface p-6 sm:p-8">
+        <p className="text-sm text-muted">
+          {greetingForNow()}, {firstName}
         </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase sm:text-4xl">
-          Welcome back, {firstName}
-        </h1>
-      </div>
-
-      <section className="border border-border bg-surface p-6">
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Your next session
+        <p className="mt-4 text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          {heroIsBooked ? "Next workout" : "Up next"}
         </p>
-        {next ? (
+        {heroTitle && heroStarts ? (
           <>
-            <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
-              {next.sessionTitle}
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              {next.startsAt ? formatSessionWhen(next.startsAt) : "Time TBD"}
-              {" · "}
-              Coach Robert Anderson
-              {" · "}
-              {paymentStatusLabel(
-                next.amountCents === 0 ? "included" : next.paymentStatus,
-              )}
+            <h1 className="mt-2 font-display text-3xl tracking-wide uppercase sm:text-4xl">
+              {heroTitle}
+            </h1>
+            <p className="mt-4 text-lg text-foreground">
+              {formatSessionDay(heroStarts)}
             </p>
-            <div className="mt-5 flex flex-wrap gap-3">
+            <p className="mt-1 text-2xl text-foreground">
+              {formatSessionTime(heroStarts)}
+            </p>
+            <p className="mt-3 text-sm text-muted">Coach Robert</p>
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href="/app/bookings"
+                href={heroIsBooked ? "/app/bookings" : "/app/schedule"}
                 className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
               >
-                View details
+                {heroIsBooked ? "View details" : "Reserve spot"}
               </Link>
-              <Link
-                href="/app/schedule"
-                className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-              >
-                Book another session
-              </Link>
+              {!heroIsBooked ? (
+                <Link
+                  href="/app/schedule"
+                  className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+                >
+                  See all sessions
+                </Link>
+              ) : null}
             </div>
           </>
         ) : (
           <>
-            <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
-              No upcoming sessions
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              Reserve your next training session from the schedule.
+            <h1 className="mt-2 font-display text-3xl tracking-wide uppercase sm:text-4xl">
+              Ready to train?
+            </h1>
+            <p className="mt-3 text-sm text-muted">
+              Pick a session and reserve your spot.
             </p>
-            <div className="mt-5">
-              <Link
-                href="/app/schedule"
-                className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-              >
-                Book a session
-              </Link>
-            </div>
+            <Link
+              href="/app/schedule"
+              className="mt-6 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+            >
+              Reserve a session
+            </Link>
           </>
         )}
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <section className="border border-border bg-surface p-5">
-          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            Membership
-          </p>
-          <h2 className="mt-2 font-display text-xl tracking-wide uppercase">
-            {demoClient.membership.name}
-          </h2>
-          <p className="mt-3 text-sm text-muted">
-            {demoClient.membership.sessionsRemaining} of{" "}
-            {demoClient.membership.sessionsIncluded} sessions remaining
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            Renews {demoClient.membership.renewsOn} ·{" "}
-            {demoClient.membership.status}
-          </p>
-          <Link
-            href="/app/billing"
-            className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-          >
-            Manage membership
-          </Link>
-        </section>
+      <section className="border-y border-border py-6">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Plan
+        </p>
+        <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
+          {activeMembership?.productName ?? demoClient.membership.name}
+        </h2>
+        <p className="mt-3 text-sm text-muted">
+          {demoClient.membership.sessionsRemaining} /{" "}
+          {demoClient.membership.sessionsIncluded} sessions remaining
+        </p>
+        <Link
+          href="/app/billing"
+          className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+        >
+          Manage plan
+        </Link>
+      </section>
 
-        <section className="border border-border bg-surface p-5">
-          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            Program progress
-          </p>
-          <h2 className="mt-2 font-display text-xl tracking-wide uppercase">
-            {demoClient.programProgress.name}
-          </h2>
-          <div className="mt-4 h-2 w-full bg-background">
-            <div
-              className="h-2 bg-brand"
-              style={{ width: `${demoClient.programProgress.percent}%` }}
-            />
-          </div>
-          <p className="mt-2 text-sm text-muted">
-            {demoClient.programProgress.percent}% complete
-          </p>
-          <Link
-            href="/app/programs"
-            className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-          >
-            View program
-          </Link>
-        </section>
-
-        <section className="border border-border bg-surface p-5 md:col-span-2 xl:col-span-1">
-          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            Message from coach
-          </p>
-          <h2 className="mt-2 font-display text-xl tracking-wide uppercase">
-            {demoClient.coachMessage.from}
-          </h2>
-          <p className="mt-3 text-sm leading-relaxed text-muted">
-            {demoClient.coachMessage.preview}
-          </p>
-          <Link
-            href="/app/messages"
-            className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-          >
-            Open messages
-          </Link>
-        </section>
-      </div>
-
-      <section className="border border-border bg-surface p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-xl tracking-wide uppercase">
-            Upcoming bookings
-          </h2>
-          <Link
-            href="/app/schedule"
-            className="text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-          >
-            Quick book
-          </Link>
+      <section className="border-b border-border pb-6">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Current program
+        </p>
+        <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
+          {demoClient.programProgress.name}
+        </h2>
+        <p className="mt-2 text-sm text-muted">Week 4</p>
+        <div className="mt-4 h-2 w-full max-w-md bg-background">
+          <div
+            className="h-2 bg-brand"
+            style={{ width: `${demoClient.programProgress.percent}%` }}
+          />
         </div>
-        {bookings.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">Nothing scheduled yet.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-border">
-            {bookings.slice(0, 4).map((b) => (
-              <li
-                key={b.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
-              >
-                <span className="text-foreground">{b.sessionTitle}</span>
-                <span className="text-muted">
-                  {b.startsAt ? formatSessionWhen(b.startsAt) : "TBD"}
-                  {b.amountCents > 0 ? ` · ${formatMoney(b.amountCents)}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="mt-2 text-sm text-muted">
+          {demoClient.programProgress.percent}%
+        </p>
+        <Link
+          href="/app/programs"
+          className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+        >
+          Open program
+        </Link>
+      </section>
+
+      <section className="pb-2">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Coach message
+        </p>
+        <p className="mt-3 text-base leading-relaxed text-foreground">
+          “{demoClient.coachMessage.preview}”
+        </p>
+        <p className="mt-2 text-sm text-muted">
+          — {demoClient.coachMessage.from}
+        </p>
+        <Link
+          href="/app/messages"
+          className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+        >
+          Reply
+        </Link>
       </section>
     </div>
   );

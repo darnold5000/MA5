@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { BookingCelebration } from "@/components/booking/booking-celebration";
 import { BookingsPanel } from "@/components/booking/bookings-panel";
 import { readDemoBookings } from "@/features/booking/demo-store";
 import type { BookingItem } from "@/features/scheduling/fallback-data";
@@ -8,7 +9,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
-  title: "My Schedule",
+  title: "My Training",
   robots: { index: false, follow: false },
 };
 
@@ -55,38 +56,23 @@ export default async function BookingsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          My schedule
+          My training
         </p>
         <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
-          Upcoming bookings
+          Your schedule
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Sessions listed in the order they happen. Use the calendar to jump to
-          a day.
+          Everything you’ve reserved, in the order it happens.
         </p>
-        {params.paid === "1" ? (
-          <p
-            className="mt-3 border border-brand bg-brand/10 px-3 py-2 text-sm text-foreground"
-            role="status"
-          >
-            Payment received
-            {justBooked ? (
-              <>
-                {" "}
-                — you&apos;re booked for{" "}
-                <span className="font-semibold">{justBooked.sessionTitle}</span>
-              </>
-            ) : null}
-            .
-          </p>
-        ) : null}
-        {params.booked && justBooked && params.paid !== "1" ? (
-          <p className="mt-3 text-sm text-foreground" role="status">
-            You’re booked for{" "}
-            <span className="font-semibold">{justBooked.sessionTitle}</span>.
-          </p>
-        ) : null}
       </div>
+
+      {justBooked || params.paid === "1" ? (
+        <BookingCelebration
+          title={justBooked?.sessionTitle ?? "Your session"}
+          startsAt={justBooked?.startsAt}
+          paid={params.paid === "1"}
+        />
+      ) : null}
 
       <BookingsPanel
         bookings={bookings}

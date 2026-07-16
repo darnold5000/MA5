@@ -44,7 +44,7 @@ export function ManageBillingButton() {
               Demo billing portal
             </p>
             <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
-              Manage membership
+              Manage plan
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted">
               In production this opens the Stripe Customer Portal so members can

@@ -10,20 +10,20 @@ import { siteConfig } from "@/content/site-config";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR = [
-  { href: "/app", label: "Overview", match: "exact" as const },
-  { href: "/app/schedule", label: "Book", match: "prefix" as const },
-  { href: "/app/bookings", label: "My Schedule", match: "prefix" as const },
-  { href: "/app/billing", label: "Membership", match: "prefix" as const },
+  { href: "/app", label: "Home", match: "exact" as const },
+  { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
+  { href: "/app/bookings", label: "My Training", match: "prefix" as const },
+  { href: "/app/billing", label: "Plan", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
   { href: "/app/messages", label: "Messages", match: "prefix" as const },
 ] as const;
 
 const MOBILE = [
   { href: "/app", label: "Home", match: "exact" as const },
-  { href: "/app/schedule", label: "Book", match: "prefix" as const },
-  { href: "/app/bookings", label: "Schedule", match: "prefix" as const },
-  { href: "/app/billing", label: "Plans", match: "prefix" as const },
-  { href: "/app/programs", label: "Programs", match: "prefix" as const },
+  { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
+  { href: "/app/bookings", label: "Training", match: "prefix" as const },
+  { href: "/app/billing", label: "Plan", match: "prefix" as const },
+  { href: "/app/messages", label: "Messages", match: "prefix" as const },
 ] as const;
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix") {
@@ -46,9 +46,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               height={36}
               className="h-9 w-9 rounded-full object-cover"
             />
-            <span className="font-display text-lg tracking-[0.08em] uppercase">
-              {siteConfig.shortName}
-            </span>
+            <div>
+              <span className="block font-display text-lg tracking-[0.08em] uppercase">
+                {siteConfig.shortName}
+              </span>
+              <span className="text-[10px] tracking-wide text-muted uppercase">
+                Fitness Hub
+              </span>
+            </div>
           </Link>
         </div>
         <nav aria-label="Client app" className="flex flex-1 flex-col gap-1 p-3">
@@ -98,9 +103,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
             <div className="flex items-center gap-3">
               <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground" />
-              <Link href="/" className="text-xs text-muted">
-                Website
-              </Link>
             </div>
           </div>
         </header>

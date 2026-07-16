@@ -10,7 +10,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
-  title: "Book",
+  title: "Reserve",
   robots: { index: false, follow: false },
 };
 
@@ -36,14 +36,13 @@ export default async function SchedulePage() {
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Book
+          Reserve
         </p>
         <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
           Upcoming sessions
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Reserve assessments, small group training, sports performance, InBody,
-          and sauna sessions. Paid sessions can be settled online or at the
+          Find a time that fits and reserve your spot — pay online or at the
           facility.
         </p>
       </div>

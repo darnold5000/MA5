@@ -166,6 +166,9 @@ export function BookingsPanel({
             const paymentLabel = paymentStatusLabel(
               booking.amountCents === 0 ? "included" : booking.paymentStatus,
             );
+            const calendarUrl = booking.startsAt
+              ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.sessionTitle)}&dates=${new Date(booking.startsAt).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}/${new Date(new Date(booking.startsAt).getTime() + 60 * 60 * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`
+              : null;
 
             return (
               <article
@@ -178,22 +181,24 @@ export function BookingsPanel({
                 }
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  {isNew ? (
-                    <span className="text-[10px] font-semibold tracking-wide text-brand uppercase">
-                      Just booked
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-semibold tracking-wide text-muted uppercase">
-                      Confirmed
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5 border border-emerald-700/40 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">
+                    <span aria-hidden>●</span> Confirmed
+                  </span>
                   {booking.paymentStatus === "paid" ? (
-                    <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
-                      Paid online
+                    <span className="inline-flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+                      Paid
+                    </span>
+                  ) : booking.paymentStatus === "pay_at_facility" ? (
+                    <span className="inline-flex items-center gap-1.5 border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
+                      Pay at facility
+                    </span>
+                  ) : isNew ? (
+                    <span className="text-[10px] font-semibold tracking-wide text-brand uppercase">
+                      Just reserved
                     </span>
                   ) : null}
                 </div>
-                <h3 className="mt-1 font-display text-xl tracking-wide uppercase">
+                <h3 className="mt-2 font-display text-xl tracking-wide uppercase">
                   {booking.sessionTitle}
                 </h3>
                 <p className="mt-2 text-sm text-muted">
@@ -207,6 +212,16 @@ export function BookingsPanel({
                     : ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {calendarUrl ? (
+                    <a
+                      href={calendarUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                    >
+                      Add to calendar
+                    </a>
+                  ) : null}
                   {booking.paymentStatus !== "paid" ? (
                     <button
                       type="button"

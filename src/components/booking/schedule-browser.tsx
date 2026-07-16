@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import type { SessionItem } from "@/features/scheduling/fallback-data";
 import {
   formatMoney,
-  formatSessionWhen,
+  formatSessionDay,
+  formatSessionTime,
 } from "@/features/scheduling/format";
 import { cn } from "@/lib/utils";
 
@@ -227,9 +228,9 @@ export function ScheduleBrowser({
                 )}
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-display text-xl tracking-wide uppercase">
+                      <h3 className="font-display text-2xl tracking-wide uppercase sm:text-3xl">
                         {session.title}
                       </h3>
                       {isEnrolled ? (
@@ -239,38 +240,33 @@ export function ScheduleBrowser({
                       ) : null}
                       {isEnrolled && paymentStatus === "paid" ? (
                         <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
-                          Paid online
-                        </span>
-                      ) : null}
-                      {isEnrolled && paymentStatus === "pay_at_facility" ? (
-                        <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
-                          Pay at facility
-                        </span>
-                      ) : null}
-                      {isEnrolled && paymentStatus === "included" ? (
-                        <span className="border border-border px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
-                          Included
+                          Paid
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-sm text-foreground">
-                      {formatSessionWhen(session.startsAt)}
+                    <p className="mt-3 text-base text-foreground">
+                      {formatSessionDay(session.startsAt)}
                     </p>
-                    <p className="mt-1 text-sm text-muted">
-                      Coach {session.coachName}
-                      {" · "}
-                      {isEnrolled
-                        ? "You’re on the roster"
-                        : full
-                          ? "Full"
-                          : `${spots} spots remaining`}
-                      {" · "}
-                      {isEnrolled && paymentStatus === "paid"
-                        ? "Paid online"
-                        : session.priceCents > 0
-                          ? `${formatMoney(session.priceCents)} · pay online or at facility`
-                          : "Included / inquire"}
+                    <p className="mt-1 text-xl text-foreground">
+                      {formatSessionTime(session.startsAt)}
                     </p>
+                    <div className="mt-4 space-y-1 text-sm text-muted">
+                      <p>Coach {session.coachName.split(" ")[0]}</p>
+                      <p>
+                        {isEnrolled
+                          ? "You’re on the roster"
+                          : full
+                            ? "Full"
+                            : `${spots} spots remaining`}
+                      </p>
+                      <p>
+                        {isEnrolled && paymentStatus === "paid"
+                          ? "Paid online"
+                          : session.priceCents > 0
+                            ? formatMoney(session.priceCents)
+                            : "Included"}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <button
@@ -282,7 +278,7 @@ export function ScheduleBrowser({
                       }
                       className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
                     >
-                      {open ? "Hide details" : "View details"}
+                      {open ? "Hide details" : "Details"}
                     </button>
                     {isEnrolled ? (
                       <button
@@ -302,7 +298,7 @@ export function ScheduleBrowser({
                         }}
                         className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
                       >
-                        Book
+                        Reserve
                       </button>
                     )}
                   </div>
@@ -328,24 +324,33 @@ export function ScheduleBrowser({
             className="w-full max-w-md border border-border bg-background p-6"
           >
             <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-              Confirm booking
+              Ready to book?
             </p>
             <h2
               id="book-modal-title"
               className="mt-2 font-display text-2xl tracking-wide uppercase"
             >
-              {bookingSession.title}
+              Reserve your spot
             </h2>
-            <p className="mt-3 text-sm text-muted">
-              {formatSessionWhen(bookingSession.startsAt)}
-              {" · "}
-              Coach {bookingSession.coachName}
+            <p className="mt-4 text-base text-foreground">
+              {formatSessionDay(bookingSession.startsAt)}
+            </p>
+            <p className="mt-1 text-xl text-foreground">
+              {formatSessionTime(bookingSession.startsAt)}
+            </p>
+            <p className="mt-4 font-display text-lg tracking-wide uppercase">
+              {bookingSession.title}
             </p>
             <p className="mt-2 text-sm text-muted">
-              {bookingSession.priceCents > 0
-                ? `${formatMoney(bookingSession.priceCents)} · pay online now or at the facility`
-                : "Included with membership / inquire"}
+              Coach {bookingSession.coachName.split(" ")[0]}
             </p>
+            {bookingSession.priceCents > 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                {formatMoney(bookingSession.priceCents)}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-muted">Included with your plan</p>
+            )}
             {error ? (
               <p className="mt-3 text-sm text-brand" role="alert">
                 {error}
@@ -359,7 +364,7 @@ export function ScheduleBrowser({
                   onClick={payAndBook}
                   className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
                 >
-                  {pending ? "Starting…" : "Pay online & book"}
+                  {pending ? "Starting…" : "Pay online"}
                 </button>
               ) : null}
               <button
@@ -376,10 +381,10 @@ export function ScheduleBrowser({
                 )}
               >
                 {pending
-                  ? "Booking…"
+                  ? "Reserving…"
                   : bookingSession.priceCents > 0
-                    ? "Book · pay at facility"
-                    : "Confirm"}
+                    ? "Pay at facility"
+                    : "Reserve spot"}
               </button>
               <button
                 type="button"
@@ -387,7 +392,7 @@ export function ScheduleBrowser({
                 onClick={() => setBookingSession(null)}
                 className="inline-flex min-h-11 w-full items-center justify-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
               >
-                Cancel
+                Not now
               </button>
             </div>
           </div>

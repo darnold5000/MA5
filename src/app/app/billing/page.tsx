@@ -12,7 +12,7 @@ import {
 import { formatMoney, listProducts } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
-  title: "Membership",
+  title: "Plan",
   robots: { index: false, follow: false },
 };
 
@@ -130,7 +130,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
     <div className="space-y-8">
       <div>
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Membership
+          Plan
         </p>
         <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
           Plans & billing
@@ -186,11 +186,15 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             return (
               <article
                 key={product.id}
-                className="relative flex flex-col justify-between gap-4 border border-border bg-surface p-5"
+                className={
+                  isCurrent
+                    ? "relative flex min-h-[22rem] flex-col justify-between gap-4 border-2 border-brand bg-surface p-6"
+                    : "relative flex flex-col justify-between gap-4 border border-border bg-surface p-5"
+                }
               >
                 {isCurrent ? (
                   <span className="absolute top-0 right-0 bg-brand px-3 py-1 text-[10px] font-semibold tracking-wide text-brand-foreground uppercase">
-                    Current plan
+                    ✓ Current plan
                   </span>
                 ) : copy?.popular ? (
                   <span className="absolute top-0 right-0 border border-border bg-background px-3 py-1 text-[10px] font-semibold tracking-wide uppercase">
