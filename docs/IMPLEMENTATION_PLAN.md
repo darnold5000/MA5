@@ -15,7 +15,7 @@ Companion to the product plan. Paths below reflect the **post-audit** repository
 | `demo/mindbody-replacement` | Booking, memberships, Stripe, client portal | **In progress** |
 | `demo/external-training-platform` | Placeholder TrainHeroic/Trainerize cards | Planned |
 | `demo/ma5-programs` | Exercises, workouts, programs, progress | Planned |
-| `demo/ma5-messaging` | Coach/client messaging + notifications | Planned |
+| `demo/ma5-messaging` | Communication module: activity feed, announcements, conversations, notifications, PWA push | Planned — see `docs/COMMUNICATION_MODULE.md` |
 | `demo/ma5-analytics-ai` | BI + AI insights | Planned |
 
 Internal comparison page: **`/platform-preview`** (not in public nav).
@@ -141,6 +141,7 @@ Ideas that fit the Fitness Hub but are **not** in the core Mindbody-replacement 
 | Module | Notes |
 | --- | --- |
 | **Add to calendar** | One-tap Google/Apple/Outlook invite from My Training after reserve. Valuable on mobile; defer as an add-on module so booking cards stay lean. |
+| **Communication / Inbox** | See `docs/COMMUNICATION_MODULE.md`. Build Activity Feed first, then announcements, conversations, push — not a Mindbody-style “Messages” bolt-on. |
 | Coach profiles | Photo, bio, specialties, upcoming availability — personalizes Reserve. |
 | Program cards → workouts | Strength / Speed / Recovery style hubs competing with TrainHeroic. |
 | Membership → included sessions | Active plan credits auto-mark covered classes as “Included in membership.” |

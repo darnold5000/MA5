@@ -15,7 +15,7 @@ const SIDEBAR = [
   { href: "/app/bookings", label: "My Training", match: "prefix" as const },
   { href: "/app/billing", label: "Plan", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
-  { href: "/app/messages", label: "Messages", match: "prefix" as const },
+  { href: "/app/inbox", label: "Inbox", match: "prefix" as const },
 ] as const;
 
 const MOBILE = [
@@ -23,7 +23,7 @@ const MOBILE = [
   { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
   { href: "/app/bookings", label: "Training", match: "prefix" as const },
   { href: "/app/billing", label: "Plan", match: "prefix" as const },
-  { href: "/app/messages", label: "Messages", match: "prefix" as const },
+  { href: "/app/inbox", label: "Inbox", match: "prefix" as const },
 ] as const;
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix") {

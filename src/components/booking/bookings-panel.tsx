@@ -220,7 +220,7 @@ export function BookingsPanel({
                     </button>
                   ) : null}
                   <a
-                    href="/app/messages"
+                    href="/app/inbox"
                     className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
                   >
                     Message coach

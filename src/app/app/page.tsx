@@ -167,7 +167,7 @@ export default async function ClientDashboardPage() {
           — {demoClient.coachMessage.from}
         </p>
         <Link
-          href="/app/messages"
+          href="/app/inbox"
           className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
         >
           Reply
