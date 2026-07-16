@@ -8,7 +8,7 @@ export const demoClient = {
   email: "alex@example.com",
   membership: {
     name: "14x Monthly Membership",
-    shortLabel: "14x Member",
+    shortLabel: "14x Membership",
     sessionsRemaining: 8,
     sessionsIncluded: 14,
     renewsOn: "August 1",

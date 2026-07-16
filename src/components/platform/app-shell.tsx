@@ -45,28 +45,24 @@ export function AppShell({
   inboxUnread = 0,
 }: AppShellProps) {
   const pathname = usePathname();
-  const firstName = memberName.split(" ")[0] ?? memberName;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-          <Link href="/app" className="flex items-center gap-3 text-foreground lg:hidden">
+          <Link href="/app" className="flex items-center gap-3 text-foreground">
             <Image
               src="/images/brand/ma5-logo.jpeg"
               alt=""
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-full object-cover"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-full object-cover"
             />
-            <span className="font-display text-lg tracking-[0.08em] uppercase">
+            <span className="font-display text-xl tracking-[0.08em] uppercase sm:text-2xl">
               {siteConfig.shortName}
+              <span className="text-brand"> Performance</span>
             </span>
           </Link>
-          <p className="hidden font-display text-lg tracking-[0.08em] text-muted uppercase lg:block">
-            {siteConfig.shortName}
-            <span className="text-brand"> Performance</span>
-          </p>
           <div className="flex items-center gap-3 sm:gap-4">
             <Link
               href="/app/inbox"
@@ -100,34 +96,18 @@ export function AppShell({
               href="/"
               className="hidden text-xs tracking-wide text-muted transition hover:text-foreground sm:inline sm:text-sm"
             >
-              Website
+              Back to Website
             </Link>
-            <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground" />
+            <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground lg:hidden" />
           </div>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="sticky top-[53px] hidden h-[calc(100vh-53px)] w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+        <aside className="sticky top-[57px] hidden h-[calc(100vh-57px)] w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
           <div className="border-b border-border px-4 py-5">
-            <Link href="/app" className="flex items-center gap-3">
-              <Image
-                src="/images/brand/ma5-logo.jpeg"
-                alt=""
-                width={40}
-                height={40}
-                className="h-10 w-10 rounded-full object-cover"
-              />
-              <span className="font-display text-xl tracking-[0.08em] uppercase">
-                {siteConfig.shortName}
-              </span>
-            </Link>
-            <div className="mt-5">
-              <p className="text-sm text-foreground">{firstName}</p>
-              <p className="mt-0.5 text-xs tracking-wide text-muted">
-                {memberPlan}
-              </p>
-            </div>
+            <p className="text-sm font-medium text-foreground">{memberName}</p>
+            <p className="mt-1 text-xs tracking-wide text-muted">{memberPlan}</p>
           </div>
           <nav aria-label="App" className="flex flex-1 flex-col gap-1 p-3">
             {SIDEBAR.map((item) => {
@@ -148,6 +128,15 @@ export function AppShell({
               );
             })}
           </nav>
+          <div className="mt-auto space-y-2 border-t border-border p-4">
+            <Link
+              href="/"
+              className="block px-3 py-2 text-sm tracking-wide text-muted transition hover:text-foreground lg:hidden"
+            >
+              Back to Website
+            </Link>
+            <SignOutButton className="block w-full px-3 py-2 text-left text-sm tracking-wide text-muted transition hover:text-foreground" />
+          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col pb-20 lg:pb-0">

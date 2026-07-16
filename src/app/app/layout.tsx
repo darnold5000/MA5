@@ -19,8 +19,10 @@ export default async function ClientAppLayout({
   const memberName =
     session?.profile?.full_name ?? demoClient.fullName;
   const memberPlan =
-    membership?.productName?.replace(/Monthly Membership/i, "Member").trim() ??
-    demoClient.membership.shortLabel;
+    membership?.productName
+      ?.replace(/Monthly\s+/i, "")
+      .replace(/\s+Membership$/i, " Membership")
+      .trim() ?? demoClient.membership.shortLabel;
 
   return (
     <AppShell
