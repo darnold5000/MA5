@@ -1,121 +1,120 @@
-# Communication module (Fitness Hub)
+# Communication — MA5 basics vs Signal Works add-on
 
-Mindbody messaging feels like an add-on. TrainHeroic feels like a coaching platform. **MA5 should feel like you’re connected to your coach.**
-
-Do **not** ship a page called “Messages.” Ship **Communication** (client label: **Inbox**).
+Mindbody messaging feels like an add-on. TrainHeroic feels like a coaching platform. **MA5 should feel connected to the coach** — without turning the base product into full business-comms software overnight.
 
 ---
 
-## Product framing
+## Principle
 
-| Wrong mental model | Right mental model |
+**Do not put full messaging in the base website offering.**
+
+Once you own business ↔ customer communication, expectations jump: reliability, notifications, retention, read receipts, privacy, moderation, support. That’s business software, not “a website.”
+
+**Modular Signal Works approach:** start with site + booking; enable Communication pieces as the business grows. Natural upgrade path and recurring value.
+
+---
+
+## Included with Booking / base MA5 (build this first)
+
+Operational + light coach connection. Enough that a gym owner thinks: *“I can communicate with my clients.”* Same baseline helps salons, instructors, academies.
+
+| Feature | Notes |
 | --- | --- |
-| I have messages | My coach has something for me |
-| Email inbox | Coaching relationship + activity |
+| Coach ↔ client direct messages | 1:1 only |
+| Read / unread | Simple seen state |
+| Message history | Persist conversation |
+| Booking confirmations | System notice |
+| Appointment reminders | System notice |
+| Payment receipt / membership renewal notice | System notice (also email where appropriate) |
+| Basic push notifications | For the above (PWA when available) |
+| Optional: one image attach | Nice-to-have, not required for v1 |
+
+**Exception — always with Booking:** customers expect booking confirmed, appointment reminder, payment receipt, membership renewal. Those are part of the booking experience, not a premium upsell.
+
+What this is **not** (yet): broadcasts, group chats, segments, AI, campaigns, analytics, automations.
+
+### MA5 demo / near-term
+
+- Ship **basic messaging + notifications** under **Inbox** (or Communication label).
+- Keep the UI honest: conversations + notification list first.
+- Activity-style unified feed, announcements, coach console, push for chat — evolve toward the premium module.
 
 ---
 
-## Three communication types
+## Premium: Communication+ (document now, build later)
 
-### 1. Announcements (one-to-many)
+**Positioning:** optional Signal Works module (~**+$25–50/month**). Turn on only if the client wants ongoing communication ops.
 
-Facility / coach broadcasts. Feed-style.
+### Communication module (premium pack)
 
-Examples: class moved, holiday hours, new program starts Monday, welcome new coach.
+| Capability | Notes |
+| --- | --- |
+| Conversations | 1:1 and small groups |
+| Announcements | Broadcasts to all or selected groups |
+| Notifications | Richer system events |
+| Activity Feed | Everything that happened |
+| Push notifications | Including message alerts |
+| Read / unread tracking | Across types |
+| Email | Receipts, campaigns hooks |
+| Optional SMS | High-value only (reminders, waitlist, emergencies) |
 
-### 2. Conversations (1:1)
+### Optional add-ons on top of Communication+
 
-Private coach ↔ client chat.
+- SMS reminders  
+- Email campaigns  
+- AI-assisted replies  
 
-Examples: great job today, can I move tomorrow, my knee hurts.
+### Communication+ feature detail (later backlog)
 
-### 3. Notifications (system)
-
-Generated from events — **not** chat threads.
-
-Examples: booking confirmed, payment received, membership renews tomorrow, workout assigned.
-
----
-
-## Client UX
-
-**Nav label:** Inbox (route can stay `/app/inbox`).
-
-**Tabs:**
-
-- Inbox (unified activity-style feed)
-- Conversations
-- Announcements
-- Notifications
-
-**Inbox feed example rows:** announcement · coach reply · program assigned · payment successful — ordered by time so the hub feels alive.
-
----
-
-## Coach UX
-
-**Communication** hub, not “Messages.”
-
-- Search clients
-- Needs reply / booked session / program complete triage
-- Team announcements → Create announcement
-- Conversation view with **client context** (plan, week, last workout, upcoming) + **quick actions** (assign workout, book session, profile, membership, attendance, payments)
-
-Coach should not leave the conversation to help the client.
+| Feature | Why |
+| --- | --- |
+| Announcements to everyone or selected groups | Facility-wide without SMS spam |
+| Group chats (e.g. 6 AM Bootcamp) | Cohort coaching |
+| Segments (baseball athletes, parents, Gold members) | Targeted reach |
+| Automated reminders (24h before, missed session follow-up) | Ops without manual chase |
+| AI reply suggestions | Coach time saver |
+| Video / PDF / file sharing | Programming assets in-thread |
+| Message templates (class cancelled, welcome) | Consistency |
+| Message analytics (read rates, engagement) | Prove value |
+| Scheduled messages | Plan ahead |
+| Workflow automations (e.g. recovery tips after leg day) | Coaching at scale |
+| Coach conversation + client context + quick actions | Assign workout, book, profile, plan, attendance |
+| “Add to workout plan” from a chat message | Messaging that *is* coaching |
+| Draft reply with AI (workouts, attendance, goals) | Edit then send |
 
 ---
 
-## Channel strategy
+## Clean separation
 
-| Channel | Role | Examples |
-| --- | --- | --- |
-| **In-app + PWA push** | Primary | Coach replied, workout assigned, booking confirmed |
-| **SMS** | Secondary / high-value only | Class in 1 hour, waitlist cleared, emergency closure (Twilio etc.) |
-| **Email** | Administrative | Receipts, invoices, renewals, welcome, password reset |
-
-Do not SMS every workout update.
-
-### PWA push
-
-Web Push works when the PWA is installed and permission granted. Strong on Android; workable on iOS after Home Screen install (platform limits vs native still apply).
+| Layer | Owns |
+| --- | --- |
+| **Booking (included)** | Confirmations, reminders, payment/membership notices |
+| **Basic client communication (included for MA5 coaching hub)** | 1:1 coach ↔ client, read/unread, history, basic push |
+| **Communication+ (paid add-on)** | Announcements, groups, segments, activity feed, automations, AI, analytics, SMS/email campaigns |
 
 ---
 
-## Build order (important)
+## Channel rules (both tiers)
 
-1. **Activity Feed** first — bookings, payments, program assigns, coach notes as events. Notifications become easy; chat is another activity type.
-2. Announcements (broadcast)
-3. Conversations (1:1) + coach quick actions
-4. Push notifications
-5. Optional SMS / richer email
-
-**Before full chat:** Activity Feed.
-
-### “Coaching message” (later differentiator)
-
-Coach sends chat text **and** can check “Add to workout plan” so next week’s programming updates automatically — messaging that *is* coaching.
-
-### AI (later)
-
-Draft reply from last workouts, attendance, injuries, goals — coach edits and sends.
+| Channel | Use |
+| --- | --- |
+| In-app + PWA push | Primary for day-to-day |
+| SMS | Secondary — high-value only (don’t SMS every workout update) |
+| Email | Administrative — receipts, invoices, renewals, welcome, password reset |
 
 ---
 
 ## Signal Works reusable module
 
-Not MA5-only. Package as **Communication** for tenant apps:
+Define **Communication**, not a one-off “messaging feature”:
 
-- Conversations (1:1 and small groups)
-- Announcements (broadcasts)
-- Notifications (system events)
-- Activity Feed (everything that happened)
-- Push (PWA)
-- Email
-- Optional SMS
+- Conversations · Announcements · Notifications · Activity Feed · Push · Email · Optional SMS  
+
+Every future tenant (gym, salon, baseball academy, etc.) enables only what they need — no rebuild.
 
 ---
 
-## Demo status (`demo/mindbody-replacement`)
+## Build sequence reminder
 
-- Client **Inbox** shell with tabs + demo activity feed (UI only).
-- Real chat, push, SMS, coach console: deferred to `demo/ma5-messaging` / Communication module work.
+1. **Now (MA5):** basic 1:1 messaging + booking/system notifications (+ read/unread).  
+2. **Later (Communication+):** activity feed, announcements, groups, segments, push for messages, coach tools, AI, SMS/email campaigns.
