@@ -5,14 +5,13 @@ import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-type TabId = "inbox" | "conversations" | "notifications";
+type TabId = "activity" | "messages";
 
 type ItemKind = "conversation" | "notification";
 
 type FeedItem = {
   id: string;
   kind: ItemKind;
-  /** notification subtype for label */
   topic?: "booking" | "payment" | "reminder" | "program" | "facility";
   title: string;
   body: string;
@@ -22,9 +21,8 @@ type FeedItem = {
 };
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "inbox", label: "Inbox" },
-  { id: "conversations", label: "Conversations" },
-  { id: "notifications", label: "Notifications" },
+  { id: "activity", label: "Activity" },
+  { id: "messages", label: "Messages" },
 ];
 
 const INITIAL: FeedItem[] = [
@@ -77,35 +75,32 @@ const INITIAL: FeedItem[] = [
   },
 ];
 
-function topicLabel(item: FeedItem) {
-  if (item.kind === "conversation") return "Coach";
+function topicMeta(item: FeedItem): { label: string; mark: string } {
+  if (item.kind === "conversation") return { label: "Coach", mark: "●" };
   switch (item.topic) {
     case "booking":
-      return "Booking";
+      return { label: "Booking", mark: "◇" };
     case "payment":
-      return "Payment";
+      return { label: "Payment", mark: "$" };
     case "reminder":
-      return "Reminder";
+      return { label: "Reminder", mark: "!" };
     case "program":
-      return "Program";
+      return { label: "Program", mark: "▸" };
     case "facility":
-      return "Update";
+      return { label: "Update", mark: "◆" };
     default:
-      return "Notice";
+      return { label: "Notice", mark: "·" };
   }
 }
 
 export function InboxBrowser() {
-  const [tab, setTab] = useState<TabId>("inbox");
+  const [tab, setTab] = useState<TabId>("activity");
   const [items, setItems] = useState(INITIAL);
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
   const visible = useMemo(() => {
-    if (tab === "conversations")
-      return items.filter((i) => i.kind === "conversation");
-    if (tab === "notifications")
-      return items.filter((i) => i.kind === "notification");
+    if (tab === "messages") return items.filter((i) => i.kind === "conversation");
     return items;
   }, [tab, items]);
 
@@ -144,42 +139,44 @@ export function InboxBrowser() {
     setOpenId(null);
   }
 
+  function messageCoach() {
+    setTab("messages");
+    const existing = items.find((i) => i.kind === "conversation");
+    if (existing) {
+      openConversation(existing.id);
+      return;
+    }
+    const id = `c-${Date.now()}`;
+    setItems((prev) => [
+      {
+        id,
+        kind: "conversation",
+        title: "Coach Robert",
+        body: "Start a conversation with your coach.",
+        when: "Just now",
+        unread: false,
+      },
+      ...prev,
+    ]);
+    setOpenId(id);
+    setDraft("");
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Communication
+          Inbox
         </p>
         <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
-          Inbox
+          Activity & messages
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Talk with your coach and see booking updates.
+          Your coach and what’s happening with your training.
         </p>
         <button
           type="button"
-          onClick={() => {
-            setTab("conversations");
-            const existing = items.find((i) => i.kind === "conversation");
-            if (existing) {
-              openConversation(existing.id);
-              return;
-            }
-            const id = `c-${Date.now()}`;
-            setItems((prev) => [
-              {
-                id,
-                kind: "conversation",
-                title: "Coach Robert",
-                body: "Start a conversation with your coach.",
-                when: "Just now",
-                unread: false,
-              },
-              ...prev,
-            ]);
-            setOpenId(id);
-            setDraft("");
-          }}
+          onClick={messageCoach}
           className="mt-4 inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
         >
           Message coach
@@ -206,86 +203,106 @@ export function InboxBrowser() {
 
       <div className="divide-y divide-border border border-border bg-surface">
         {visible.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-muted">
-            You’re all caught up.
-          </p>
+          <p className="px-5 py-8 text-sm text-muted">You’re all caught up.</p>
         ) : (
           visible.map((item) => {
             const isOpen = openId === item.id;
+            const meta = topicMeta(item);
+            const isCoach = item.kind === "conversation";
             return (
               <article key={item.id} className="px-5 py-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="inline-flex items-center gap-2 text-[10px] font-semibold tracking-wide text-brand uppercase">
-                    {item.unread ? (
-                      <span
-                        className="size-1.5 rounded-full bg-brand"
-                        aria-label="Unread"
-                      />
-                    ) : null}
-                    {topicLabel(item)}
-                  </p>
-                  <p className="text-xs text-muted">{item.when}</p>
-                </div>
-                <h2 className="mt-1 font-display text-lg tracking-wide uppercase">
-                  {item.title}
-                </h2>
-                <p className="mt-1 text-sm text-muted">{item.body}</p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {item.kind === "conversation" ? (
-                    <button
-                      type="button"
-                      onClick={() => openConversation(item.id)}
-                      className="inline-flex min-h-10 items-center bg-brand px-3 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase"
-                    >
-                      {isOpen ? "Close" : "Reply"}
-                    </button>
-                  ) : (
-                    <>
-                      {item.href ? (
-                        <Link
-                          href={item.href}
-                          onClick={() => markRead(item.id)}
-                          className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                        >
-                          View
-                        </Link>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => dismiss(item.id)}
-                        className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
-                      >
-                        Dismiss
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {item.kind === "conversation" && isOpen ? (
-                  <div className="mt-4 space-y-3 border-t border-border pt-4">
-                    <label className="block space-y-2 text-sm">
-                      <span className="text-xs font-semibold tracking-wide text-muted uppercase">
-                        Your reply
-                      </span>
-                      <textarea
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        rows={3}
-                        className="w-full border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
-                        placeholder="Message Coach Robert…"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => sendReply(item.id)}
-                      disabled={!draft.trim()}
-                      className="inline-flex min-h-10 items-center bg-brand px-4 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
-                    >
-                      Send
-                    </button>
+                <div className="flex gap-3">
+                  <div
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center border text-sm",
+                      isCoach
+                        ? "border-brand text-brand"
+                        : "border-border text-muted",
+                    )}
+                    aria-hidden
+                  >
+                    {meta.mark}
                   </div>
-                ) : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="inline-flex items-center gap-2 text-[10px] font-semibold tracking-wide text-brand uppercase">
+                        {item.unread ? (
+                          <span
+                            className="size-1.5 rounded-full bg-brand"
+                            aria-label="Unread"
+                          />
+                        ) : null}
+                        {meta.label}
+                      </p>
+                      <p className="text-xs text-muted">{item.when}</p>
+                    </div>
+                    <h2
+                      className={cn(
+                        "mt-1 font-display tracking-wide uppercase",
+                        isCoach ? "text-xl" : "text-lg",
+                      )}
+                    >
+                      {item.title}
+                    </h2>
+                    <p className="mt-1 text-sm text-muted">{item.body}</p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {isCoach ? (
+                        <button
+                          type="button"
+                          onClick={() => openConversation(item.id)}
+                          className="inline-flex min-h-10 items-center bg-brand px-3 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase"
+                        >
+                          {isOpen ? "Close" : "Reply"}
+                        </button>
+                      ) : (
+                        <>
+                          {item.href ? (
+                            <Link
+                              href={item.href}
+                              onClick={() => markRead(item.id)}
+                              className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                            >
+                              View
+                            </Link>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => dismiss(item.id)}
+                            className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
+                          >
+                            Dismiss
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {isCoach && isOpen ? (
+                      <div className="mt-4 space-y-3 border-t border-border pt-4">
+                        <label className="block space-y-2 text-sm">
+                          <span className="text-xs font-semibold tracking-wide text-muted uppercase">
+                            Your reply
+                          </span>
+                          <textarea
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            rows={3}
+                            className="w-full border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-brand"
+                            placeholder="Message Coach Robert…"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => sendReply(item.id)}
+                          disabled={!draft.trim()}
+                          className="inline-flex min-h-10 items-center bg-brand px-4 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               </article>
             );
           })

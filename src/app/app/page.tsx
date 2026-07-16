@@ -45,6 +45,10 @@ export default async function ClientDashboardPage() {
       .filter((s) => new Date(s.startsAt) >= new Date() && s.status !== "full")
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0] ?? null;
 
+  const heroSession = nextBooking
+    ? published.find((s) => s.id === nextBooking.sessionId) ?? null
+    : suggested;
+
   const activeMembership = session
     ? await getActiveMembershipForUser(session.id)
     : null;
@@ -55,56 +59,62 @@ export default async function ClientDashboardPage() {
   const heroTitle = nextBooking?.sessionTitle ?? suggested?.title ?? null;
   const heroStarts = nextBooking?.startsAt ?? suggested?.startsAt ?? null;
   const heroIsBooked = Boolean(nextBooking);
+  const spotsLeft = heroSession
+    ? Math.max(heroSession.capacity - heroSession.bookedCount, 0)
+    : null;
+
+  const used =
+    demoClient.membership.sessionsIncluded -
+    demoClient.membership.sessionsRemaining;
+  const included = demoClient.membership.sessionsIncluded;
+  const progressPct = Math.round((used / included) * 100);
 
   return (
-    <div className="space-y-8">
-      <section className="border border-border bg-surface p-6 sm:p-8">
-        <p className="text-sm text-muted">
-          {greetingForNow()}, {firstName}
-        </p>
-        <p className="mt-4 text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          {heroIsBooked ? "Next workout" : "Up next"}
+    <div className="space-y-10">
+      <p className="text-sm text-muted">
+        {greetingForNow()}, {firstName}
+      </p>
+
+      <section className="border border-border bg-surface p-6 sm:p-10">
+        <p className="text-xs font-semibold tracking-[0.25em] text-brand uppercase">
+          Next workout
         </p>
         {heroTitle && heroStarts ? (
           <>
-            <h1 className="mt-2 font-display text-3xl tracking-wide uppercase sm:text-4xl">
+            <h1 className="mt-4 font-display text-4xl tracking-wide uppercase sm:text-5xl">
               {heroTitle}
             </h1>
-            <p className="mt-4 text-lg text-foreground">
+            <p className="mt-6 text-xl text-foreground sm:text-2xl">
               {formatSessionDay(heroStarts)}
-            </p>
-            <p className="mt-1 text-2xl text-foreground">
+              <span className="text-muted"> · </span>
               {formatSessionTime(heroStarts)}
             </p>
-            <p className="mt-3 text-sm text-muted">Coach Robert</p>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <p className="mt-4 text-base text-muted">Coach Robert</p>
+            {spotsLeft != null && !heroIsBooked ? (
+              <p className="mt-2 text-sm text-muted">
+                {spotsLeft} spots remaining
+              </p>
+            ) : null}
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href={heroIsBooked ? "/app/bookings" : "/app/schedule"}
-                className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+                className="inline-flex min-h-12 items-center bg-brand px-6 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
               >
                 {heroIsBooked ? "View details" : "Reserve spot"}
               </Link>
-              {!heroIsBooked ? (
-                <Link
-                  href="/app/schedule"
-                  className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-                >
-                  See all sessions
-                </Link>
-              ) : null}
             </div>
           </>
         ) : (
           <>
-            <h1 className="mt-2 font-display text-3xl tracking-wide uppercase sm:text-4xl">
+            <h1 className="mt-4 font-display text-4xl tracking-wide uppercase sm:text-5xl">
               Ready to train?
             </h1>
-            <p className="mt-3 text-sm text-muted">
+            <p className="mt-4 text-sm text-muted">
               Pick a session and reserve your spot.
             </p>
             <Link
               href="/app/schedule"
-              className="mt-6 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+              className="mt-8 inline-flex min-h-12 items-center bg-brand px-6 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
             >
               Reserve a session
             </Link>
@@ -112,47 +122,37 @@ export default async function ClientDashboardPage() {
         )}
       </section>
 
-      <section className="border-y border-border py-6">
+      <section className="border-y border-border py-8">
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Plan
+          This month
         </p>
-        <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
-          {activeMembership?.productName ?? demoClient.membership.name}
-        </h2>
-        <p className="mt-3 text-sm text-muted">
-          {demoClient.membership.sessionsRemaining} /{" "}
-          {demoClient.membership.sessionsIncluded} sessions remaining
+        <div className="mt-4 h-2.5 w-full max-w-lg bg-background">
+          <div className="h-2.5 bg-brand" style={{ width: `${progressPct}%` }} />
+        </div>
+        <p className="mt-3 text-sm text-foreground">
+          {used} / {included} sessions used
         </p>
-        <Link
-          href="/app/billing"
-          className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-        >
-          Manage plan
-        </Link>
+        <p className="mt-1 text-sm text-muted">2 week streak</p>
+        {activeMembership ? (
+          <p className="mt-3 text-xs text-muted">
+            Plan · {activeMembership.productName}
+          </p>
+        ) : null}
       </section>
 
-      <section className="border-b border-border pb-6">
+      <section className="border-b border-border pb-8">
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Current program
+          Today&apos;s workout
         </p>
-        <h2 className="mt-2 font-display text-2xl tracking-wide uppercase">
-          {demoClient.programProgress.name}
+        <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
+          Upper Body
         </h2>
-        <p className="mt-2 text-sm text-muted">Week 4</p>
-        <div className="mt-4 h-2 w-full max-w-md bg-background">
-          <div
-            className="h-2 bg-brand"
-            style={{ width: `${demoClient.programProgress.percent}%` }}
-          />
-        </div>
-        <p className="mt-2 text-sm text-muted">
-          {demoClient.programProgress.percent}%
-        </p>
+        <p className="mt-2 text-sm text-muted">45 min · {demoClient.programProgress.name}</p>
         <Link
           href="/app/programs"
-          className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+          className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
         >
-          Open program
+          Open workout →
         </Link>
       </section>
 
@@ -160,7 +160,7 @@ export default async function ClientDashboardPage() {
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
           Coach message
         </p>
-        <p className="mt-3 text-base leading-relaxed text-foreground">
+        <p className="mt-3 text-base leading-relaxed text-foreground sm:text-lg">
           “{demoClient.coachMessage.preview}”
         </p>
         <p className="mt-2 text-sm text-muted">
@@ -168,9 +168,9 @@ export default async function ClientDashboardPage() {
         </p>
         <Link
           href="/app/inbox"
-          className="mt-4 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+          className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
         >
-          Reply
+          Reply to Coach
         </Link>
       </section>
     </div>
