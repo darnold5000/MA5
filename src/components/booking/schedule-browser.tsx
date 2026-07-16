@@ -234,8 +234,8 @@ export function ScheduleBrowser({
                         {session.title}
                       </h3>
                       {isEnrolled ? (
-                        <span className="bg-brand px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand-foreground uppercase">
-                          Enrolled
+                        <span className="inline-flex items-center gap-1.5 border border-emerald-700/40 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">
+                          <span aria-hidden>●</span> Enrolled
                         </span>
                       ) : null}
                       {isEnrolled && paymentStatus === "paid" ? (
@@ -262,9 +262,13 @@ export function ScheduleBrowser({
                       <p>
                         {isEnrolled && paymentStatus === "paid"
                           ? "Paid online"
-                          : session.priceCents > 0
-                            ? formatMoney(session.priceCents)
-                            : "Included"}
+                          : isEnrolled &&
+                              (paymentStatus === "included" ||
+                                session.priceCents <= 0)
+                            ? "Included in membership"
+                            : session.priceCents > 0
+                              ? formatMoney(session.priceCents)
+                              : "Included in membership"}
                       </p>
                     </div>
                   </div>
@@ -280,15 +284,7 @@ export function ScheduleBrowser({
                     >
                       {open ? "Hide details" : "Details"}
                     </button>
-                    {isEnrolled ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="inline-flex min-h-11 items-center border border-brand px-4 text-xs font-semibold tracking-wide text-brand uppercase disabled:opacity-80"
-                      >
-                        Enrolled
-                      </button>
-                    ) : (
+                    {!isEnrolled ? (
                       <button
                         type="button"
                         disabled={full}
@@ -300,7 +296,7 @@ export function ScheduleBrowser({
                       >
                         Reserve
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
                 {open ? (
@@ -349,7 +345,7 @@ export function ScheduleBrowser({
                 {formatMoney(bookingSession.priceCents)}
               </p>
             ) : (
-              <p className="mt-2 text-sm text-muted">Included with your plan</p>
+              <p className="mt-2 text-sm text-muted">Included in membership</p>
             )}
             {error ? (
               <p className="mt-3 text-sm text-brand" role="alert">

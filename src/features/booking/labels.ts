@@ -11,7 +11,7 @@ export function paymentStatusLabel(status: string): string {
     case "refunded":
       return "Refunded";
     case "included":
-      return "Included with membership";
+      return "Included in membership";
     default:
       return status.replaceAll("_", " ");
   }
