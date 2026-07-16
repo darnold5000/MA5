@@ -143,12 +143,6 @@ export function InboxBrowser() {
           ))
         )}
       </div>
-
-      <p className="text-xs leading-relaxed text-muted">
-        Demo feed only. Full coach conversations, announcements, push, and SMS
-        ship as the Communication module — see{" "}
-        <span className="text-foreground">docs/COMMUNICATION_MODULE.md</span>.
-      </p>
     </div>
   );
 }
