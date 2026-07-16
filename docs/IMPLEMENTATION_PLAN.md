@@ -134,23 +134,54 @@ owner | admin | staff | coach | client
 
 ---
 
-## 8. Optional modules / later features
+## 8. Hidden / deferred — Signal Works add-ons
 
-Ideas that fit the Fitness Hub but are **not** in the core Mindbody-replacement demo yet:
+These exist as stubs, docs, or demo UI but are **intentionally off primary nav** (or not built yet). Sell them as modules later — not part of the lean Mindbody-replacement core.
+
+### Currently hidden from nav (stubs may still exist)
+
+| Item | Where | Why hidden | Likely packaging |
+| --- | --- | --- | --- |
+| **Client Profile** | `/app/profile` — not in Fitness Hub nav | Goals, waivers, payment methods, notification prefs need a full account surface | Base hub later, or Profile+ |
+| **Operations Programs** | `/admin/programs` — not in Operations nav | Confusing vs client Programs; full assign/track is its own product | **Programs** module (`demo/ma5-programs`) |
+| **Operations Analytics** | `/admin/analytics` — not in Operations nav | Business Health + AI insights preview only | **Analytics + AI** module (`demo/ma5-analytics-ai`) |
+| **Add to calendar** | Removed from My Training cards | Valuable on mobile; keeps booking cards lean | Calendar add-on |
+| Intermediate **/book** marketing page | Redirects to `/app/schedule` | Website → Fitness Hub directly | N/A (removed by design) |
+
+Noted under **Operations → Settings → Coming later:** Programs, Analytics.
+
+### Built lightly in demo / expand as paid add-ons
+
+| Item | Demo today | Add-on direction |
+| --- | --- | --- |
+| **Inbox (basic)** | Fitness Hub + Operations Inbox (Activity / Messages, unread, dismiss) | Keep basics with Booking; **Communication+** (~$25–50/mo) for announcements, groups, segments, automations, SMS/email — see `docs/COMMUNICATION_MODULE.md` |
+| **Pinned coach reminders** | Documented only | Communication+ / coaching ops |
+| **AI announcement draft** | Documented only | Communication+ |
+| **Notification bell** | Hub header → Inbox (demo unread count) | Hooks into Communication+ channels later |
+| **Client Hub preview modal** | Operations sidebar “Preview client view” | Ops convenience (stays in core) |
+
+### Planned modules (not in core demo nav)
 
 | Module | Notes |
 | --- | --- |
-| **Add to calendar** | One-tap Google/Apple/Outlook invite from My Training after reserve. Valuable on mobile; defer as an add-on module so booking cards stay lean. |
-| **Communication / Inbox** | See `docs/COMMUNICATION_MODULE.md`. **MA5 now:** basic coach↔client messaging + booking notifications. **Later paid add-on (Communication+):** announcements, activity feed, groups, automations, AI, SMS/email campaigns (~$25–50/mo). |
-| Coach profiles | Photo, bio, specialties, upcoming availability — personalizes Reserve. |
-| Program cards → workouts | Strength / Speed / Recovery style hubs competing with TrainHeroic. |
-| Membership → included sessions | Active plan credits auto-mark covered classes as “Included in membership.” |
-| Booking celebration animations | Premium success moments beyond the current success banner. |
-| Profile tab | Client profile: goals, membership, waivers, payment methods, notification prefs. Stub exists at `/app/profile` but **hidden from nav** until ready. |
-| Pinned coach reminders | Coach pins a message → shows on Home until client dismisses. |
-| AI announcement draft | Owner types what happened → AI drafts facility announcement (Communication+). |
-| Global search (Operations) | Top-right search across clients, memberships, bookings, messages, payments. |
-| Payments nav | Dedicated Operations payments surface (beyond Plan / Stripe Checkout). |
+| **Programs** (client + ops) | Exercise library, workout player, assignments — TrainHeroic / Trainerize replacement. Client already has a Programs tab; Operations Programs nav stays hidden until this ships. |
+| **Analytics + AI** | Business Health (revenue, attendance, retention, utilization) + “Today’s insights.” Resurface Operations Analytics when live. |
+| **Communication+** | Announcements, activity feed, groups, segments, push for chat, coach tools, AI drafts/replies, campaigns. |
+| **Coach profiles** | Photo, bio, specialties, availability on Reserve. |
+| **Global search (Operations)** | Clients, memberships, bookings, messages, payments. |
+| **Payments nav (Operations)** | Dedicated payments surface beyond Plan / Stripe Checkout. |
+| Membership → included sessions | Plan credits auto-mark covered classes. |
+| Booking celebration polish | Premium success moments beyond current banner. |
+
+### Product packaging reminder
+
+| Tier | Includes |
+| --- | --- |
+| **Core (Mindbody replacement)** | Marketing site, Fitness Hub (Home / Reserve / Training / Plan / Programs placeholder / Inbox basics), Operations (Home / Schedule / Clients / Inbox / Settings tools), Stripe memberships + session pay |
+| **Programs** | Full programming, assignments, workout player |
+| **Communication+** | Broadcasts, groups, automations, AI, SMS/email |
+| **Analytics + AI** | Business Health, insights, owner decision support |
+| **Calendar / Profile / Coach profiles** | Smaller add-ons as needed |
 
 ---
 
@@ -172,4 +203,4 @@ Shared pillars (Signal Works platform story):
 | **Business** | Memberships, Billing, Payments, Reports, Analytics |
 | **Growth** | Communication, AI Insights, Marketing, Reviews, Automations |
 
-Related nav (not identical): both keep **Home · Programs · Inbox**; middle of the nav is role-specific.
+Related nav (not identical): both keep **Home · Programs · Inbox** where it makes sense; Operations currently hides Programs + Analytics until those modules ship. Middle of the nav is role-specific.

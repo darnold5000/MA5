@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+
+import { ClientHubPreview } from "@/components/admin/client-hub-preview";
 
 export const metadata: Metadata = {
   title: "Inbox · Operations",
@@ -38,8 +39,7 @@ export default function AdminInboxPage() {
           Inbox
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Coach ↔ client messages that need a reply. Client Inbox lives in the
-          Fitness Hub.
+          Coach ↔ client messages that need a reply.
         </p>
       </div>
 
@@ -69,12 +69,11 @@ export default function AdminInboxPage() {
         ))}
       </div>
 
-      <Link
+      <ClientHubPreview
         href="/app/inbox"
+        label="Preview client Inbox →"
         className="inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-      >
-        Open client Inbox →
-      </Link>
+      />
     </div>
   );
 }

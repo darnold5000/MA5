@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ClientHubPreview } from "@/components/admin/client-hub-preview";
 import { DemoPreviewChrome } from "@/components/platform/demo-preview";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { siteConfig } from "@/content/site-config";
@@ -13,9 +14,7 @@ const SIDEBAR = [
   { href: "/admin", label: "Home", match: "exact" as const },
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
-  { href: "/admin/programs", label: "Programs", match: "prefix" as const },
   { href: "/admin/inbox", label: "Inbox", match: "prefix" as const },
-  { href: "/admin/analytics", label: "Analytics", match: "prefix" as const },
 ] as const;
 
 const MOBILE = [
@@ -23,7 +22,7 @@ const MOBILE = [
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
   { href: "/admin/inbox", label: "Inbox", match: "prefix" as const },
-  { href: "/admin/analytics", label: "Analytics", match: "prefix" as const },
+  { href: "/admin/settings", label: "More", match: "prefix" as const },
 ] as const;
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix") {
@@ -75,19 +74,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="space-y-3 border-t border-border p-4">
+        <div className="mt-auto space-y-1 border-t border-border p-4">
           <Link
             href="/admin/settings"
             className="block px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground"
           >
             Settings
           </Link>
-          <Link
-            href="/app"
-            className="block px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground"
-          >
-            Fitness Hub
-          </Link>
+          <ClientHubPreview
+            label="Preview client view"
+            className="block w-full px-3 py-2"
+          />
           <SignOutButton className="block w-full px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground" />
         </div>
       </aside>
@@ -111,7 +108,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </span>
             </div>
           </Link>
-          <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground" />
+          <div className="flex items-center gap-3">
+            <ClientHubPreview
+              label="Preview"
+              className="text-xs font-semibold tracking-wide uppercase"
+            />
+            <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground" />
+          </div>
         </header>
 
         <main id="main-content" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">

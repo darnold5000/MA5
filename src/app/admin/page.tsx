@@ -66,7 +66,7 @@ export default async function OperationsHomePage() {
           href="/admin/schedule"
         />
         <SnapshotCard label="Today's check-ins" value="14" href="/admin/bookings" />
-        <SnapshotCard label="Today's revenue" value="$780" href="/admin/analytics" />
+        <SnapshotCard label="Today's revenue" value="$780" href="/admin/settings" />
         <SnapshotCard label="Messages waiting" value="3" href="/admin/inbox" />
       </section>
 

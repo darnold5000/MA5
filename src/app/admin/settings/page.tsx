@@ -24,6 +24,17 @@ const LINKS = [
   },
 ] as const;
 
+const LATER = [
+  {
+    title: "Programs",
+    body: "Assign training programs — hidden from nav until the programs module ships.",
+  },
+  {
+    title: "Analytics",
+    body: "Business health and AI insights — hidden from nav until ready.",
+  },
+] as const;
+
 export default function AdminSettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -53,6 +64,20 @@ export default function AdminSettingsPage() {
           </Link>
         ))}
       </div>
+
+      <section className="border border-border bg-surface p-5">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Coming later
+        </p>
+        <ul className="mt-4 space-y-3">
+          {LATER.map((item) => (
+            <li key={item.title}>
+              <p className="text-sm text-foreground">{item.title}</p>
+              <p className="mt-0.5 text-sm text-muted">{item.body}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
