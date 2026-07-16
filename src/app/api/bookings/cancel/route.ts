@@ -30,22 +30,6 @@ export async function POST(request: Request) {
 
   let cancelled = false;
 
-  if (session && isSupabaseConfigured()) {
-    try {
-      const supabase = await createClient();
-      const { data } = await supabase
-        .from(MA5_TABLES.bookings)
-        .update({ status: "cancelled" })
-        .eq("id", bookingId)
-        .eq("user_id", session.id)
-        .select("id")
-        .maybeSingle();
-      if (data) cancelled = true;
-    } catch {
-      // Fall through to demo cookie.
-    }
-  }
-
   const jar = await cookies();
   const existing = parseDemoBookingsCookie(
     jar.get(DEMO_BOOKINGS_COOKIE)?.value,
@@ -53,6 +37,49 @@ export async function POST(request: Request) {
   const match = existing.find(
     (b) => b.id === bookingId || b.confirmationNumber === bookingId,
   );
+
+  if (match?.paymentStatus === "paid") {
+    return NextResponse.json(
+      { error: "Online payments can’t be cancelled here. Message your coach." },
+      { status: 400 },
+    );
+  }
+
+  if (session && isSupabaseConfigured()) {
+    try {
+      const supabase = await createClient();
+      const { data: existingRow } = await supabase
+        .from(MA5_TABLES.bookings)
+        .select("id, payment_status")
+        .eq("id", bookingId)
+        .eq("user_id", session.id)
+        .maybeSingle();
+
+      if (existingRow?.payment_status === "paid") {
+        return NextResponse.json(
+          {
+            error:
+              "Online payments can’t be cancelled here. Message your coach.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (existingRow) {
+        const { data } = await supabase
+          .from(MA5_TABLES.bookings)
+          .update({ status: "cancelled" })
+          .eq("id", bookingId)
+          .eq("user_id", session.id)
+          .select("id")
+          .maybeSingle();
+        if (data) cancelled = true;
+      }
+    } catch {
+      // Fall through to demo cookie.
+    }
+  }
+
   const next = existing.filter(
     (b) => b.id !== bookingId && b.confirmationNumber !== bookingId,
   );

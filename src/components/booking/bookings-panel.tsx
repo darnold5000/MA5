@@ -207,14 +207,16 @@ export function BookingsPanel({
                     : ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={cancellingId === booking.id}
-                    onClick={() => cancelBooking(booking)}
-                    className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase disabled:opacity-50"
-                  >
-                    {cancellingId === booking.id ? "Cancelling…" : "Cancel"}
-                  </button>
+                  {booking.paymentStatus !== "paid" ? (
+                    <button
+                      type="button"
+                      disabled={cancellingId === booking.id}
+                      onClick={() => cancelBooking(booking)}
+                      className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase disabled:opacity-50"
+                    >
+                      {cancellingId === booking.id ? "Cancelling…" : "Cancel"}
+                    </button>
+                  ) : null}
                   <a
                     href="/app/messages"
                     className="inline-flex min-h-10 items-center border border-border px-3 text-[11px] font-semibold tracking-wide uppercase"
