@@ -42,3 +42,18 @@ export type CoachClientProgressRow = {
   status: TrainingEngagementStatus;
   statusLabel: string;
 };
+
+export type CoachAttentionKind =
+  | "inactive"
+  | "program_ending"
+  | "program_complete";
+
+/** Simple coach nudges — no AI, just useful automatic surfacing. */
+export type CoachAttentionAlert = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  kind: CoachAttentionKind;
+  reason: string;
+  href: string;
+};

@@ -136,6 +136,8 @@ export type ClientProgramDay = {
 
 export type {
   ClientTrainingProgress,
+  CoachAttentionAlert,
+  CoachAttentionKind,
   CoachClientProgressRow,
   TrainingEngagementStatus,
 } from "./progress-types";

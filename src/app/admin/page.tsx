@@ -9,7 +9,9 @@ import {
   RecentSignups,
   TodaySchedule,
 } from "@/components/analytics/ops-panels";
+import { AthletesNeedingAttention } from "@/components/programs/athletes-needing-attention";
 import { DEMO_DAILY_OPS } from "@/features/analytics";
+import { listCoachAttentionAlerts } from "@/features/programs/queries";
 import {
   formatCalendarDate,
   greetingForNow,
@@ -20,8 +22,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function OperationsHomePage() {
+export default async function OperationsHomePage() {
   const data = DEMO_DAILY_OPS;
+  const attention = await listCoachAttentionAlerts();
 
   return (
     <div className="mx-auto max-w-5xl space-y-10">
@@ -47,6 +50,8 @@ export default function OperationsHomePage() {
       </div>
 
       <HealthSnapshot metrics={data.health} animate />
+
+      <AthletesNeedingAttention alerts={attention} />
 
       <section>
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">

@@ -4,6 +4,7 @@ import {
 } from "@/features/programs/demo-store";
 import {
   buildClientTrainingProgress,
+  buildCoachAttentionAlerts,
   buildCoachClientProgressRow,
   resolveProgramsClientIds,
 } from "@/features/programs/progress";
@@ -11,6 +12,7 @@ import { loadProgramsStateFromSupabase } from "@/features/programs/supabase-stor
 import type {
   ClientProgramDay,
   ClientTrainingProgress,
+  CoachAttentionAlert,
   CoachClientProgressRow,
   Exercise,
   WorkoutDetail,
@@ -155,6 +157,19 @@ export async function listCoachClientProgress(): Promise<
   });
 }
 
+export async function listCoachAttentionAlerts(): Promise<
+  CoachAttentionAlert[]
+> {
+  const state = await getProgramsState();
+  const roster = await listRosterClients();
+  const clients = roster.map((client) => ({
+    clientId: client.id,
+    clientName: client.name,
+    days: mapClientDays(state, [client.id]),
+  }));
+  return buildCoachAttentionAlerts(clients, state);
+}
+
 /** Real roster: active profiles with the client role. */
 export async function listRosterClients(): Promise<
   Array<{ id: string; name: string }>
@@ -214,6 +229,7 @@ export function listClientsForPrograms(state: ProgramsState) {
     known.set("client-alex", known.get("client-alex") ?? "Alex");
     known.set("client-jordan", known.get("client-jordan") ?? "Jordan Lee");
     known.set("client-sam", known.get("client-sam") ?? "Sam Patel");
+    known.set("client-emily", known.get("client-emily") ?? "Emily Chen");
   }
   return Array.from(known.entries()).map(([id, name]) => ({ id, name }));
 }

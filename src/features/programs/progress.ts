@@ -3,6 +3,7 @@ import type { ProgramsState } from "@/features/programs/demo-store";
 import type {
   ClientProgramDay,
   ClientTrainingProgress,
+  CoachAttentionAlert,
   CoachClientProgressRow,
   TrainingEngagementStatus,
 } from "@/features/programs/types";
@@ -99,11 +100,42 @@ function computeStreak(days: ClientProgramDay[]): number {
       streak += 1;
       continue;
     }
-    // Allow missing today if they haven't trained yet
     if (i === 0) continue;
     break;
   }
   return streak;
+}
+
+function findActiveAssignment(state: ProgramsState, clientIds: string[]) {
+  return (
+    state.assignments.find(
+      (a) =>
+        a.status === "active" &&
+        a.clientUserId != null &&
+        clientIds.includes(a.clientUserId),
+    ) ??
+    state.assignments.find(
+      (a) =>
+        a.status === "active" &&
+        a.teamId != null &&
+        state.teamMembers.some(
+          (m) => m.teamId === a.teamId && clientIds.includes(m.userId),
+        ),
+    ) ??
+    state.assignments.find(
+      (a) =>
+        a.status === "completed" &&
+        a.clientUserId != null &&
+        clientIds.includes(a.clientUserId),
+    ) ??
+    null
+  );
+}
+
+function programEndDate(startDate: string, weeks: number): string {
+  const d = new Date(`${startDate}T12:00:00`);
+  d.setDate(d.getDate() + weeks * 7);
+  return d.toISOString().slice(0, 10);
 }
 
 export function buildClientTrainingProgress(
@@ -117,38 +149,23 @@ export function buildClientTrainingProgress(
   const totalCount = Math.max(published.length, 1);
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
-  const assignment =
-    state.assignments.find(
-      (a) =>
-        a.status === "active" &&
-        a.clientUserId != null &&
-        clientIds.includes(a.clientUserId),
-    ) ??
-    state.assignments.find(
-      (a) =>
-        a.status === "active" &&
-        a.teamId != null &&
-        state.teamMembers.some(
-          (m) =>
-            m.teamId === a.teamId && clientIds.includes(m.userId),
-        ),
-    ) ??
-    null;
+  const assignment = findActiveAssignment(state, clientIds);
 
   const program = assignment?.programId
     ? state.programs.find((p) => p.id === assignment.programId) ?? null
     : state.programs[0] ?? null;
 
   let weekLabel: string | null = null;
-  if (program && assignment) {
+  if (program && assignment && assignment.status === "active") {
     const start = new Date(`${assignment.startDate}T12:00:00`);
     const now = new Date();
     const weekNum = Math.min(
       program.weeks,
       Math.max(
         1,
-        Math.floor((now.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)) +
-          1,
+        Math.floor(
+          (now.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000),
+        ) + 1,
       ),
     );
     weekLabel = `Week ${weekNum} of ${program.weeks}`;
@@ -226,10 +243,111 @@ export function buildCoachClientProgressRow(
     completedCount: progress.completedCount,
     totalCount: progress.totalCount,
     progressPercent: progress.progressPercent,
-    lastWorkoutLabel: lastDate
-      ? formatRelativeWorkoutDay(lastDate)
-      : "—",
+    lastWorkoutLabel: lastDate ? formatRelativeWorkoutDay(lastDate) : "—",
     status,
     statusLabel,
   };
+}
+
+type AttentionInput = {
+  clientId: string;
+  clientName: string;
+  days: ClientProgramDay[];
+};
+
+/**
+ * Surfacing useful coach nudges from the same training data —
+ * inactive athletes, programs ending soon, completed programs.
+ */
+export function buildCoachAttentionAlerts(
+  clients: AttentionInput[],
+  state: ProgramsState,
+): CoachAttentionAlert[] {
+  const alerts: CoachAttentionAlert[] = [];
+  const today = new Date();
+
+  for (const client of clients) {
+    const lastDate =
+      client.days
+        .filter((d) => d.completed)
+        .sort((a, b) => b.entry.entryDate.localeCompare(a.entry.entryDate))[0]
+        ?.entry.entryDate ?? null;
+    const since = daysSince(lastDate);
+    const progress = buildClientTrainingProgress(client.days, state, [
+      client.clientId,
+    ]);
+    const assignment = findActiveAssignment(state, [client.clientId]);
+    const program = assignment?.programId
+      ? state.programs.find((p) => p.id === assignment.programId)
+      : null;
+
+    const isComplete =
+      assignment?.status === "completed" ||
+      (progress.totalCount > 0 &&
+        progress.completedCount >= progress.totalCount &&
+        progress.progressPercent >= 100);
+
+    if (isComplete) {
+      alerts.push({
+        id: `${client.clientId}-complete`,
+        clientId: client.clientId,
+        clientName: client.clientName,
+        kind: "program_complete",
+        reason: "Completed current program",
+        href: "/admin/programs/assign",
+      });
+      continue;
+    }
+
+    if (since != null && since >= 5) {
+      alerts.push({
+        id: `${client.clientId}-inactive`,
+        clientId: client.clientId,
+        clientName: client.clientName,
+        kind: "inactive",
+        reason:
+          since === 1
+            ? "No workout in 1 day"
+            : `No workout in ${since} days`,
+        href: "/admin/clients",
+      });
+    }
+
+    if (assignment && program && assignment.status === "active") {
+      const end = programEndDate(assignment.startDate, program.weeks);
+      const endMs = new Date(`${end}T12:00:00`).getTime();
+      const left = Math.ceil(
+        (endMs - today.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (left >= 0 && left <= 7) {
+        alerts.push({
+          id: `${client.clientId}-ending`,
+          clientId: client.clientId,
+          clientName: client.clientName,
+          kind: "program_ending",
+          reason:
+            left === 0
+              ? "Program ends today"
+              : left === 1
+                ? "Program expires tomorrow"
+                : "Program expires next week",
+          href: "/admin/programs/assign",
+        });
+      }
+    }
+  }
+
+  const kindRank = {
+    inactive: 0,
+    program_ending: 1,
+    program_complete: 2,
+  } as const;
+
+  return alerts.sort((a, b) => {
+    if (kindRank[a.kind] !== kindRank[b.kind]) {
+      return kindRank[a.kind] - kindRank[b.kind];
+    }
+    return a.clientName.localeCompare(b.clientName);
+  });
 }

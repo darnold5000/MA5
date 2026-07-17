@@ -32,10 +32,11 @@ export default async function ProgramsPage() {
           Programs
         </p>
         <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
-          Your training
+          Today&apos;s training
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          What you need to do today — and how you&apos;re progressing.
+          Start today&apos;s workout — progress and history are here when you
+          need them.
         </p>
       </div>
       <ClientProgramsView

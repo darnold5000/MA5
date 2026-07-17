@@ -19,65 +19,40 @@ type Props = {
 
 export function ClientProgramsView({ days, progress }: Props) {
   const today = new Date().toISOString().slice(0, 10);
-  const upcoming = days.filter((d) => d.entry.entryDate >= today);
+  const upcoming = days.filter(
+    (d) =>
+      d.entry.entryDate >= today &&
+      d.entry.id !== progress.todayWorkout?.entryId,
+  );
   const historyCompleted = days
     .filter((d) => d.completed)
     .sort((a, b) => b.entry.entryDate.localeCompare(a.entry.entryDate));
 
   return (
     <div className="space-y-8">
-      <section className="border border-border bg-surface p-6">
-        <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-          Current program
-        </p>
-        <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
-          {progress.programTitle ?? "No program assigned"}
-        </h2>
-        {progress.weekLabel ? (
-          <p className="mt-2 text-sm text-muted">{progress.weekLabel}</p>
-        ) : null}
-
-        <div className="mt-6">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-              Progress
-            </p>
-            <p className="text-sm text-foreground">
-              {progress.completedCount} / {progress.totalCount} workouts complete
-              <span className="text-muted"> · {progress.progressPercent}%</span>
-            </p>
-          </div>
-          <div className="mt-3 h-2.5 w-full bg-background">
-            <div
-              className="h-2.5 bg-brand transition-[width]"
-              style={{ width: `${Math.min(progress.progressPercent, 100)}%` }}
-            />
-          </div>
-          {progress.streakDays > 0 ? (
-            <p className="mt-2 text-xs text-muted">
-              {progress.streakDays}-day training streak
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="border border-border bg-surface p-6">
+      <section className="border border-border bg-surface p-6 sm:p-8">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">
           Today&apos;s workout
         </p>
         {progress.todayWorkout ? (
           <div className="mt-3">
-            <h2 className="font-display text-3xl tracking-wide uppercase">
+            <h2 className="font-display text-4xl tracking-wide uppercase sm:text-5xl">
               {progress.todayWorkout.title}
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            {progress.programTitle ? (
+              <p className="mt-2 text-sm text-muted">
+                {progress.programTitle}
+                {progress.weekLabel ? ` · ${progress.weekLabel}` : ""}
+              </p>
+            ) : null}
+            <p className="mt-2 text-sm text-foreground">
               {progress.todayWorkout.completed
                 ? "Completed ✔"
                 : "Ready when you are"}
             </p>
             <Link
               href={`/app/programs/workouts/${progress.todayWorkout.entryId}`}
-              className="mt-5 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+              className="mt-6 inline-flex min-h-12 items-center bg-brand px-6 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
             >
               {progress.todayWorkout.completed
                 ? "Review workout"
@@ -85,24 +60,55 @@ export function ClientProgramsView({ days, progress }: Props) {
             </Link>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted">
-            No published workouts yet. Your coach will assign training here.
-          </p>
-        )}
-
-        {progress.lastWorkout ? (
-          <div className="mt-6 border-t border-border pt-5">
-            <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-              Last workout
-            </p>
-            <p className="mt-2 text-sm text-foreground">
-              {progress.lastWorkout.title}
-            </p>
-            <p className="mt-0.5 text-sm text-muted">
-              {progress.lastWorkout.dateLabel} ✔
+          <div className="mt-3">
+            <h2 className="font-display text-3xl tracking-wide uppercase">
+              No workout today
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              {progress.programTitle
+                ? `${progress.programTitle} — check upcoming or rest today.`
+                : "Your coach will assign training here."}
             </p>
           </div>
-        ) : null}
+        )}
+
+        {(progress.programTitle || progress.lastWorkout) && (
+          <div className="mt-8 grid gap-4 border-t border-border pt-6 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+                Progress
+              </p>
+              <p className="mt-2 text-sm text-foreground">
+                {progress.completedCount} / {progress.totalCount} workouts
+                <span className="text-muted">
+                  {" "}
+                  · {progress.progressPercent}%
+                </span>
+              </p>
+              <div className="mt-2 h-1.5 w-full max-w-xs bg-background">
+                <div
+                  className="h-1.5 bg-brand"
+                  style={{
+                    width: `${Math.min(progress.progressPercent, 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+            {progress.lastWorkout ? (
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+                  Last workout
+                </p>
+                <p className="mt-2 text-sm text-foreground">
+                  {progress.lastWorkout.title}
+                </p>
+                <p className="mt-0.5 text-sm text-muted">
+                  {progress.lastWorkout.dateLabel} ✔
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
       </section>
 
       <section>
@@ -145,7 +151,7 @@ export function ClientProgramsView({ days, progress }: Props) {
           </p>
         </div>
         <ul className="mt-3 space-y-2">
-          {historyCompleted.map((d) => (
+          {historyCompleted.slice(0, 8).map((d) => (
             <li key={d.entry.id}>
               <Link
                 href={`/app/programs/workouts/${d.entry.id}`}

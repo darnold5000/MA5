@@ -252,6 +252,7 @@ function seedState(): ProgramsState {
   const assignAlex = "asgn_alex_foundations";
   const assignJordan = "asgn_jordan_speed";
   const assignSam = "asgn_sam_rehab";
+  const assignEmily = "asgn_emily_foundations";
 
   const assignments: ProgramAssignment[] = [
     {
@@ -275,8 +276,17 @@ function seedState(): ProgramsState {
       programId: rehabProgId,
       clientUserId: "client-sam",
       teamId: null,
-      startDate: daysOffsetIso(-28),
+      // 4-week program started ~3 weeks ago → expires next week
+      startDate: daysOffsetIso(-21),
       status: "active",
+    },
+    {
+      id: assignEmily,
+      programId: foundationsId,
+      clientUserId: "client-emily",
+      teamId: null,
+      startDate: daysOffsetIso(-56),
+      status: "completed",
     },
   ];
 
@@ -319,26 +329,139 @@ function seedState(): ProgramsState {
   const alexAll = [...alexExtraCompleted, ...alexHistory];
 
   const jordanHistory = [
-    { id: "cal_jordan_m10", offset: -10, workoutId: speedId, title: "Speed & Agility", completed: true },
-    { id: "cal_jordan_m7", offset: -7, workoutId: speedId, title: "Speed & Agility", completed: true },
-    { id: "cal_jordan_m5", offset: -5, workoutId: speedId, title: "Speed & Agility", completed: true },
-    { id: "cal_jordan_today", offset: 0, workoutId: speedId, title: "Speed & Agility", completed: false },
-    { id: "cal_jordan_p3", offset: 3, workoutId: speedId, title: "Speed & Agility", completed: false },
-    { id: "cal_jordan_p5", offset: 5, workoutId: speedId, title: "Speed & Agility", completed: false },
-    { id: "cal_jordan_p8", offset: 8, workoutId: speedId, title: "Speed & Agility", completed: false },
+    {
+      id: "cal_jordan_m12",
+      offset: -12,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: true,
+    },
+    {
+      id: "cal_jordan_m9",
+      offset: -9,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: true,
+    },
+    {
+      id: "cal_jordan_m6",
+      offset: -6,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: true,
+    },
+    {
+      id: "cal_jordan_p1",
+      offset: 1,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: false,
+    },
+    {
+      id: "cal_jordan_p3",
+      offset: 3,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: false,
+    },
+    {
+      id: "cal_jordan_p5",
+      offset: 5,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: false,
+    },
+    {
+      id: "cal_jordan_p8",
+      offset: 8,
+      workoutId: speedId,
+      title: "Speed & Agility",
+      completed: false,
+    },
   ];
 
+  // Still training recently — attention is program end, not inactivity
   const samHistory = [
-    { id: "cal_sam_m20", offset: -20, workoutId: rehabId, title: "Rehab Mobility", completed: true },
-    { id: "cal_sam_m14", offset: -14, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p2", offset: 2, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p7", offset: 7, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p10", offset: 10, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p14", offset: 14, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p18", offset: 18, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p21", offset: 21, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p24", offset: 24, workoutId: rehabId, title: "Rehab Mobility", completed: false },
-    { id: "cal_sam_p28", offset: 28, workoutId: rehabId, title: "Rehab Mobility", completed: false },
+    {
+      id: "cal_sam_m4",
+      offset: -4,
+      workoutId: rehabId,
+      title: "Rehab Mobility",
+      completed: true,
+    },
+    {
+      id: "cal_sam_m2",
+      offset: -2,
+      workoutId: rehabId,
+      title: "Rehab Mobility",
+      completed: true,
+    },
+    {
+      id: "cal_sam_p1",
+      offset: 1,
+      workoutId: rehabId,
+      title: "Rehab Mobility",
+      completed: false,
+    },
+    {
+      id: "cal_sam_p3",
+      offset: 3,
+      workoutId: rehabId,
+      title: "Rehab Mobility",
+      completed: false,
+    },
+    {
+      id: "cal_sam_p5",
+      offset: 5,
+      workoutId: rehabId,
+      title: "Rehab Mobility",
+      completed: false,
+    },
+  ];
+
+  const emilyHistory = [
+    {
+      id: "cal_emily_1",
+      offset: -28,
+      workoutId: upperId,
+      title: "Upper Body Strength",
+      completed: true,
+    },
+    {
+      id: "cal_emily_2",
+      offset: -25,
+      workoutId: lowerId,
+      title: "Lower Body Strength",
+      completed: true,
+    },
+    {
+      id: "cal_emily_3",
+      offset: -21,
+      workoutId: upperId,
+      title: "Upper Body Strength",
+      completed: true,
+    },
+    {
+      id: "cal_emily_4",
+      offset: -18,
+      workoutId: lowerId,
+      title: "Lower Body Strength",
+      completed: true,
+    },
+    {
+      id: "cal_emily_5",
+      offset: -14,
+      workoutId: upperId,
+      title: "Upper Body Strength",
+      completed: true,
+    },
+    {
+      id: "cal_emily_6",
+      offset: -10,
+      workoutId: lowerId,
+      title: "Lower Body Strength",
+      completed: true,
+    },
   ];
 
   function toEntries(
@@ -382,6 +505,7 @@ function seedState(): ProgramsState {
   const alex = toEntries("client-alex", assignAlex, alexAll);
   const jordan = toEntries("client-jordan", assignJordan, jordanHistory);
   const sam = toEntries("client-sam", assignSam, samHistory);
+  const emily = toEntries("client-emily", assignEmily, emilyHistory);
 
   const teamTomorrow: CalendarEntry = {
     id: "cal_team_tomorrow",
@@ -408,12 +532,14 @@ function seedState(): ProgramsState {
       ...alex.entries,
       ...jordan.entries,
       ...sam.entries,
+      ...emily.entries,
       teamTomorrow,
     ],
     completions: [
       ...alex.completions,
       ...jordan.completions,
       ...sam.completions,
+      ...emily.completions,
     ],
   };
 }
@@ -428,7 +554,9 @@ export function parseProgramsState(raw: string | undefined): ProgramsState {
     const parsed = JSON.parse(raw) as Partial<ProgramsState>;
     const base = emptyProgramsState();
     const useSeedProgress =
-      !Array.isArray(parsed.assignments) || parsed.assignments.length === 0;
+      !Array.isArray(parsed.assignments) ||
+      parsed.assignments.length === 0 ||
+      !parsed.assignments.some((a) => a.clientUserId === "client-emily");
     return {
       exercises: mergeExerciseLibrary(parsed.exercises),
       workouts: Array.isArray(parsed.workouts) ? parsed.workouts : base.workouts,

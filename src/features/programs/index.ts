@@ -5,6 +5,7 @@ export {
   getWorkoutDetail,
   listClientProgramDays,
   listClientsForPrograms,
+  listCoachAttentionAlerts,
   listCoachClientProgress,
   listRosterClients,
   resolveExercisePlayback,
