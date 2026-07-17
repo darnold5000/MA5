@@ -53,7 +53,6 @@ export function ProgramGridManager({
   );
   const [title, setTitle] = useState("");
   const [weeks, setWeeks] = useState(4);
-  const [menuCell, setMenuCell] = useState<ActiveCell | null>(null);
   const [libraryPicker, setLibraryPicker] = useState<ActiveCell | null>(null);
   const [librarySearch, setLibrarySearch] = useState("");
   const [editingDay, setEditingDay] = useState<
@@ -149,12 +148,6 @@ export function ProgramGridManager({
     );
   }
 
-  function isMenu(weekIndex: number, dayIndex: number) {
-    return (
-      menuCell?.weekIndex === weekIndex && menuCell?.dayIndex === dayIndex
-    );
-  }
-
   function patchLocalDay(
     weekIndex: number,
     dayIndex: number,
@@ -181,7 +174,6 @@ export function ProgramGridManager({
 
   async function createSession(weekIndex: number, dayIndex: number) {
     if (!selected) return;
-    setMenuCell(null);
     setToast("Creating session…");
     const data = await post({
       action: "createWorkout",
@@ -228,7 +220,6 @@ export function ProgramGridManager({
 
   async function clearDay(weekIndex: number, dayIndex: number) {
     if (!selected) return;
-    setMenuCell(null);
     patchLocalDay(weekIndex, dayIndex, null);
     await post({
       action: "setProgramDayWorkout",
@@ -386,8 +377,7 @@ export function ProgramGridManager({
                                   workoutId: cell.workoutId,
                                 });
                               } else {
-                                setEditingDay(null);
-                                setMenuCell({ weekIndex, dayIndex });
+                                void createSession(weekIndex, dayIndex);
                               }
                             }}
                             className={cn(
@@ -464,10 +454,7 @@ export function ProgramGridManager({
       </div>
 
       {/* TrainHeroic-style weeks × days grid */}
-      <div
-        className="border border-[var(--th-border)] bg-white"
-        onClick={() => setMenuCell(null)}
-      >
+      <div className="border border-[var(--th-border)] bg-white">
         <div className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))] border-b border-[#111827] bg-[#111827] text-center text-[11px] font-bold tracking-wide text-white uppercase">
           <div className="border-r border-white/10 py-3" />
           {Array.from({ length: 7 }, (_, i) => (
@@ -496,93 +483,75 @@ export function ProgramGridManager({
                 const workout = cell?.workoutId
                   ? allWorkouts.find((w) => w.id === cell.workoutId)
                   : null;
-                const open = isMenu(weekIndex, dayIndex);
 
                 return (
                   <div
                     key={dayIndex}
-                    className={cn(
-                      "relative min-h-[120px] border-r border-[var(--th-border)] last:border-r-0",
-                      open && "bg-[var(--th-surface-muted)]",
-                    )}
+                    className="group relative min-h-[120px] border-r border-[var(--th-border)] last:border-r-0 hover:bg-[var(--th-surface-muted)]"
                   >
-                    <button
-                      type="button"
-                      disabled={pending}
-                      className="absolute inset-0 w-full p-2 text-left"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (workout && cell?.workoutId) {
-                          setMenuCell(null);
-                          setEditingDay({
-                            weekIndex,
-                            dayIndex,
-                            workoutId: cell.workoutId,
-                          });
-                          return;
-                        }
-                        setMenuCell(
-                          open ? null : { weekIndex, dayIndex },
-                        );
-                      }}
-                    >
-                      {workout ? (
-                        <div className="rounded border border-[var(--th-border)] bg-white p-2 shadow-sm">
-                          <p className="text-xs font-semibold leading-snug text-[var(--th-text)]">
-                            {workout.title}
-                          </p>
-                          <p className="mt-1 text-[10px] font-semibold tracking-wide text-[var(--th-blue)] uppercase">
-                            Edit session
-                          </p>
-                        </div>
-                      ) : open ? null : (
-                        <span className="sr-only">
-                          Empty — add session Week {weekIndex} Day {dayIndex}
-                        </span>
-                      )}
-                    </button>
-
-                    {open && !workout ? (
-                      <div
-                        className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[var(--th-surface-muted)]/95 p-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                    {workout && cell?.workoutId ? (
+                      <>
                         <button
                           type="button"
                           disabled={pending}
-                          onClick={() => void createSession(weekIndex, dayIndex)}
-                          className="text-sm font-bold tracking-wide text-[var(--th-blue)] uppercase hover:underline disabled:opacity-50"
-                        >
-                          Create Session
-                        </button>
-                        <button
-                          type="button"
-                          disabled={pending}
+                          className="absolute inset-0 w-full p-2 text-left"
                           onClick={() => {
-                            setMenuCell(null);
-                            setLibraryPicker({ weekIndex, dayIndex });
-                            setLibrarySearch("");
+                            setEditingDay({
+                              weekIndex,
+                              dayIndex,
+                              workoutId: cell.workoutId!,
+                            });
                           }}
-                          className="text-sm font-bold tracking-wide text-[var(--th-blue)] uppercase hover:underline disabled:opacity-50"
                         >
-                          Add From Library
+                          <div className="rounded border border-[var(--th-border)] bg-white p-2 shadow-sm">
+                            <p className="text-xs font-semibold leading-snug text-[var(--th-text)]">
+                              {workout.title}
+                            </p>
+                            <p className="mt-1 text-[10px] font-semibold tracking-wide text-[var(--th-blue)] uppercase">
+                              Edit session
+                            </p>
+                          </div>
                         </button>
-                      </div>
-                    ) : null}
-
-                    {workout ? (
-                      <button
-                        type="button"
-                        className="absolute top-1 right-1 z-10 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase th-muted hover:bg-white hover:text-[var(--th-danger)]"
-                        title="Clear day"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void clearDay(weekIndex, dayIndex);
-                        }}
-                      >
-                        Clear
-                      </button>
-                    ) : null}
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 z-10 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase th-muted hover:bg-white hover:text-[var(--th-danger)]"
+                          title="Clear day"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void clearDay(weekIndex, dayIndex);
+                          }}
+                        >
+                          Clear
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-semibold tracking-wide uppercase text-[#9ca3af] group-hover:opacity-0">
+                          Add
+                        </p>
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[var(--th-surface-muted)]/95 p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => void createSession(weekIndex, dayIndex)}
+                            className="text-sm font-bold tracking-wide text-[var(--th-blue)] uppercase hover:underline disabled:opacity-50"
+                          >
+                            Create Session
+                          </button>
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => {
+                              setLibraryPicker({ weekIndex, dayIndex });
+                              setLibrarySearch("");
+                            }}
+                            className="text-sm font-bold tracking-wide text-[var(--th-blue)] uppercase hover:underline disabled:opacity-50"
+                          >
+                            Add From Library
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })}

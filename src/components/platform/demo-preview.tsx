@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
 export function DemoPreviewChrome() {
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const pathname = usePathname();
+  const onProgramsLight =
+    pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
   useEffect(() => {
     if (open) {
@@ -26,10 +30,18 @@ export function DemoPreviewChrome() {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="group fixed right-3 bottom-20 z-[60] flex items-center gap-2 border border-brand bg-surface px-3 py-2.5 text-left shadow-lg transition hover:bg-brand hover:text-brand-foreground md:bottom-4"
+        className={cn(
+          "group fixed right-3 bottom-20 z-[60] flex items-center gap-2 px-3 py-2.5 text-left shadow-lg transition md:bottom-4",
+          onProgramsLight
+            ? "border border-[#2563eb] bg-white text-[#111827] hover:bg-[#2563eb] hover:text-white"
+            : "border border-brand bg-surface hover:bg-brand hover:text-brand-foreground",
+        )}
       >
         <span
-          className="flex size-6 shrink-0 items-center justify-center border border-current text-[11px] font-semibold"
+          className={cn(
+            "flex size-6 shrink-0 items-center justify-center border text-[11px] font-semibold",
+            onProgramsLight ? "border-[#2563eb] text-[#2563eb] group-hover:border-white group-hover:text-white" : "border-current",
+          )}
           aria-hidden
         >
           ?
@@ -38,7 +50,14 @@ export function DemoPreviewChrome() {
           <span className="block text-[10px] font-semibold tracking-[0.16em] uppercase">
             Demo guide
           </span>
-          <span className="block text-[10px] opacity-70 group-hover:opacity-100">
+          <span
+            className={cn(
+              "block text-[10px]",
+              onProgramsLight
+                ? "text-[#6b7280] group-hover:text-white/90"
+                : "opacity-70 group-hover:opacity-100",
+            )}
+          >
             Open walkthrough
           </span>
         </span>

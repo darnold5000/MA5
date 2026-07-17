@@ -47,6 +47,12 @@ export function WorkoutsManager({
     }
   }, [focusWorkoutId]);
 
+  useEffect(() => {
+    if (!exerciseId && exercises[0]?.id) {
+      setExerciseId(exercises[0].id);
+    }
+  }, [exercises, exerciseId]);
+
   const selected = workouts.find((w) => w.id === selectedId) ?? null;
   const serverBlocks = useMemo(
     () =>
@@ -56,6 +62,15 @@ export function WorkoutsManager({
     [blocks, selectedId],
   );
   const selectedBlocks = localBlocks ?? serverBlocks;
+
+  // Drop optimistic blocks once the server list includes them.
+  useEffect(() => {
+    if (!localBlocks) return;
+    const serverIds = new Set(serverBlocks.map((b) => b.id));
+    if (localBlocks.every((b) => serverIds.has(b.id))) {
+      setLocalBlocks(null);
+    }
+  }, [serverBlocks, localBlocks]);
 
   function syncLocal(next: WorkoutBlock[]) {
     setLocalBlocks(next);
@@ -75,7 +90,6 @@ export function WorkoutsManager({
       setError(data.error ?? "Request failed");
       return null;
     }
-    setLocalBlocks(null);
     router.refresh();
     return data;
   }
@@ -243,13 +257,18 @@ export function WorkoutsManager({
               <button
                 type="button"
                 disabled={pending || !exerciseId}
-                onClick={() =>
-                  post({
+                onClick={async () => {
+                  if (!selected || !exerciseId) return;
+                  const data = await post({
                     action: "addBlock",
                     workoutId: selected.id,
                     exerciseId,
-                  })
-                }
+                  });
+                  if (data?.block) {
+                    const block = data.block as WorkoutBlock;
+                    setLocalBlocks([...(localBlocks ?? serverBlocks), block]);
+                  }
+                }}
                 className="th-btn-primary"
               >
                 Add block
@@ -288,9 +307,14 @@ export function WorkoutsManager({
                       sessionCues: cues,
                     });
                   }}
-                  onRemove={() =>
-                    post({ action: "removeBlock", id: block.id })
-                  }
+                  onRemove={() => {
+                    setLocalBlocks(
+                      (localBlocks ?? serverBlocks).filter(
+                        (b) => b.id !== block.id,
+                      ),
+                    );
+                    void post({ action: "removeBlock", id: block.id });
+                  }}
                 />
               ))}
               {selectedBlocks.length === 0 ? (

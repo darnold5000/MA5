@@ -121,13 +121,25 @@ export function ExercisePicker({
       ? createPortal(
           <div
             ref={panelRef}
-            className="border border-[var(--th-border)] bg-white shadow-xl"
+            className="programs-th border border-[var(--th-border)] bg-white text-[var(--th-text)] shadow-xl"
             style={{
               position: "fixed",
               top: pos.top,
               left: pos.left,
               width: pos.width,
               zIndex: 80,
+              // Explicit fallbacks — portal is outside .programs-th ancestors
+              ["--th-bg" as string]: "#f3f4f6",
+              ["--th-surface" as string]: "#ffffff",
+              ["--th-surface-muted" as string]: "#f3f4f6",
+              ["--th-text" as string]: "#111827",
+              ["--th-muted" as string]: "#6b7280",
+              ["--th-border" as string]: "#e5e7eb",
+              ["--th-border-strong" as string]: "#d1d5db",
+              ["--th-blue" as string]: "#2563eb",
+              ["--th-yellow" as string]: "#eab308",
+              color: "#111827",
+              background: "#ffffff",
             }}
           >
             <div className="grid max-h-[min(70vh,420px)] grid-cols-1 sm:grid-cols-[1fr_180px]">
@@ -138,9 +150,9 @@ export function ExercisePicker({
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search exercises"
-                    className="th-input h-9"
+                    className="h-9 w-full border border-[var(--th-border)] bg-white px-3 text-[#111827] outline-none focus:outline focus:outline-2 focus:outline-[color-mix(in_srgb,#2563eb_45%,transparent)]"
                   />
-                  <p className="mt-1.5 text-[10px] font-bold tracking-wide uppercase th-muted">
+                  <p className="mt-1.5 text-[10px] font-bold tracking-wide text-[#6b7280] uppercase">
                     {filtered.length} exercises shown
                   </p>
                 </div>
@@ -150,7 +162,7 @@ export function ExercisePicker({
                   aria-label="Exercises"
                 >
                   {filtered.length === 0 ? (
-                    <li className="px-3 py-8 text-center text-sm th-muted">
+                    <li className="px-3 py-8 text-center text-sm text-[#6b7280]">
                       No exercises match these filters.
                     </li>
                   ) : (
@@ -163,8 +175,8 @@ export function ExercisePicker({
                             role="option"
                             aria-selected={active}
                             className={cn(
-                              "flex w-full items-center gap-2 border-b border-[var(--th-border)] px-3 py-2.5 text-left text-sm hover:bg-[var(--th-surface-muted)]",
-                              active && "bg-[var(--th-surface-muted)]",
+                              "flex w-full items-center gap-2 border-b border-[#e5e7eb] px-3 py-2.5 text-left text-sm text-[#111827] hover:bg-[#f3f4f6]",
+                              active && "bg-[#f3f4f6]",
                             )}
                             onClick={() => {
                               onChange(ex.id);
@@ -174,15 +186,15 @@ export function ExercisePicker({
                           >
                             <span
                               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-xs font-bold text-white"
-                              style={{ background: "var(--th-yellow)" }}
+                              style={{ background: "#eab308" }}
                               aria-hidden
                             >
                               #
                             </span>
-                            <span className="min-w-0 flex-1 font-semibold text-[var(--th-text)]">
+                            <span className="min-w-0 flex-1 font-semibold text-[#111827]">
                               {ex.title}
                             </span>
-                            <span className="shrink-0 text-[10px] font-semibold tracking-wide uppercase th-muted">
+                            <span className="shrink-0 text-[10px] font-semibold tracking-wide text-[#6b7280] uppercase">
                               {ex.category}
                             </span>
                           </button>
@@ -193,8 +205,8 @@ export function ExercisePicker({
                 </ul>
               </div>
 
-              <div className="flex min-h-0 flex-col bg-[var(--th-surface-muted)]/40">
-                <p className="border-b border-[var(--th-border)] px-3 py-2 text-[10px] font-bold tracking-wide uppercase th-muted">
+              <div className="flex min-h-0 flex-col bg-[#f3f4f6]/40">
+                <p className="border-b border-[#e5e7eb] px-3 py-2 text-[10px] font-bold tracking-wide text-[#6b7280] uppercase">
                   Filters
                 </p>
                 <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
@@ -202,17 +214,17 @@ export function ExercisePicker({
                     const checked = selectedCategories.includes(cat);
                     return (
                       <li key={cat}>
-                        <label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-sm hover:bg-white/80">
+                        <label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-sm text-[#111827] hover:bg-white/80">
                           <input
                             type="checkbox"
                             checked={checked}
                             onChange={() => toggleCategory(cat)}
-                            className="accent-[var(--th-blue)]"
+                            className="accent-[#2563eb]"
                           />
-                          <span className="min-w-0 flex-1 text-[var(--th-text)]">
-                            {cat}
+                          <span className="min-w-0 flex-1">{cat}</span>
+                          <span className="text-xs text-[#6b7280]">
+                            {counts[cat]}
                           </span>
-                          <span className="text-xs th-muted">{counts[cat]}</span>
                         </label>
                       </li>
                     );
@@ -220,7 +232,7 @@ export function ExercisePicker({
                 </ul>
                 <button
                   type="button"
-                  className="border-t border-[var(--th-border)] px-3 py-2.5 text-left text-xs font-bold tracking-wide text-[var(--th-blue)] uppercase hover:bg-white"
+                  className="border-t border-[#e5e7eb] px-3 py-2.5 text-left text-xs font-bold tracking-wide text-[#2563eb] uppercase hover:bg-white"
                   onClick={() => setSelectedCategories([])}
                 >
                   Clear Filters
