@@ -406,11 +406,6 @@ export function ProgramGridManager({
               exercises={exercises}
               focusWorkoutId={editingDay.workoutId}
               startFresh={isNewSession}
-              initialTitle={
-                isNewSession
-                  ? `Week ${editingDay.weekIndex} Day ${editingDay.dayIndex}`
-                  : undefined
-              }
               saveLabel={isNewSession ? "Add Session" : "Save Template"}
               embedded
               onBack={() => setEditingDay(null)}
@@ -418,7 +413,9 @@ export function ProgramGridManager({
                 if (isNewSession) {
                   const stub: Workout = {
                     id: workoutId,
-                    title: meta?.title ?? `Week ${editingDay.weekIndex} Day ${editingDay.dayIndex}`,
+                    title:
+                      meta?.title ??
+                      `Week ${editingDay.weekIndex} Day ${editingDay.dayIndex}`,
                     coachInstructions: "",
                     createdAt: new Date().toISOString(),
                   };
