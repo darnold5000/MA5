@@ -7,6 +7,17 @@ export const MA5_TABLES = {
   sessions: "ma5_sessions",
   bookings: "ma5_bookings",
   memberships: "ma5_memberships",
+  exercises: "ma5_exercises",
+  workouts: "ma5_workouts",
+  workoutBlocks: "ma5_workout_blocks",
+  workoutBlockSets: "ma5_workout_block_sets",
+  programs: "ma5_programs",
+  programDays: "ma5_program_days",
+  teams: "ma5_teams",
+  teamMembers: "ma5_team_members",
+  programAssignments: "ma5_program_assignments",
+  calendarEntries: "ma5_calendar_entries",
+  workoutCompletions: "ma5_workout_completions",
 } as const;
 
 export type Ma5TableName = (typeof MA5_TABLES)[keyof typeof MA5_TABLES];

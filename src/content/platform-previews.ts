@@ -60,16 +60,16 @@ export const platformPreviews: PlatformPreviewItem[] = [
   {
     id: "programs",
     title: "MA5 programs",
-    branch: "demo/ma5-programs",
+    branch: "main",
     summary:
-      "Exercise library, workout player, program catalog, assignments, and completion tracking.",
+      "Exercise library (native upload + YouTube/Vimeo), workout builder, program grids, Teams, assignment/publish, and client workout player.",
     evaluates: [
       "Replace TrainHeroic / Trainerize",
       "Video + workout player",
-      "Assignment workflow",
+      "Teams + assignment workflow",
     ],
-    href: null,
-    status: "planned",
+    href: "/admin/programs",
+    status: "built",
   },
   {
     id: "messaging",

@@ -1,3 +1,5 @@
--- Seed notes for Mindbody-replacement demo.
--- Apply migrations 001 + 002 first.
+-- Seed notes for Mindbody-replacement + Programs demos.
+-- Apply migrations 001, 002, and 003 first.
+-- Programs demo also seeds via cookie store (src/features/programs/demo-store.ts)
+-- until Supabase tables are populated.
 -- Optional: insert catalog rows from src/content/pricing.ts via admin tools later.

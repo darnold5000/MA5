@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+
+import { ClientProgramsView } from "@/components/programs/client-programs-view";
+import { listClientProgramDays } from "@/features/programs/queries";
 
 export const metadata: Metadata = {
   title: "Programs",
   robots: { index: false, follow: false },
 };
 
-export default function ProgramsPage() {
+const DEMO_CLIENT_ID = "client-alex";
+
+export default async function ProgramsPage() {
+  const days = await listClientProgramDays(DEMO_CLIENT_ID);
+
   return (
     <div className="space-y-6">
       <div>
@@ -17,24 +23,10 @@ export default function ProgramsPage() {
           Your training plan
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Assigned programs and workout progress live here for members.
+          Published workouts from your coach — individual and team assignments.
         </p>
       </div>
-      <section className="border border-border bg-surface p-6">
-        <h2 className="font-display text-2xl tracking-wide uppercase">
-          MA5 Foundations
-        </h2>
-        <p className="mt-2 text-sm text-muted">62% complete · next workout Thursday</p>
-        <div className="mt-4 h-2 w-full max-w-md bg-background">
-          <div className="h-2 w-[62%] bg-brand" />
-        </div>
-        <Link
-          href="/app/schedule"
-          className="mt-6 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-        >
-          Book supporting session
-        </Link>
-      </section>
+      <ClientProgramsView days={days} clientUserId={DEMO_CLIENT_ID} />
     </div>
   );
 }

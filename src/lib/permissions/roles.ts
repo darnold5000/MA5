@@ -21,6 +21,8 @@ export type Capability =
   | "view_schedule"
   | "coach_clients"
   | "assign_programs"
+  | "manage_programs"
+  | "manage_teams"
   | "message_clients"
   | "book_sessions"
   | "manage_own_billing"
@@ -40,6 +42,8 @@ const ROLE_CAPABILITIES: Record<PlatformRole, readonly Capability[]> = {
     "view_schedule",
     "coach_clients",
     "assign_programs",
+    "manage_programs",
+    "manage_teams",
     "message_clients",
     "book_sessions",
     "manage_own_billing",
@@ -50,6 +54,8 @@ const ROLE_CAPABILITIES: Record<PlatformRole, readonly Capability[]> = {
     "manage_schedule",
     "manage_memberships",
     "manage_content",
+    "manage_programs",
+    "manage_teams",
     "view_reports",
     "manage_attendance",
     "view_schedule",
@@ -69,6 +75,8 @@ const ROLE_CAPABILITIES: Record<PlatformRole, readonly Capability[]> = {
     "view_schedule",
     "coach_clients",
     "assign_programs",
+    "manage_programs",
+    "manage_teams",
     "message_clients",
     "manage_attendance",
     "book_sessions",

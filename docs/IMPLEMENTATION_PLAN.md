@@ -16,7 +16,7 @@ Companion to the product plan. Paths below reflect the **post-audit** repository
 | `feature/platform-foundation` | Auth, roles, schema, app shells, `/platform-preview` | Done |
 | `demo/mindbody-replacement` | Booking, memberships, Stripe, client portal | **In progress** |
 | `demo/external-training-platform` | Placeholder TrainHeroic/Trainerize cards | Planned |
-| `demo/ma5-programs` | Exercises, workouts, programs, progress | Planned |
+| `demo/ma5-programs` | Exercises, workouts, programs, teams, video — built on **main** | **Built** — see `docs/PROGRAMS_IMPLEMENTATION_PLAN.md` |
 | `demo/ma5-messaging` | Basic messaging + notifications first; Communication+ as premium module | Planned — see `docs/COMMUNICATION_MODULE.md` |
 | `demo/ma5-analytics-ai` | BI + AI insights | Planned |
 
@@ -30,6 +30,7 @@ Internal comparison page: **`/platform-preview`** (not in public nav).
 
 - `docs/CURRENT_SYSTEM_AUDIT.md` — system audit
 - `docs/IMPLEMENTATION_PLAN.md` — this file
+- `docs/PROGRAMS_IMPLEMENTATION_PLAN.md` — survey-scoped Programs module (TrainHeroic workflow, MA5 tokens)
 - `docs/discovery.md` — original content discovery (unchanged)
 
 ### Database
@@ -91,7 +92,7 @@ Each under `src/features/<domain>/` with `types.ts` and README-style stub export
 3. **No Stripe on foundation branch** — Stripe lands on `demo/mindbody-replacement`.
 4. **Keep Mindbody CTAs** until native booking ships; `/book` redirect stays for now.
 5. **Do not redesign marketing** — only structural route-group split for layouts.
-6. **Abstract video** later in `src/lib/video/` — not in foundation schema beyond optional media table stub if needed.
+6. **Video** for Programs lives in `src/lib/video/` (native Supabase Storage upload + YouTube/Vimeo) — see `docs/PROGRAMS_IMPLEMENTATION_PLAN.md`. Do not store training videos in `public/` or git.
 
 ---
 
@@ -145,7 +146,7 @@ These exist as stubs, docs, or demo UI but are **intentionally off primary nav**
 | Item | Where | Why hidden | Likely packaging |
 | --- | --- | --- | --- |
 | **Client Profile** | `/app/profile` — not in Fitness Hub nav | Goals, waivers, payment methods, notification prefs need a full account surface | Base hub later, or Profile+ |
-| **Operations Programs** | `/admin/programs` — not in Operations nav | Confusing vs client Programs; full assign/track is its own product | **Programs** module (`demo/ma5-programs`) |
+| **Operations Programs** | `/admin/programs` | Live in Operations nav | **Programs** module |
 | **Operations Analytics** | `/admin/analytics` — not in Operations nav | Business Health + AI insights preview only | **Analytics + AI** module (`demo/ma5-analytics-ai`) |
 | **Add to calendar** | Removed from My Training cards | Valuable on mobile; keeps booking cards lean | Calendar add-on |
 | Intermediate **/book** marketing page | Redirects to `/app/schedule` | Website → Fitness Hub directly | N/A (removed by design) |
@@ -166,7 +167,7 @@ Noted under **Operations → Settings → Coming later:** Programs, Analytics.
 
 | Module | Notes |
 | --- | --- |
-| **Programs** (client + ops) | Exercise library, workout player, assignments — TrainHeroic / Trainerize replacement. Client already has a Programs tab; Operations Programs nav stays hidden until this ships. |
+| **Programs** (client + ops) | Exercise library, workout player, Teams, assignments — live under Operations → Programs. Detail: `docs/PROGRAMS_IMPLEMENTATION_PLAN.md`. |
 | **Analytics + AI** | Business Health (revenue, attendance, retention, utilization) + “Today’s insights.” Resurface Operations Analytics when live. |
 | **Communication+** | Announcements, activity feed, groups, segments, push for chat, coach tools, AI drafts/replies, campaigns. |
 | **Coach profiles** | Photo, bio, specialties, availability on Reserve. |
@@ -180,7 +181,7 @@ Noted under **Operations → Settings → Coming later:** Programs, Analytics.
 | Tier | Includes |
 | --- | --- |
 | **Core (Mindbody replacement)** | Marketing site, Fitness Hub (Home / Reserve / Training / Plan / Programs placeholder / Inbox basics), Operations (Home / Schedule / Clients / Inbox / Settings tools), Stripe memberships + session pay |
-| **Programs** | Full programming, assignments, workout player |
+| **Programs** | Full programming, Teams, native exercise video uploads, assignments, workout player |
 | **Communication+** | Broadcasts, groups, automations, AI, SMS/email |
 | **Analytics + AI** | Business Health, insights, owner decision support |
 | **Calendar / Profile / Coach profiles** | Smaller add-ons as needed |

@@ -21,7 +21,7 @@ const SIDEBAR = [
 const MOBILE = [
   { href: "/app", label: "Home", match: "exact" as const },
   { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
-  { href: "/app/bookings", label: "Training", match: "prefix" as const },
+  { href: "/app/programs", label: "Programs", match: "prefix" as const },
   { href: "/app/billing", label: "Plan", match: "prefix" as const },
   { href: "/app/inbox", label: "Inbox", match: "prefix" as const },
 ] as const;

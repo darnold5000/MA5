@@ -22,13 +22,14 @@ const LINKS = [
     title: "Schedule tools",
     body: "Publish and edit sessions.",
   },
+  {
+    href: "/admin/programs",
+    title: "Programs",
+    body: "Exercise library, workouts, teams, and client assignment.",
+  },
 ] as const;
 
 const LATER = [
-  {
-    title: "Programs",
-    body: "Assign training programs — hidden from nav until the programs module ships.",
-  },
   {
     title: "Analytics",
     body: "Business health and AI insights — hidden from nav until ready.",

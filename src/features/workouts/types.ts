@@ -1,4 +1,6 @@
-/** Domain types for workouts. Expand on the relevant demo branch. */
-export type workoutsPlaceholder = {
-  id: string;
-};
+export type {
+  Workout,
+  WorkoutBlock,
+  WorkoutBlockSet,
+  WorkoutDetail,
+} from "@/features/programs/types";

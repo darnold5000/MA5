@@ -1,4 +1,1 @@
-/** Domain types for exercises. Expand on the relevant demo branch. */
-export type exercisesPlaceholder = {
-  id: string;
-};
+export type { Exercise, ExerciseParam, VideoSource } from "@/features/programs/types";
