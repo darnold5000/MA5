@@ -2,15 +2,32 @@ import {
   readProgramsState,
   type ProgramsState,
 } from "@/features/programs/demo-store";
+import { loadProgramsStateFromSupabase } from "@/features/programs/supabase-store";
 import type {
   ClientProgramDay,
   Exercise,
   WorkoutDetail,
 } from "@/features/programs/types";
+import { getSessionUser } from "@/lib/auth/session";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { createSignedVideoUrl } from "@/lib/video/storage";
 
 export async function getProgramsState(): Promise<ProgramsState> {
-  return readProgramsState();
+  if (!isSupabaseConfigured()) {
+    return readProgramsState();
+  }
+  try {
+    const session = await getSessionUser();
+    if (!session) {
+      return readProgramsState();
+    }
+    // Authenticated user — RLS scopes staff (full library) vs client (published)
+    const supabase = await createClient();
+    return await loadProgramsStateFromSupabase(supabase);
+  } catch (err) {
+    console.error("[programs] Supabase load failed, falling back to cookie", err);
+    return readProgramsState();
+  }
 }
 
 export function getWorkoutDetail(
@@ -44,7 +61,7 @@ export async function resolveExercisePlayback(
 export async function listClientProgramDays(
   clientUserId: string,
 ): Promise<ClientProgramDay[]> {
-  const state = await readProgramsState();
+  const state = await getProgramsState();
   const teamIds = new Set(
     state.teamMembers
       .filter((m) => m.userId === clientUserId)
@@ -82,11 +99,15 @@ export async function listClientProgramDays(
 }
 
 export function listClientsForPrograms(state: ProgramsState) {
-  // Prefer roster names from team members + calendar; demo clients are fixed ids
   const known = new Map<string, string>();
   for (const m of state.teamMembers) known.set(m.userId, m.userName);
-  known.set("client-alex", known.get("client-alex") ?? "Alex");
-  known.set("client-jordan", known.get("client-jordan") ?? "Jordan Lee");
-  known.set("client-sam", known.get("client-sam") ?? "Sam Patel");
+  const hasRealProfiles = [...known.keys()].some((id) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id),
+  );
+  if (!hasRealProfiles) {
+    known.set("client-alex", known.get("client-alex") ?? "Alex");
+    known.set("client-jordan", known.get("client-jordan") ?? "Jordan Lee");
+    known.set("client-sam", known.get("client-sam") ?? "Sam Patel");
+  }
   return Array.from(known.entries()).map(([id, name]) => ({ id, name }));
 }

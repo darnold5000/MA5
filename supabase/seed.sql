@@ -1,5 +1,8 @@
--- Seed notes for Mindbody-replacement + Programs demos.
--- Apply migrations 001, 002, and 003 first.
--- Programs demo also seeds via cookie store (src/features/programs/demo-store.ts)
--- until Supabase tables are populated.
--- Optional: insert catalog rows from src/content/pricing.ts via admin tools later.
+-- MA5 seed notes
+-- 1. Apply migrations 001 → 004 first
+-- 2. Run seed_exercises.sql in the Supabase SQL Editor (or psql)
+--    → inserts ~142 generic movements into public.ma5_exercises
+--    → safe to re-run (skips title+category duplicates)
+--
+-- Note: Admin Programs Library reads/writes ma5_* when a staff user is
+-- signed in (cookie demo-store is fallback only).

@@ -10,14 +10,57 @@ import {
   serializeProgramsState,
   type ProgramsState,
 } from "@/features/programs/demo-store";
-import type { Exercise, WorkoutBlockSet } from "@/features/programs/types";
+import {
+  loadProgramsStateFromSupabase,
+  mapAssignmentRow,
+  mapCalendarRow,
+  mapExerciseRow,
+  mapProgramDayRow,
+  mapProgramRow,
+  mapTeamRow,
+  mapWorkoutRow,
+  materializeProgramDaysToDb,
+  replaceBlockSets,
+} from "@/features/programs/supabase-store";
+import type { Exercise, WorkoutBlock, WorkoutBlockSet } from "@/features/programs/types";
+import { getSessionUser } from "@/lib/auth/session";
+import { canAccessAdmin } from "@/lib/permissions/roles";
 import { detectVideoSourceFromUrl } from "@/lib/video/parse";
-import { isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  createClient,
+  createServiceClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
+import { MA5_TABLES } from "@/lib/supabase/tables";
 import {
   isAllowedVideoType,
   MAX_VIDEO_BYTES,
   uploadExerciseVideo,
 } from "@/lib/video/storage";
+
+const categoryEnum = z.enum([
+  "Chest",
+  "Back",
+  "Shoulders",
+  "Legs",
+  "Hamstrings / Glutes",
+  "Arms",
+  "Core",
+  "Plyometrics",
+  "Speed & Agility",
+  "Olympic Lifts",
+  "Conditioning",
+  "Mobility",
+  "Recovery",
+]);
+
+const setSchema = z.object({
+  setNumber: z.number().int().positive(),
+  reps: z.number().nullable(),
+  weightLb: z.number().nullable(),
+});
+
+const uuid = z.string().uuid();
 
 function withCookie(state: ProgramsState, body: unknown, status = 200) {
   const value = serializeProgramsState(state);
@@ -46,45 +89,756 @@ function withCookie(state: ProgramsState, body: unknown, status = 200) {
   return response;
 }
 
-const setSchema = z.object({
-  setNumber: z.number().int().positive(),
-  reps: z.number().nullable(),
-  weightLb: z.number().nullable(),
-});
+function jsonOk(body: unknown, status = 200) {
+  return NextResponse.json(body, { status });
+}
+
+function jsonError(error: string, status = 400) {
+  return NextResponse.json({ error }, { status });
+}
+
+async function useSupabaseBackend(): Promise<boolean> {
+  // Prefer real DB whenever Supabase is configured and a staff user is signed in.
+  if (!isSupabaseConfigured()) return false;
+  const session = await getSessionUser();
+  return Boolean(session && canAccessAdmin(session.roles));
+}
+
+async function getAdminSupabase() {
+  // Prefer user session (RLS). Fall back to service role for staff tooling
+  // when the request has a valid admin session but anon RLS is awkward.
+  const session = await getSessionUser();
+  if (!session || !canAccessAdmin(session.roles)) {
+    return { error: jsonError("Admin access required", 401) as NextResponse };
+  }
+  try {
+    const supabase = await createClient();
+    return { supabase, userId: session.id };
+  } catch {
+    return { error: jsonError("Supabase is not configured", 500) as NextResponse };
+  }
+}
+
+function getServiceSupabase() {
+  try {
+    return createServiceClient();
+  } catch {
+    return null;
+  }
+}
 
 export async function GET() {
+  if (await useSupabaseBackend()) {
+    const gate = await getAdminSupabase();
+    if ("error" in gate && gate.error) return gate.error;
+    try {
+      const state = await loadProgramsStateFromSupabase(gate.supabase!);
+      return jsonOk(state);
+    } catch (err) {
+      return jsonError(
+        err instanceof Error ? err.message : "Failed to load programs",
+        500,
+      );
+    }
+  }
   const state = await readProgramsState();
-  return NextResponse.json(state);
+  return jsonOk(state);
 }
 
 export async function POST(request: Request) {
-  const contentType = request.headers.get("content-type") ?? "";
+  if (await useSupabaseBackend()) {
+    return postSupabase(request);
+  }
+  return postCookie(request);
+}
 
-  // Multipart upload for native video
+async function postSupabase(request: Request) {
+  const gate = await getAdminSupabase();
+  if ("error" in gate && gate.error) return gate.error;
+  const supabase = gate.supabase!;
+  const userId = gate.userId!;
+
+  const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
     const exerciseId = String(form.get("exerciseId") ?? "");
     const file = form.get("file");
     if (!exerciseId || !(file instanceof File)) {
-      return NextResponse.json({ error: "Missing file or exercise" }, { status: 400 });
+      return jsonError("Missing file or exercise");
     }
     if (!isAllowedVideoType(file.type)) {
-      return NextResponse.json({ error: "Use MP4, WebM, or MOV" }, { status: 400 });
+      return jsonError("Use MP4, WebM, or MOV");
     }
     if (file.size > MAX_VIDEO_BYTES) {
-      return NextResponse.json({ error: "Video too large (max 500MB)" }, { status: 400 });
+      return jsonError("Video too large (max 500MB)");
+    }
+    if (!uuid.safeParse(exerciseId).success) {
+      return jsonError("Invalid exercise id");
+    }
+
+    const uploaded = await uploadExerciseVideo({
+      exerciseId,
+      file,
+      fileName: file.name,
+      contentType: file.type,
+    });
+    if ("error" in uploaded) {
+      return jsonError(uploaded.error);
+    }
+
+    const { data, error } = await supabase
+      .from(MA5_TABLES.exercises)
+      .update({
+        video_source: "upload",
+        video_url: null,
+        video_storage_path: uploaded.path,
+      })
+      .eq("id", exerciseId)
+      .select("*")
+      .maybeSingle();
+    if (error) return jsonError(error.message, 500);
+    if (!data) return jsonError("Exercise not found", 404);
+    return jsonOk({
+      ok: true,
+      exercise: mapExerciseRow(data as Record<string, unknown>),
+    });
+  }
+
+  const json = await request.json().catch(() => null);
+  const action = z.string().parse(json?.action);
+
+  try {
+    switch (action) {
+      case "createExercise": {
+        const data = z
+          .object({
+            title: z.string().min(1).max(120),
+            category: categoryEnum.optional(),
+            defaultParam1: z.enum(["reps", "weight_lb"]).optional(),
+            defaultParam2: z.enum(["reps", "weight_lb"]).optional(),
+            pointsOfPerformance: z.string().max(5000).optional(),
+            videoUrl: z.string().optional(),
+          })
+          .parse(json);
+        let videoSource: Exercise["videoSource"] = "none";
+        let videoUrl: string | null = null;
+        if (data.videoUrl?.trim()) {
+          const provider = detectVideoSourceFromUrl(data.videoUrl);
+          if (!provider) {
+            return jsonError("Video URL must be YouTube or Vimeo");
+          }
+          videoSource = provider;
+          videoUrl = data.videoUrl.trim();
+        }
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.exercises)
+          .insert({
+            title: data.title.trim(),
+            category: data.category ?? "Legs",
+            points_of_performance: data.pointsOfPerformance?.trim() ?? "",
+            video_source: videoSource,
+            video_url: videoUrl,
+            default_param_1: data.defaultParam1 ?? "reps",
+            default_param_2: data.defaultParam2 ?? "weight_lb",
+            created_by: userId,
+          })
+          .select("*")
+          .single();
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({
+          ok: true,
+          exercise: mapExerciseRow(row as Record<string, unknown>),
+        });
+      }
+
+      case "updateExercise": {
+        const data = z
+          .object({
+            id: uuid,
+            title: z.string().min(1).max(120).optional(),
+            category: categoryEnum.optional(),
+            defaultParam1: z.enum(["reps", "weight_lb"]).optional(),
+            defaultParam2: z.enum(["reps", "weight_lb"]).optional(),
+            pointsOfPerformance: z.string().max(5000).optional(),
+            videoUrl: z.string().nullable().optional(),
+            clearVideo: z.boolean().optional(),
+          })
+          .parse(json);
+        const patch: Record<string, unknown> = {};
+        if (data.title !== undefined) patch.title = data.title.trim();
+        if (data.category !== undefined) patch.category = data.category;
+        if (data.defaultParam1 !== undefined) {
+          patch.default_param_1 = data.defaultParam1;
+        }
+        if (data.defaultParam2 !== undefined) {
+          patch.default_param_2 = data.defaultParam2;
+        }
+        if (data.pointsOfPerformance !== undefined) {
+          patch.points_of_performance = data.pointsOfPerformance;
+        }
+        if (data.clearVideo) {
+          patch.video_source = "none";
+          patch.video_url = null;
+          patch.video_storage_path = null;
+        } else if (data.videoUrl !== undefined) {
+          if (!data.videoUrl?.trim()) {
+            patch.video_source = "none";
+            patch.video_url = null;
+          } else {
+            const provider = detectVideoSourceFromUrl(data.videoUrl);
+            if (!provider) {
+              return jsonError("Video URL must be YouTube or Vimeo");
+            }
+            patch.video_source = provider;
+            patch.video_url = data.videoUrl.trim();
+            patch.video_storage_path = null;
+          }
+        }
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.exercises)
+          .update(patch)
+          .eq("id", data.id)
+          .select("*")
+          .maybeSingle();
+        if (error) return jsonError(error.message, 500);
+        if (!row) return jsonError("Not found", 404);
+        return jsonOk({
+          ok: true,
+          exercise: mapExerciseRow(row as Record<string, unknown>),
+        });
+      }
+
+      case "createWorkout": {
+        const data = z
+          .object({
+            title: z.string().min(1).max(120),
+            coachInstructions: z.string().max(10000).optional(),
+          })
+          .parse(json);
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.workouts)
+          .insert({
+            title: data.title.trim(),
+            coach_instructions: data.coachInstructions?.trim() ?? "",
+            created_by: userId,
+          })
+          .select("*")
+          .single();
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({
+          ok: true,
+          workout: mapWorkoutRow(row as Record<string, unknown>),
+        });
+      }
+
+      case "updateWorkout": {
+        const data = z
+          .object({
+            id: uuid,
+            title: z.string().min(1).max(120).optional(),
+            coachInstructions: z.string().max(10000).optional(),
+          })
+          .parse(json);
+        const patch: Record<string, unknown> = {};
+        if (data.title !== undefined) patch.title = data.title.trim();
+        if (data.coachInstructions !== undefined) {
+          patch.coach_instructions = data.coachInstructions;
+        }
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.workouts)
+          .update(patch)
+          .eq("id", data.id)
+          .select("*")
+          .maybeSingle();
+        if (error) return jsonError(error.message, 500);
+        if (!row) return jsonError("Not found", 404);
+        return jsonOk({
+          ok: true,
+          workout: mapWorkoutRow(row as Record<string, unknown>),
+        });
+      }
+
+      case "addBlock": {
+        const data = z
+          .object({
+            workoutId: uuid,
+            exerciseId: uuid,
+            label: z.string().min(1).max(8).optional(),
+            sectionTitle: z.string().max(80).nullable().optional(),
+            sessionCues: z.string().max(2000).optional(),
+            sets: z.array(setSchema).min(1).optional(),
+          })
+          .parse(json);
+        const { count } = await supabase
+          .from(MA5_TABLES.workoutBlocks)
+          .select("*", { count: "exact", head: true })
+          .eq("workout_id", data.workoutId);
+        const sortOrder = count ?? 0;
+        const sets: WorkoutBlockSet[] =
+          data.sets ??
+          [1, 2, 3].map((n) => ({ setNumber: n, reps: 8, weightLb: null }));
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.workoutBlocks)
+          .insert({
+            workout_id: data.workoutId,
+            exercise_id: data.exerciseId,
+            sort_order: sortOrder,
+            label:
+              data.label ??
+              String.fromCharCode(65 + Math.min(sortOrder, 25)),
+            section_title: data.sectionTitle ?? null,
+            session_cues: data.sessionCues ?? "",
+          })
+          .select("*")
+          .single();
+        if (error) return jsonError(error.message, 500);
+        await replaceBlockSets(supabase, String(row.id), sets);
+        const block: WorkoutBlock = {
+          id: String(row.id),
+          workoutId: data.workoutId,
+          sortOrder,
+          label: String(row.label),
+          sectionTitle: (row.section_title as string | null) ?? null,
+          exerciseId: data.exerciseId,
+          sessionCues: String(row.session_cues ?? ""),
+          sets,
+        };
+        return jsonOk({ ok: true, block });
+      }
+
+      case "updateBlock": {
+        const data = z
+          .object({
+            id: uuid,
+            exerciseId: uuid.optional(),
+            sessionCues: z.string().max(2000).optional(),
+            sectionTitle: z.string().max(80).nullable().optional(),
+            sets: z.array(setSchema).optional(),
+          })
+          .parse(json);
+        const patch: Record<string, unknown> = {};
+        if (data.exerciseId !== undefined) patch.exercise_id = data.exerciseId;
+        if (data.sessionCues !== undefined) {
+          patch.session_cues = data.sessionCues;
+        }
+        if (data.sectionTitle !== undefined) {
+          patch.section_title = data.sectionTitle;
+        }
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.workoutBlocks)
+          .update(patch)
+          .eq("id", data.id)
+          .select("*")
+          .maybeSingle();
+        if (error) return jsonError(error.message, 500);
+        if (!row) return jsonError("Not found", 404);
+        if (data.sets) {
+          await replaceBlockSets(supabase, data.id, data.sets);
+        }
+        const { data: setRows } = await supabase
+          .from(MA5_TABLES.workoutBlockSets)
+          .select("*")
+          .eq("block_id", data.id)
+          .order("set_number");
+        const block: WorkoutBlock = {
+          id: String(row.id),
+          workoutId: String(row.workout_id),
+          sortOrder: Number(row.sort_order ?? 0),
+          label: String(row.label ?? "A"),
+          sectionTitle: (row.section_title as string | null) ?? null,
+          exerciseId: String(row.exercise_id),
+          sessionCues: String(row.session_cues ?? ""),
+          sets: (setRows ?? []).map((s) => ({
+            setNumber: Number(s.set_number),
+            reps: s.reps == null ? null : Number(s.reps),
+            weightLb: s.weight_lb == null ? null : Number(s.weight_lb),
+          })),
+        };
+        return jsonOk({ ok: true, block });
+      }
+
+      case "removeBlock": {
+        const data = z.object({ id: uuid }).parse(json);
+        const { error } = await supabase
+          .from(MA5_TABLES.workoutBlocks)
+          .delete()
+          .eq("id", data.id);
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({ ok: true });
+      }
+
+      case "deleteExercise": {
+        const data = z.object({ id: uuid }).parse(json);
+        const { count } = await supabase
+          .from(MA5_TABLES.workoutBlocks)
+          .select("*", { count: "exact", head: true })
+          .eq("exercise_id", data.id);
+        if ((count ?? 0) > 0) {
+          return jsonError(
+            "Exercise is used in a workout. Remove it from blocks first.",
+          );
+        }
+        const { error } = await supabase
+          .from(MA5_TABLES.exercises)
+          .delete()
+          .eq("id", data.id);
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({ ok: true });
+      }
+
+      case "deleteWorkout": {
+        const data = z.object({ id: uuid }).parse(json);
+        const [{ count: inProgram }, { count: inCalendar }] = await Promise.all([
+          supabase
+            .from(MA5_TABLES.programDays)
+            .select("*", { count: "exact", head: true })
+            .eq("workout_id", data.id),
+          supabase
+            .from(MA5_TABLES.calendarEntries)
+            .select("*", { count: "exact", head: true })
+            .eq("workout_id", data.id),
+        ]);
+        if ((inProgram ?? 0) > 0 || (inCalendar ?? 0) > 0) {
+          return jsonError(
+            "Workout is used in a program or calendar. Clear those references first.",
+          );
+        }
+        const { error } = await supabase
+          .from(MA5_TABLES.workouts)
+          .delete()
+          .eq("id", data.id);
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({ ok: true });
+      }
+
+      case "deleteProgram": {
+        const data = z.object({ id: uuid }).parse(json);
+        const { error } = await supabase
+          .from(MA5_TABLES.programs)
+          .delete()
+          .eq("id", data.id);
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({ ok: true });
+      }
+
+      case "createProgram": {
+        const data = z
+          .object({
+            title: z.string().min(1).max(75),
+            weeks: z.number().int().min(1).max(52),
+          })
+          .parse(json);
+        const { data: programRow, error } = await supabase
+          .from(MA5_TABLES.programs)
+          .insert({
+            title: data.title.trim(),
+            weeks: data.weeks,
+            created_by: userId,
+          })
+          .select("*")
+          .single();
+        if (error) return jsonError(error.message, 500);
+        const dayRows = [];
+        for (let w = 1; w <= data.weeks; w++) {
+          for (let d = 1; d <= 7; d++) {
+            dayRows.push({
+              program_id: programRow.id,
+              week_index: w,
+              day_index: d,
+              workout_id: null,
+            });
+          }
+        }
+        const { data: days, error: dayError } = await supabase
+          .from(MA5_TABLES.programDays)
+          .insert(dayRows)
+          .select("*");
+        if (dayError) return jsonError(dayError.message, 500);
+        return jsonOk({
+          ok: true,
+          program: mapProgramRow(programRow as Record<string, unknown>),
+          programDays: (days ?? []).map((r) =>
+            mapProgramDayRow(r as Record<string, unknown>),
+          ),
+        });
+      }
+
+      case "setProgramDayWorkout": {
+        const data = z
+          .object({
+            programId: uuid,
+            weekIndex: z.number().int().min(1),
+            dayIndex: z.number().int().min(1).max(7),
+            workoutId: uuid.nullable(),
+          })
+          .parse(json);
+        const { data: existing } = await supabase
+          .from(MA5_TABLES.programDays)
+          .select("id")
+          .eq("program_id", data.programId)
+          .eq("week_index", data.weekIndex)
+          .eq("day_index", data.dayIndex)
+          .maybeSingle();
+        if (existing) {
+          const { error } = await supabase
+            .from(MA5_TABLES.programDays)
+            .update({ workout_id: data.workoutId })
+            .eq("id", existing.id);
+          if (error) return jsonError(error.message, 500);
+        } else {
+          const { error } = await supabase.from(MA5_TABLES.programDays).insert({
+            program_id: data.programId,
+            week_index: data.weekIndex,
+            day_index: data.dayIndex,
+            workout_id: data.workoutId,
+          });
+          if (error) return jsonError(error.message, 500);
+        }
+        return jsonOk({ ok: true });
+      }
+
+      case "createTeam": {
+        const data = z
+          .object({
+            name: z.string().min(1).max(75),
+            difficulty: z.string().max(40).optional(),
+          })
+          .parse(json);
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.teams)
+          .insert({
+            name: data.name.trim(),
+            difficulty: data.difficulty?.trim() || null,
+            created_by: userId,
+          })
+          .select("*")
+          .single();
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({
+          ok: true,
+          team: mapTeamRow(row as Record<string, unknown>),
+        });
+      }
+
+      case "addTeamMember": {
+        const data = z
+          .object({
+            teamId: uuid,
+            userId: uuid,
+            userName: z.string().min(1).optional(),
+          })
+          .parse(json);
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.teamMembers)
+          .insert({
+            team_id: data.teamId,
+            user_id: data.userId,
+            role: "athlete",
+          })
+          .select("*")
+          .single();
+        if (error) {
+          if (error.code === "23505") {
+            return jsonError("Already on team");
+          }
+          if (error.code === "23503") {
+            return jsonError(
+              "That user id is not a real profile. Use a logged-in client (step 4: roster).",
+            );
+          }
+          return jsonError(error.message, 500);
+        }
+        return jsonOk({
+          ok: true,
+          member: {
+            id: String(row.id),
+            teamId: data.teamId,
+            userId: data.userId,
+            userName: data.userName ?? "Athlete",
+            joinedAt: String(row.joined_at ?? new Date().toISOString()),
+          },
+        });
+      }
+
+      case "removeTeamMember": {
+        const data = z.object({ id: uuid }).parse(json);
+        const { error } = await supabase
+          .from(MA5_TABLES.teamMembers)
+          .delete()
+          .eq("id", data.id);
+        if (error) return jsonError(error.message, 500);
+        return jsonOk({ ok: true });
+      }
+
+      case "addCalendarEntry": {
+        const data = z
+          .object({
+            entryDate: z.string().min(8),
+            workoutId: uuid,
+            title: z.string().optional(),
+            clientUserId: uuid.nullable().optional(),
+            teamId: uuid.nullable().optional(),
+            publish: z.boolean().optional(),
+          })
+          .parse(json);
+        if (!data.clientUserId && !data.teamId) {
+          return jsonError("Pick a client or team");
+        }
+        const { data: workout } = await supabase
+          .from(MA5_TABLES.workouts)
+          .select("title")
+          .eq("id", data.workoutId)
+          .maybeSingle();
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.calendarEntries)
+          .insert({
+            entry_date: data.entryDate,
+            workout_id: data.workoutId,
+            title: data.title ?? workout?.title ?? "Workout",
+            publish_status: data.publish ? "published" : "draft",
+            source: "library",
+            client_user_id: data.clientUserId ?? null,
+            team_id: data.teamId ?? null,
+          })
+          .select("*")
+          .single();
+        if (error) {
+          if (error.code === "23503") {
+            return jsonError(
+              "Client/team must be a real profile or team UUID (step 4: roster).",
+            );
+          }
+          return jsonError(error.message, 500);
+        }
+        return jsonOk({
+          ok: true,
+          entry: mapCalendarRow(row as Record<string, unknown>),
+        });
+      }
+
+      case "publishCalendarEntries": {
+        const data = z
+          .object({
+            ids: z.array(uuid).optional(),
+            clientUserId: uuid.nullable().optional(),
+            teamId: uuid.nullable().optional(),
+            all: z.boolean().optional(),
+          })
+          .parse(json);
+        if (data.ids?.length) {
+          const { error } = await supabase
+            .from(MA5_TABLES.calendarEntries)
+            .update({ publish_status: "published" })
+            .in("id", data.ids);
+          if (error) return jsonError(error.message, 500);
+        } else if (data.all && data.clientUserId) {
+          const { error } = await supabase
+            .from(MA5_TABLES.calendarEntries)
+            .update({ publish_status: "published" })
+            .eq("client_user_id", data.clientUserId);
+          if (error) return jsonError(error.message, 500);
+        } else if (data.all && data.teamId) {
+          const { error } = await supabase
+            .from(MA5_TABLES.calendarEntries)
+            .update({ publish_status: "published" })
+            .eq("team_id", data.teamId);
+          if (error) return jsonError(error.message, 500);
+        }
+        return jsonOk({ ok: true });
+      }
+
+      case "assignProgram": {
+        const data = z
+          .object({
+            programId: uuid,
+            startDate: z.string().min(8),
+            clientUserId: uuid.nullable().optional(),
+            teamId: uuid.nullable().optional(),
+            publish: z.boolean().optional(),
+          })
+          .parse(json);
+        if (!data.clientUserId && !data.teamId) {
+          return jsonError("Pick a client or team");
+        }
+        const { data: assignmentRow, error } = await supabase
+          .from(MA5_TABLES.programAssignments)
+          .insert({
+            program_id: data.programId,
+            client_user_id: data.clientUserId ?? null,
+            team_id: data.teamId ?? null,
+            start_date: data.startDate,
+            status: "active",
+          })
+          .select("*")
+          .single();
+        if (error) {
+          if (error.code === "23503") {
+            return jsonError(
+              "Client must be a real profile UUID (step 4: roster).",
+            );
+          }
+          return jsonError(error.message, 500);
+        }
+        const state = await loadProgramsStateFromSupabase(supabase);
+        const entries = await materializeProgramDaysToDb({
+          supabase,
+          programId: data.programId,
+          startDate: data.startDate,
+          clientUserId: data.clientUserId,
+          teamId: data.teamId,
+          assignmentId: String(assignmentRow.id),
+          publish: data.publish ?? false,
+          programDays: state.programDays,
+          workoutsById: new Map(state.workouts.map((w) => [w.id, w])),
+        });
+        return jsonOk({
+          ok: true,
+          assignment: mapAssignmentRow(
+            assignmentRow as Record<string, unknown>,
+          ),
+          entries,
+        });
+      }
+
+      default:
+        return jsonError("Unknown action");
+    }
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return jsonError(err.issues[0]?.message ?? "Invalid request");
+    }
+    return jsonError(err instanceof Error ? err.message : "Request failed", 500);
+  }
+}
+
+/** Legacy cookie demo path when Supabase service role is not configured. */
+async function postCookie(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const exerciseId = String(form.get("exerciseId") ?? "");
+    const file = form.get("file");
+    if (!exerciseId || !(file instanceof File)) {
+      return jsonError("Missing file or exercise");
+    }
+    if (!isAllowedVideoType(file.type)) {
+      return jsonError("Use MP4, WebM, or MOV");
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      return jsonError("Video too large (max 500MB)");
     }
 
     const state = await readProgramsState();
     const idx = state.exercises.findIndex((e) => e.id === exerciseId);
     if (idx < 0) {
-      return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
+      return jsonError("Exercise not found", 404);
     }
 
     let storagePath: string | null = null;
     let demoPlaybackUrl: string | null = DEMO_UPLOAD_SAMPLE_URL;
 
-    if (isSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (isSupabaseConfigured() && getServiceSupabase()) {
       const uploaded = await uploadExerciseVideo({
         exerciseId,
         file,
@@ -92,7 +846,7 @@ export async function POST(request: Request) {
         contentType: file.type,
       });
       if ("error" in uploaded) {
-        return NextResponse.json({ error: uploaded.error }, { status: 400 });
+        return jsonError(uploaded.error);
       }
       storagePath = uploaded.path;
       demoPlaybackUrl = null;
@@ -117,23 +871,7 @@ export async function POST(request: Request) {
       const data = z
         .object({
           title: z.string().min(1).max(120),
-          category: z
-            .enum([
-              "Chest",
-              "Back",
-              "Shoulders",
-              "Legs",
-              "Hamstrings / Glutes",
-              "Arms",
-              "Core",
-              "Plyometrics",
-              "Speed & Agility",
-              "Olympic Lifts",
-              "Conditioning",
-              "Mobility",
-              "Recovery",
-            ])
-            .optional(),
+          category: categoryEnum.optional(),
           defaultParam1: z.enum(["reps", "weight_lb"]).optional(),
           defaultParam2: z.enum(["reps", "weight_lb"]).optional(),
           pointsOfPerformance: z.string().max(5000).optional(),
@@ -145,10 +883,7 @@ export async function POST(request: Request) {
       if (data.videoUrl?.trim()) {
         const provider = detectVideoSourceFromUrl(data.videoUrl);
         if (!provider) {
-          return NextResponse.json(
-            { error: "Video URL must be YouTube or Vimeo" },
-            { status: 400 },
-          );
+          return jsonError("Video URL must be YouTube or Vimeo");
         }
         videoSource = provider;
         videoUrl = data.videoUrl.trim();
@@ -175,23 +910,7 @@ export async function POST(request: Request) {
         .object({
           id: z.string(),
           title: z.string().min(1).max(120).optional(),
-          category: z
-            .enum([
-              "Chest",
-              "Back",
-              "Shoulders",
-              "Legs",
-              "Hamstrings / Glutes",
-              "Arms",
-              "Core",
-              "Plyometrics",
-              "Speed & Agility",
-              "Olympic Lifts",
-              "Conditioning",
-              "Mobility",
-              "Recovery",
-            ])
-            .optional(),
+          category: categoryEnum.optional(),
           defaultParam1: z.enum(["reps", "weight_lb"]).optional(),
           defaultParam2: z.enum(["reps", "weight_lb"]).optional(),
           pointsOfPerformance: z.string().max(5000).optional(),
@@ -200,9 +919,7 @@ export async function POST(request: Request) {
         })
         .parse(json);
       const idx = state.exercises.findIndex((e) => e.id === data.id);
-      if (idx < 0) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
+      if (idx < 0) return jsonError("Not found", 404);
       const current = state.exercises[idx];
       let next = { ...current };
       if (data.title !== undefined) next.title = data.title.trim();
@@ -224,10 +941,7 @@ export async function POST(request: Request) {
         } else {
           const provider = detectVideoSourceFromUrl(data.videoUrl);
           if (!provider) {
-            return NextResponse.json(
-              { error: "Video URL must be YouTube or Vimeo" },
-              { status: 400 },
-            );
+            return jsonError("Video URL must be YouTube or Vimeo");
           }
           next.videoSource = provider;
           next.videoUrl = data.videoUrl.trim();
@@ -265,9 +979,7 @@ export async function POST(request: Request) {
         })
         .parse(json);
       const idx = state.workouts.findIndex((w) => w.id === data.id);
-      if (idx < 0) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
+      if (idx < 0) return jsonError("Not found", 404);
       state.workouts[idx] = {
         ...state.workouts[idx],
         ...(data.title !== undefined ? { title: data.title.trim() } : {}),
@@ -299,7 +1011,9 @@ export async function POST(request: Request) {
         id: newId("wb"),
         workoutId: data.workoutId,
         sortOrder: existing.length,
-        label: data.label ?? String.fromCharCode(65 + Math.min(existing.length, 25)),
+        label:
+          data.label ??
+          String.fromCharCode(65 + Math.min(existing.length, 25)),
         sectionTitle: data.sectionTitle ?? null,
         exerciseId: data.exerciseId,
         sessionCues: data.sessionCues ?? "",
@@ -320,9 +1034,7 @@ export async function POST(request: Request) {
         })
         .parse(json);
       const idx = state.workoutBlocks.findIndex((b) => b.id === data.id);
-      if (idx < 0) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
+      if (idx < 0) return jsonError("Not found", 404);
       state.workoutBlocks[idx] = {
         ...state.workoutBlocks[idx],
         ...(data.exerciseId !== undefined
@@ -349,9 +1061,8 @@ export async function POST(request: Request) {
       const data = z.object({ id: z.string() }).parse(json);
       const inUse = state.workoutBlocks.some((b) => b.exerciseId === data.id);
       if (inUse) {
-        return NextResponse.json(
-          { error: "Exercise is used in a workout. Remove it from blocks first." },
-          { status: 400 },
+        return jsonError(
+          "Exercise is used in a workout. Remove it from blocks first.",
         );
       }
       state.exercises = state.exercises.filter((e) => e.id !== data.id);
@@ -361,14 +1072,12 @@ export async function POST(request: Request) {
     case "deleteWorkout": {
       const data = z.object({ id: z.string() }).parse(json);
       const inProgram = state.programDays.some((d) => d.workoutId === data.id);
-      const inCalendar = state.calendarEntries.some((e) => e.workoutId === data.id);
+      const inCalendar = state.calendarEntries.some(
+        (e) => e.workoutId === data.id,
+      );
       if (inProgram || inCalendar) {
-        return NextResponse.json(
-          {
-            error:
-              "Workout is used in a program or calendar. Clear those references first.",
-          },
-          { status: 400 },
+        return jsonError(
+          "Workout is used in a program or calendar. Clear those references first.",
         );
       }
       state.workouts = state.workouts.filter((w) => w.id !== data.id);
@@ -482,7 +1191,7 @@ export async function POST(request: Request) {
           (m) => m.teamId === data.teamId && m.userId === data.userId,
         )
       ) {
-        return NextResponse.json({ error: "Already on team" }, { status: 400 });
+        return jsonError("Already on team");
       }
       const member = {
         id: newId("tm"),
@@ -513,10 +1222,7 @@ export async function POST(request: Request) {
         })
         .parse(json);
       if (!data.clientUserId && !data.teamId) {
-        return NextResponse.json(
-          { error: "Pick a client or team" },
-          { status: 400 },
-        );
+        return jsonError("Pick a client or team");
       }
       const workout = state.workouts.find((w) => w.id === data.workoutId);
       const entry = {
@@ -572,10 +1278,7 @@ export async function POST(request: Request) {
         })
         .parse(json);
       if (!data.clientUserId && !data.teamId) {
-        return NextResponse.json(
-          { error: "Pick a client or team" },
-          { status: 400 },
-        );
+        return jsonError("Pick a client or team");
       }
       const assignment = {
         id: newId("asg"),
@@ -600,6 +1303,6 @@ export async function POST(request: Request) {
     }
 
     default:
-      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+      return jsonError("Unknown action");
   }
 }
