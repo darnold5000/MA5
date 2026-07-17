@@ -8,6 +8,7 @@ import {
   type ExerciseCategory,
 } from "@/features/programs/exercise-library";
 import type { Exercise, ExerciseParam } from "@/features/programs/types";
+import { VideoPlayer } from "@/lib/video/player";
 
 const PARAM_OPTIONS: { value: ExerciseParam; label: string }[] = [
   { value: "reps", label: "Reps" },
@@ -16,6 +17,8 @@ const PARAM_OPTIONS: { value: ExerciseParam; label: string }[] = [
 
 const inputClass =
   "w-full border border-[#d1d5db] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none focus:border-[#2563eb] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0";
+
+const MAX_VIDEO_MB = 500;
 
 type Props = {
   open: boolean;
@@ -40,12 +43,15 @@ export function ExerciseFormDrawer({
   const [param1, setParam1] = useState<ExerciseParam | "">("");
   const [param2, setParam2] = useState<ExerciseParam | "">("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [cues, setCues] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setPending(false);
+    setVideoFile(null);
     if (mode === "edit" && exercise) {
       setTitle(exercise.title);
       setCategory(exercise.category);
@@ -64,6 +70,16 @@ export function ExerciseFormDrawer({
   }, [open, mode, exercise]);
 
   useEffect(() => {
+    if (!videoFile) {
+      setLocalPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(videoFile);
+    setLocalPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [videoFile]);
+
+  useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -74,54 +90,92 @@ export function ExerciseFormDrawer({
 
   if (!open) return null;
 
+  async function uploadVideo(exerciseId: string, file: File) {
+    const form = new FormData();
+    form.set("exerciseId", exerciseId);
+    form.set("file", file);
+    const res = await fetch("/api/admin/programs", {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? "Video upload failed");
+    }
+    return data.exercise as Exercise;
+  }
+
   async function save() {
     if (!title.trim()) {
       setError("Title is required.");
       return;
     }
-    setPending(true);
-    setError(null);
-    const body =
-      mode === "create"
-        ? {
-            action: "createExercise",
-            title: title.trim(),
-            ...(category ? { category } : {}),
-            ...(param1 ? { defaultParam1: param1 } : {}),
-            ...(param2 ? { defaultParam2: param2 } : {}),
-            pointsOfPerformance: cues,
-            videoUrl: videoUrl.trim() || undefined,
-          }
-        : {
-            action: "updateExercise",
-            id: exercise!.id,
-            title: title.trim(),
-            ...(category ? { category } : {}),
-            ...(param1 ? { defaultParam1: param1 } : {}),
-            ...(param2 ? { defaultParam2: param2 } : {}),
-            pointsOfPerformance: cues,
-            videoUrl: videoUrl.trim() || undefined,
-          };
-
-    const res = await fetch("/api/admin/programs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    setPending(false);
-    if (!res.ok) {
-      setError(data.error ?? "Request failed");
+    if (videoFile && videoFile.size > MAX_VIDEO_MB * 1024 * 1024) {
+      setError(`Video must be ${MAX_VIDEO_MB}MB or smaller.`);
       return;
     }
-    if (data.exercise) {
-      onSaved?.(data.exercise as Exercise);
+
+    setPending(true);
+    setError(null);
+
+    try {
+      // If uploading a file, don't also send a URL (upload wins)
+      const urlToSave = videoFile ? undefined : videoUrl.trim() || undefined;
+
+      const body =
+        mode === "create"
+          ? {
+              action: "createExercise",
+              title: title.trim(),
+              ...(category ? { category } : {}),
+              ...(param1 ? { defaultParam1: param1 } : {}),
+              ...(param2 ? { defaultParam2: param2 } : {}),
+              pointsOfPerformance: cues,
+              videoUrl: urlToSave,
+            }
+          : {
+              action: "updateExercise",
+              id: exercise!.id,
+              title: title.trim(),
+              ...(category ? { category } : {}),
+              ...(param1 ? { defaultParam1: param1 } : {}),
+              ...(param2 ? { defaultParam2: param2 } : {}),
+              pointsOfPerformance: cues,
+              ...(videoFile
+                ? {}
+                : { videoUrl: urlToSave ?? null }),
+            };
+
+      const res = await fetch("/api/admin/programs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Request failed");
+      }
+
+      let saved = data.exercise as Exercise;
+      if (videoFile && saved?.id) {
+        saved = await uploadVideo(saved.id, videoFile);
+      }
+
+      onSaved?.(saved);
+      router.refresh();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      setPending(false);
     }
-    router.refresh();
-    onClose();
   }
 
   const canSave = Boolean(title.trim()) && !pending;
+  const hasExistingUpload =
+    mode === "edit" &&
+    exercise?.videoSource === "upload" &&
+    Boolean(exercise.demoPlaybackUrl || exercise.videoStoragePath);
 
   return (
     <div className="fixed inset-0 z-[80] flex justify-end">
@@ -221,17 +275,76 @@ export function ExerciseFormDrawer({
             </div>
           </div>
 
-          <Field label="Video">
-            <input
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              className={inputClass}
-              placeholder="Enter a youtube or vimeo url"
-            />
-            <div className="mt-3 flex h-36 items-center justify-center rounded border border-dashed border-[#d1d5db] bg-[#f9fafb] text-sm text-[#9ca3af]">
-              {videoUrl.trim() ? "Video URL entered" : "No Video"}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-[#111827]">Video</p>
+
+            <Field label="Upload video">
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                disabled={pending}
+                className="block w-full text-sm text-[#111827] file:mr-3 file:border-0 file:bg-[#2563eb] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setVideoFile(file);
+                  if (file) setVideoUrl("");
+                  setError(null);
+                }}
+              />
+              <span className="mt-1 block text-xs text-[#9ca3af]">
+                MP4, WebM, or MOV · max {MAX_VIDEO_MB}MB
+                {videoFile ? ` · Selected: ${videoFile.name}` : ""}
+              </span>
+            </Field>
+
+            <p className="text-center text-xs font-semibold tracking-wide text-[#9ca3af] uppercase">
+              or
+            </p>
+
+            <Field label="YouTube / Vimeo URL">
+              <input
+                value={videoUrl}
+                onChange={(e) => {
+                  setVideoUrl(e.target.value);
+                  if (e.target.value.trim()) setVideoFile(null);
+                }}
+                disabled={pending || Boolean(videoFile)}
+                className={`${inputClass} disabled:bg-[#f9fafb] disabled:text-[#9ca3af]`}
+                placeholder="Enter a youtube or vimeo url"
+              />
+            </Field>
+
+            <div className="overflow-hidden rounded border border-[#e5e7eb] bg-[#f9fafb]">
+              {localPreviewUrl ? (
+                <video
+                  className="aspect-video w-full"
+                  controls
+                  playsInline
+                  src={localPreviewUrl}
+                />
+              ) : hasExistingUpload ? (
+                <VideoPlayer
+                  videoSource="upload"
+                  playbackUrl={exercise?.demoPlaybackUrl}
+                  title={title || "Exercise"}
+                  className="aspect-video"
+                />
+              ) : videoUrl.trim() ? (
+                <VideoPlayer
+                  videoSource={
+                    videoUrl.includes("vimeo") ? "vimeo" : "youtube"
+                  }
+                  videoUrl={videoUrl}
+                  title={title || "Exercise"}
+                  className="aspect-video"
+                />
+              ) : (
+                <div className="flex h-36 items-center justify-center text-sm text-[#9ca3af]">
+                  No Video
+                </div>
+              )}
             </div>
-          </Field>
+          </div>
 
           <Field label="Points of Performance">
             <textarea
@@ -270,7 +383,9 @@ export function ExerciseFormDrawer({
             className="rounded-sm bg-[#2563eb] px-4 py-2.5 text-sm font-semibold text-white disabled:bg-[#9ca3af]"
           >
             {pending
-              ? "Saving…"
+              ? videoFile
+                ? "Uploading…"
+                : "Saving…"
               : mode === "create"
                 ? "Save Exercise"
                 : "Save Changes"}
