@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, Oswald } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { env } from "@/lib/env";
 import { siteConfig } from "@/content/site-config";
@@ -61,6 +62,7 @@ export default function RootLayout({
         </a>
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
