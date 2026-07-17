@@ -15,7 +15,7 @@ const SIDEBAR = [
   { href: "/app/bookings", label: "My Training", match: "prefix" as const },
   { href: "/app/billing", label: "Plan", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
-  { href: "/app/inbox", label: "Inbox", match: "prefix" as const },
+  { href: "/app/messages", label: "Messages", match: "messages" as const },
 ] as const;
 
 const MOBILE = [
@@ -23,11 +23,22 @@ const MOBILE = [
   { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
   { href: "/app/billing", label: "Plan", match: "prefix" as const },
-  { href: "/app/inbox", label: "Inbox", match: "prefix" as const },
+  { href: "/app/messages", label: "Messages", match: "messages" as const },
 ] as const;
 
-function isActive(pathname: string, href: string, match: "exact" | "prefix") {
+function isActive(
+  pathname: string,
+  href: string,
+  match: "exact" | "prefix" | "messages",
+) {
   if (match === "exact") return pathname === href;
+  if (match === "messages") {
+    return (
+      pathname.startsWith("/app/messages") ||
+      pathname.startsWith("/app/announcements") ||
+      pathname.startsWith("/app/inbox")
+    );
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -65,12 +76,12 @@ export function AppShell({
           </Link>
           <div className="flex items-center gap-3 sm:gap-4">
             <Link
-              href="/app/inbox"
+              href="/app/messages"
               className="relative inline-flex min-h-10 min-w-10 items-center justify-center border border-border text-muted transition hover:border-brand hover:text-foreground"
               aria-label={
                 inboxUnread > 0
-                  ? `Inbox, ${inboxUnread} unread`
-                  : "Inbox"
+                  ? `Messages, ${inboxUnread} unread`
+                  : "Messages"
               }
             >
               <svg
@@ -120,18 +131,25 @@ export function AppShell({
           <nav aria-label="App" className="flex flex-1 flex-col gap-1 p-3">
             {SIDEBAR.map((item) => {
               const active = isActive(pathname, item.href, item.match);
+              const showBadge =
+                item.href === "/app/messages" && inboxUnread > 0;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "px-3 py-2.5 text-sm tracking-wide transition",
+                    "flex items-center justify-between gap-2 px-3 py-2.5 text-sm tracking-wide transition",
                     active
                       ? "border-l-2 border-brand bg-brand/10 text-foreground"
                       : "border-l-2 border-transparent text-muted hover:text-foreground",
                   )}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {showBadge ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center bg-brand px-1 text-[10px] font-semibold text-brand-foreground">
+                      {inboxUnread > 9 ? "9+" : inboxUnread}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -185,7 +203,7 @@ export function AppShell({
                 )}
               >
                 {item.label}
-                {item.href === "/app/inbox" && inboxUnread > 0 ? (
+                {item.href === "/app/messages" && inboxUnread > 0 ? (
                   <span className="absolute top-2 right-3 size-1.5 rounded-full bg-brand" />
                 ) : null}
               </Link>

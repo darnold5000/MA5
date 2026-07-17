@@ -21,7 +21,11 @@ const SIDEBAR = [
     match: "programs" as const,
   },
   { href: "/admin/reports", label: "Reports", match: "prefix" as const },
-  { href: "/admin/inbox", label: "Inbox", match: "prefix" as const },
+  {
+    href: "/admin/messages",
+    label: "Communication",
+    match: "communication" as const,
+  },
 ] as const;
 
 const MOBILE = [
@@ -35,16 +39,29 @@ const MOBILE = [
 function isActive(
   pathname: string,
   href: string,
-  match: "exact" | "prefix" | "programs",
+  match: "exact" | "prefix" | "programs" | "communication",
 ) {
   if (match === "exact") return pathname === href;
   if (match === "programs") {
     return pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
   }
+  if (match === "communication") {
+    return (
+      pathname.startsWith("/admin/messages") ||
+      pathname.startsWith("/admin/announcements") ||
+      pathname.startsWith("/admin/inbox")
+    );
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({
+  children,
+  communicationUnread = 0,
+}: {
+  children: React.ReactNode;
+  communicationUnread?: number;
+}) {
   const pathname = usePathname();
   const [demoOpen, setDemoOpen] = useState(false);
   const programsLight =
@@ -102,12 +119,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <nav aria-label="Operations" className="flex flex-1 flex-col gap-1 p-3">
           {SIDEBAR.map((item) => {
             const active = isActive(pathname, item.href, item.match);
+            const showBadge =
+              item.match === "communication" && communicationUnread > 0;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "px-3 py-2.5 text-sm tracking-wide transition",
+                  "flex items-center justify-between gap-2 px-3 py-2.5 text-sm tracking-wide transition",
                   programsLight
                     ? active
                       ? "border-l-2 border-[var(--th-blue)] bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
@@ -117,7 +136,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                       : "border-l-2 border-transparent text-muted hover:text-foreground",
                 )}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {showBadge ? (
+                  <span className="flex h-5 min-w-5 items-center justify-center bg-brand px-1 text-[10px] font-semibold text-brand-foreground">
+                    {communicationUnread > 9 ? "9+" : communicationUnread}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

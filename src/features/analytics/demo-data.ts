@@ -64,7 +64,7 @@ export const DEMO_DAILY_OPS: DailyOpsDashboard = {
       id: "messages",
       label: "Unread messages",
       value: "3",
-      href: "/admin/inbox",
+      href: "/admin/messages",
     },
     {
       id: "failed",

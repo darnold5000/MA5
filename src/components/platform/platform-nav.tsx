@@ -11,6 +11,7 @@ const CLIENT_NAV = [
   { href: "/app/bookings", label: "My Training" },
   { href: "/app/billing", label: "Plan" },
   { href: "/app/programs", label: "Programs" },
+  { href: "/app/messages", label: "Messages" },
 ] as const;
 
 const ADMIN_NAV = [
@@ -19,7 +20,7 @@ const ADMIN_NAV = [
   { href: "/admin/clients", label: "Clients" },
   { href: "/admin/programs/library", label: "Library" },
   { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/inbox", label: "Inbox" },
+  { href: "/admin/messages", label: "Communication" },
 ] as const;
 
 export function ClientAppNav() {

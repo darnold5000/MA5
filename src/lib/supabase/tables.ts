@@ -18,6 +18,13 @@ export const MA5_TABLES = {
   programAssignments: "ma5_program_assignments",
   calendarEntries: "ma5_calendar_entries",
   workoutCompletions: "ma5_workout_completions",
+  clientWaivers: "ma5_client_waivers",
+  facilitySettings: "ma5_facility_settings",
+  messageThreads: "ma5_message_threads",
+  messages: "ma5_messages",
+  messageThreadReads: "ma5_message_thread_reads",
+  announcements: "ma5_announcements",
+  announcementRecipients: "ma5_announcement_recipients",
 } as const;
 
 export type Ma5TableName = (typeof MA5_TABLES)[keyof typeof MA5_TABLES];

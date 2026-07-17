@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-
-import { InboxBrowser } from "@/components/communication/inbox-browser";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Inbox",
+  title: "Inbox · MA5",
   robots: { index: false, follow: false },
 };
 
-export default function InboxPage() {
-  return <InboxBrowser />;
+/** Legacy route — messages live under /app/messages */
+export default function ClientInboxRedirect() {
+  redirect("/app/messages");
 }

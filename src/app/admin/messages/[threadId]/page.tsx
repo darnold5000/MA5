@@ -1,0 +1,26 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { AdminThreadView } from "@/components/communication/admin-thread-view";
+import { getThreadMessages, loadCommunicationState } from "@/features/messaging";
+
+export const metadata: Metadata = {
+  title: "Conversation · Operations",
+  robots: { index: false, follow: false },
+};
+
+type Props = { params: Promise<{ threadId: string }> };
+
+export default async function AdminMessageThreadPage({ params }: Props) {
+  const { threadId } = await params;
+  const state = await loadCommunicationState();
+  const thread = state.threads.find((t) => t.id === threadId);
+  if (!thread) notFound();
+  const messages = getThreadMessages(state, threadId);
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <AdminThreadView thread={thread} messages={messages} />
+    </div>
+  );
+}

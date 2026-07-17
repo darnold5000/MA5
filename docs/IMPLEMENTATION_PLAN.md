@@ -17,7 +17,7 @@ Companion to the product plan. Paths below reflect the **post-audit** repository
 | `demo/mindbody-replacement` | Booking, memberships, Stripe, client portal | **In progress** |
 | `demo/external-training-platform` | Placeholder TrainHeroic/Trainerize cards | Planned |
 | `demo/ma5-programs` | Exercises, workouts, programs, teams, video — built on **main** | **Built** — see `docs/PROGRAMS_IMPLEMENTATION_PLAN.md` |
-| `demo/ma5-messaging` | Basic messaging + notifications first; Communication+ as premium module | Planned — see `docs/COMMUNICATION_MODULE.md` |
+| `demo/ma5-messaging` | Basic messaging + notifications first; Communication+ as premium module | **In progress** — see `docs/COMMUNICATION_IMPLEMENTATION.md` + `docs/COMMUNICATION_PHASE2_DEFERRED.md` |
 | `demo/ma5-analytics-ai` | BI + AI insights | Planned |
 
 Internal comparison page: **`/platform-preview`** (not in public nav).

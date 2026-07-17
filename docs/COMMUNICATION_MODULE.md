@@ -120,5 +120,6 @@ Every future tenant (gym, salon, baseball academy, etc.) enables only what they 
 
 ## Build sequence reminder
 
-1. **Now (MA5):** basic 1:1 messaging + booking/system notifications (+ read/unread).  
-2. **Later (Communication+):** activity feed, announcements, groups, segments, push for messages, coach tools, AI, SMS/email campaigns.
+1. **Now (MA5 Phase 1):** 1:1 coach ↔ client DMs, one-way announcements, read/unread, in-app notifications, badges — see `docs/COMMUNICATION_IMPLEMENTATION.md`.
+2. **Later (Phase 2 deferred):** SMS, external email, advanced push, campaigns, attachments, analytics — see `docs/COMMUNICATION_PHASE2_DEFERRED.md`.
+3. **Communication+ (paid add-on positioning):** groups, segments, AI, activity feed — product backlog in this doc.

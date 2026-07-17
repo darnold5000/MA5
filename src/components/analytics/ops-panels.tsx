@@ -163,12 +163,12 @@ export function RecentSignups({ rows }: { rows: SignupRow[] }) {
 export function RecentMessages({ rows }: { rows: MessageRow[] }) {
   return (
     <section>
-      <SectionHeader eyebrow="Inbox" title="Recent messages" href="/admin/inbox" />
+      <SectionHeader eyebrow="Inbox" title="Recent messages" href="/admin/messages" />
       <div className="mt-5 divide-y divide-border border border-border bg-surface">
         {rows.map((row) => (
           <Link
             key={row.id}
-            href="/admin/inbox"
+            href="/admin/messages"
             className="block px-5 py-4 transition hover:bg-background"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
