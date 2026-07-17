@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,6 +49,7 @@ function isActive(
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [demoOpen, setDemoOpen] = useState(false);
   const programsLight =
     pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
@@ -129,6 +131,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             programsLight ? "border-[var(--th-border)]" : "border-border",
           )}
         >
+          <button
+            type="button"
+            onClick={() => setDemoOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={demoOpen}
+            className={cn(
+              "flex w-full items-center gap-2 px-3 py-2 text-left text-sm tracking-wide",
+              programsLight
+                ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                : "text-muted hover:text-foreground",
+            )}
+          >
+            <span
+              className={cn(
+                "flex size-5 shrink-0 items-center justify-center border text-[10px] font-semibold",
+                programsLight
+                  ? "border-[var(--th-blue)] text-[var(--th-blue)]"
+                  : "border-current",
+              )}
+              aria-hidden
+            >
+              ?
+            </span>
+            Demo guide
+          </button>
           <Link
             href="/admin/settings"
             className={cn(
@@ -253,7 +280,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
       </div>
 
-      <DemoPreviewChrome />
+      <DemoPreviewChrome
+        showFloatingTrigger={false}
+        open={demoOpen}
+        onOpenChange={setDemoOpen}
+      />
     </div>
   );
 }
