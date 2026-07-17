@@ -4,6 +4,7 @@ import {
   defaultCommunicationState,
   loadDemoCommunicationState,
 } from "@/features/messaging/demo-store";
+import { loadMessageableClients } from "@/features/messaging/resolve-client";
 import type {
   Announcement,
   AppNotification,
@@ -208,13 +209,40 @@ async function loadFromSupabase(
     createdAt: String(n.created_at),
   }));
 
-  // Prefer demo when DB has no communication rows yet (migration applied but empty)
+  // Prefer real DB for staff even when empty (avoid demo client-alex IDs)
   if (
     threads.length === 0 &&
     announcements.length === 0 &&
     notifications.length === 0
   ) {
+    if (isStaff) {
+      const clients = await loadMessageableClients(supabase);
+      return {
+        threads: [],
+        messagesByThread: {},
+        announcements: [],
+        notifications: [],
+        clients,
+      };
+    }
     return null;
+  }
+
+  let clients = clientIds.map((id) => ({
+    id,
+    name: profileMap.get(id)?.name ?? "Client",
+    avatarUrl: profileMap.get(id)?.avatarUrl ?? null,
+    membershipLabel: null as string | null,
+    programLabel: null as string | null,
+  }));
+
+  if (isStaff) {
+    const allClients = await loadMessageableClients(supabase);
+    const byId = new Map(clients.map((c) => [c.id, c]));
+    for (const c of allClients) {
+      if (!byId.has(c.id)) byId.set(c.id, c);
+    }
+    clients = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   return {
@@ -222,13 +250,7 @@ async function loadFromSupabase(
     messagesByThread,
     announcements,
     notifications,
-    clients: clientIds.map((id) => ({
-      id,
-      name: profileMap.get(id)?.name ?? "Client",
-      avatarUrl: profileMap.get(id)?.avatarUrl ?? null,
-      membershipLabel: null,
-      programLabel: null,
-    })),
+    clients,
   };
 }
 

@@ -17,6 +17,7 @@ import type {
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { hasCapability } from "@/lib/permissions/roles";
+import { isDemoEntityId } from "@/features/messaging/resolve-client";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (!session) {
+  if (!session || isDemoEntityId(parsed.data.threadId)) {
     const jar = await import("next/headers").then((m) => m.cookies());
     const cookieStore = await jar;
     const state = parseCommunicationState(

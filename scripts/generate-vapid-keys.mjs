@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Generate VAPID keys for MA5 Web Push.
- * Usage: node scripts/generate-vapid-keys.mjs
+ * Usage: npm run vapid-keys
  * Paste output into .env.local (never commit the private key).
  */
-const webpush = require("web-push");
+import webpush from "web-push";
 
 const keys = webpush.generateVAPIDKeys();
 

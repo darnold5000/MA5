@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 import { ClientMessagesHome } from "@/components/communication/client-messages";
 import { loadCommunicationState } from "@/features/messaging";
+import { getSessionUser } from "@/lib/auth/session";
+import { isSupabasePublicConfigured } from "@/lib/env";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Messages · MA5",
@@ -10,9 +13,14 @@ export const metadata: Metadata = {
 
 export default async function ClientMessagesPage() {
   const state = await loadCommunicationState();
-  // Demo persona is Alex; with real auth, queries scope by session
-  const mine = state.threads.filter((t) => t.clientId === "client-alex");
-  const threads = mine.length ? mine : state.threads.slice(0, 1);
+  const session =
+    isSupabasePublicConfigured() && isSupabaseConfigured()
+      ? await getSessionUser()
+      : null;
+
+  const threads = session
+    ? state.threads.filter((t) => t.clientId === session.id)
+    : state.threads.filter((t) => t.clientId === "client-alex");
 
   const unreadMessages = threads.reduce((s, t) => s + t.unreadCount, 0);
   const unreadAnnouncements = state.announcements.filter(
