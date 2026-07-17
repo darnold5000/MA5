@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { ExerciseFormDrawer } from "@/components/programs/exercise-form-drawer";
 import { ProgramGridManager } from "@/components/programs/program-grid-manager";
 import { WorkoutsManager } from "@/components/programs/workouts-manager";
+import {
+  EXERCISE_CATEGORIES,
+  type ExerciseCategory,
+} from "@/features/programs/exercise-library";
 import type {
   Exercise,
   Program,
@@ -59,6 +63,9 @@ export function LibraryWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [exerciseCategory, setExerciseCategory] = useState<
+    ExerciseCategory | ""
+  >("");
 
   const active = TABS.find((t) => t.id === tab)!;
 
@@ -106,6 +113,7 @@ export function LibraryWorkspace({
     setExerciseDrawer(null);
     setSelectedIds([]);
     setSearch("");
+    setExerciseCategory("");
     setError(null);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
@@ -152,9 +160,12 @@ export function LibraryWorkspace({
 
   const filteredExercises = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return exercises;
-    return exercises.filter((e) => e.title.toLowerCase().includes(q));
-  }, [exercises, search]);
+    return exercises.filter((e) => {
+      if (exerciseCategory && e.category !== exerciseCategory) return false;
+      if (q && !e.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [exercises, search, exerciseCategory]);
 
   const filteredWorkouts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -244,6 +255,27 @@ export function LibraryWorkspace({
               >
                 <TrashIcon />
               </button>
+              {tab === "exercises" ? (
+                <label className="relative">
+                  <span className="sr-only">Filter by type</span>
+                  <select
+                    value={exerciseCategory}
+                    onChange={(e) =>
+                      setExerciseCategory(
+                        e.target.value as ExerciseCategory | "",
+                      )
+                    }
+                    className="th-input h-10 w-44 sm:w-52"
+                  >
+                    <option value="">All types</option>
+                    {EXERCISE_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <label className="relative">
                 <span className="sr-only">Search</span>
                 <input
@@ -282,7 +314,11 @@ export function LibraryWorkspace({
                 "Points of Performance",
                 "Created",
               ]}
-              empty="No exercises yet. Create one to start your library."
+              empty={
+                exerciseCategory || search.trim()
+                  ? "No exercises match this type / search."
+                  : "No exercises yet. Create one to start your library."
+              }
               rows={filteredExercises.map((ex) => ({
                 id: ex.id,
                 cells: [
