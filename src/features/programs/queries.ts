@@ -2,9 +2,16 @@ import {
   readProgramsState,
   type ProgramsState,
 } from "@/features/programs/demo-store";
+import {
+  buildClientTrainingProgress,
+  buildCoachClientProgressRow,
+  resolveProgramsClientIds,
+} from "@/features/programs/progress";
 import { loadProgramsStateFromSupabase } from "@/features/programs/supabase-store";
 import type {
   ClientProgramDay,
+  ClientTrainingProgress,
+  CoachClientProgressRow,
   Exercise,
   WorkoutDetail,
 } from "@/features/programs/types";
@@ -69,13 +76,13 @@ export async function resolveExercisePlayback(
   return null;
 }
 
-export async function listClientProgramDays(
-  clientUserId: string,
-): Promise<ClientProgramDay[]> {
-  const state = await getProgramsState();
+function mapClientDays(
+  state: ProgramsState,
+  clientIds: string[],
+): ClientProgramDay[] {
   const teamIds = new Set(
     state.teamMembers
-      .filter((m) => m.userId === clientUserId)
+      .filter((m) => clientIds.includes(m.userId))
       .map((m) => m.teamId),
   );
 
@@ -83,7 +90,7 @@ export async function listClientProgramDays(
     .filter(
       (e) =>
         e.publishStatus === "published" &&
-        (e.clientUserId === clientUserId ||
+        ((e.clientUserId != null && clientIds.includes(e.clientUserId)) ||
           (e.teamId != null && teamIds.has(e.teamId))),
     )
     .sort((a, b) => a.entryDate.localeCompare(b.entryDate));
@@ -92,7 +99,8 @@ export async function listClientProgramDays(
     const completion =
       state.completions.find(
         (c) =>
-          c.calendarEntryId === entry.id && c.clientUserId === clientUserId,
+          c.calendarEntryId === entry.id &&
+          clientIds.includes(c.clientUserId),
       ) ?? null;
     const team = entry.teamId
       ? state.teams.find((t) => t.id === entry.teamId)
@@ -106,6 +114,44 @@ export async function listClientProgramDays(
       completion,
       sourceLabel: team ? `Team · ${team.name}` : "Individual",
     };
+  });
+}
+
+export async function listClientProgramDays(
+  clientUserId: string,
+  email?: string | null,
+): Promise<ClientProgramDay[]> {
+  const state = await getProgramsState();
+  const clientIds = resolveProgramsClientIds(clientUserId, email);
+  return mapClientDays(state, clientIds);
+}
+
+export async function getClientTrainingProgress(
+  clientUserId: string,
+  email?: string | null,
+): Promise<ClientTrainingProgress> {
+  const state = await getProgramsState();
+  const clientIds = resolveProgramsClientIds(clientUserId, email);
+  const days = mapClientDays(state, clientIds);
+  return buildClientTrainingProgress(days, state, clientIds);
+}
+
+export async function listCoachClientProgress(): Promise<
+  CoachClientProgressRow[]
+> {
+  const state = await getProgramsState();
+  const roster = await listRosterClients();
+  const rows = roster.map((client) => {
+    const days = mapClientDays(state, [client.id]);
+    return buildCoachClientProgressRow(client.id, client.name, days, state);
+  });
+
+  return rows.sort((a, b) => {
+    const statusRank = { stale: 0, watch: 1, active: 2 } as const;
+    if (statusRank[a.status] !== statusRank[b.status]) {
+      return statusRank[a.status] - statusRank[b.status];
+    }
+    return a.clientName.localeCompare(b.clientName);
   });
 }
 
@@ -156,6 +202,11 @@ export async function listRosterClients(): Promise<
 export function listClientsForPrograms(state: ProgramsState) {
   const known = new Map<string, string>();
   for (const m of state.teamMembers) known.set(m.userId, m.userName);
+  for (const a of state.assignments) {
+    if (a.clientUserId && !known.has(a.clientUserId)) {
+      known.set(a.clientUserId, a.clientUserId);
+    }
+  }
   const hasRealProfiles = [...known.keys()].some((id) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id),
   );

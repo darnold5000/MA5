@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { readDemoBookings } from "@/features/booking/demo-store";
+import { getClientTrainingProgress } from "@/features/programs/queries";
 import {
   formatCalendarDate,
   formatDurationMinutes,
@@ -127,6 +128,15 @@ export default async function ClientDashboardPage() {
     contextEyebrow = "Next workout";
   }
 
+  const trainingProgress = session
+    ? await getClientTrainingProgress(
+        session.id,
+        session.email ?? session.profile?.email,
+      )
+    : await getClientTrainingProgress("client-alex", demoClient.email);
+
+  const hasProgramWorkout = Boolean(trainingProgress.todayWorkout);
+
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -229,43 +239,59 @@ export default async function ClientDashboardPage() {
         </p>
       </section>
 
-      {isWorkoutDay ? (
-        <section className="border-b border-border pb-8">
-          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            Program
-          </p>
-          <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
-            Upper Body
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            45 min · {demoClient.programProgress.name}
-          </p>
-          <Link
-            href="/app/programs"
-            className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-          >
-            Open workout →
-          </Link>
-        </section>
-      ) : (
-        <section className="border-b border-border pb-8">
-          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            Recovery day
-          </p>
-          <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
-            Take it easy today
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Or open your program if you want optional work.
-          </p>
-          <Link
-            href="/app/programs"
-            className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
-          >
-            Open program →
-          </Link>
-        </section>
-      )}
+      <section className="border-b border-border pb-8">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Program
+        </p>
+        {trainingProgress.programTitle ? (
+          <>
+            <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
+              {hasProgramWorkout
+                ? trainingProgress.todayWorkout!.title
+                : trainingProgress.programTitle}
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              {trainingProgress.programTitle}
+              {trainingProgress.weekLabel
+                ? ` · ${trainingProgress.weekLabel}`
+                : ""}
+            </p>
+            <p className="mt-1 text-sm text-foreground">
+              {trainingProgress.completedCount} / {trainingProgress.totalCount}{" "}
+              workouts complete
+              <span className="text-muted">
+                {" "}
+                · {trainingProgress.progressPercent}%
+              </span>
+            </p>
+            <Link
+              href={
+                hasProgramWorkout
+                  ? `/app/programs/workouts/${trainingProgress.todayWorkout!.entryId}`
+                  : "/app/programs"
+              }
+              className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+            >
+              {hasProgramWorkout ? "Open workout →" : "Open program →"}
+            </Link>
+          </>
+        ) : (
+          <>
+            <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
+              No program yet
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Your coach will assign training here.
+            </p>
+            <Link
+              href="/app/programs"
+              className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+            >
+              Open programs →
+            </Link>
+          </>
+        )}
+      </section>
 
       <section className="pb-2">
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">

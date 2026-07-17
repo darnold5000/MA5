@@ -133,3 +133,9 @@ export type ClientProgramDay = {
   completion: WorkoutCompletion | null;
   sourceLabel: string;
 };
+
+export type {
+  ClientTrainingProgress,
+  CoachClientProgressRow,
+  TrainingEngagementStatus,
+} from "./progress-types";

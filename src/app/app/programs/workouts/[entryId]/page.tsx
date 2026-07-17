@@ -21,7 +21,10 @@ export default async function ClientWorkoutPage({ params }: PageProps) {
   }
 
   const { entryId } = await params;
-  const days = await listClientProgramDays(session.id);
+  const days = await listClientProgramDays(
+    session.id,
+    session.email ?? session.profile?.email,
+  );
   const day = days.find((d) => d.entry.id === entryId);
   if (!day) notFound();
 

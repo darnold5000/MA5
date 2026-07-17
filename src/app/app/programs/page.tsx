@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { ClientProgramsView } from "@/components/programs/client-programs-view";
-import { listClientProgramDays } from "@/features/programs/queries";
+import {
+  getClientTrainingProgress,
+  listClientProgramDays,
+} from "@/features/programs/queries";
 import { getSessionUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
@@ -16,7 +19,11 @@ export default async function ProgramsPage() {
     redirect("/login?next=/app/programs");
   }
 
-  const days = await listClientProgramDays(session.id);
+  const email = session.email ?? session.profile?.email;
+  const [days, progress] = await Promise.all([
+    listClientProgramDays(session.id, email),
+    getClientTrainingProgress(session.id, email),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -25,13 +32,17 @@ export default async function ProgramsPage() {
           Programs
         </p>
         <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
-          Your training plan
+          Your training
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Published workouts from your coach — individual and team assignments.
+          What you need to do today — and how you&apos;re progressing.
         </p>
       </div>
-      <ClientProgramsView days={days} clientUserId={session.id} />
+      <ClientProgramsView
+        days={days}
+        progress={progress}
+        clientUserId={session.id}
+      />
     </div>
   );
 }

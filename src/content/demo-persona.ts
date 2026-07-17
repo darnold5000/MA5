@@ -28,8 +28,8 @@ export const demoClient = {
       "Great work this week. Let’s keep Thursday’s small group on the schedule and add one recovery session.",
   },
   programProgress: {
-    name: "MA5 Foundations",
-    percent: 62,
+    name: "Strength Foundations",
+    percent: 75,
   },
 } as const;
 
