@@ -43,6 +43,8 @@ export function LibraryWorkspace({
   const router = useRouter();
   const [tab, setTab] = useState<LibraryTab>(initialTab);
   const [mode, setMode] = useState<"list" | "edit">("list");
+  const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const [creatingProgram, setCreatingProgram] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -71,12 +73,36 @@ export function LibraryWorkspace({
   function switchTab(next: LibraryTab) {
     setTab(next);
     setMode("list");
+    setEditingProgramId(null);
+    setCreatingProgram(false);
     setSelectedIds([]);
     setSearch("");
     setError(null);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
     window.history.replaceState({}, "", url.pathname + "?" + url.searchParams.toString());
+  }
+
+  function openCreate() {
+    setMode("edit");
+    setError(null);
+    if (tab === "programs") {
+      setCreatingProgram(true);
+      setEditingProgramId(null);
+    }
+  }
+
+  function openEditProgram(id: string) {
+    setEditingProgramId(id);
+    setCreatingProgram(false);
+    setMode("edit");
+    setError(null);
+  }
+
+  function backToList() {
+    setMode("list");
+    setEditingProgramId(null);
+    setCreatingProgram(false);
   }
 
   const filteredExercises = useMemo(() => {
@@ -185,7 +211,7 @@ export function LibraryWorkspace({
               <button
                 type="button"
                 className="th-btn-primary"
-                onClick={() => setMode("edit")}
+                onClick={openCreate}
               >
                 + {active.createLabel}
               </button>
@@ -271,7 +297,7 @@ export function LibraryWorkspace({
                 ],
                 selected: selectedIds.includes(p.id),
                 onToggle: () => toggleSelect(p.id),
-                onEdit: () => setMode("edit"),
+                onEdit: () => openEditProgram(p.id),
                 onDelete: () => void deleteOne(p.id),
               }))}
             />
@@ -279,16 +305,18 @@ export function LibraryWorkspace({
         </div>
       ) : (
         <div className="space-y-4 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setMode("list")}
-              className="th-link text-sm"
-            >
-              ← Back to {active.label}
-            </button>
-            <p className="text-sm font-semibold">{active.createLabel} / Edit</p>
-          </div>
+          {tab !== "programs" ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={backToList}
+                className="th-link text-sm"
+              >
+                ← Back to {active.label}
+              </button>
+              <p className="text-sm font-semibold">{active.createLabel} / Edit</p>
+            </div>
+          ) : null}
           {error ? (
             <p className="text-sm text-[var(--th-danger)]" role="alert">
               {error}
@@ -309,6 +337,15 @@ export function LibraryWorkspace({
               programs={programs}
               programDays={programDays}
               workouts={workouts}
+              workoutBlocks={workoutBlocks}
+              exercises={exercises}
+              initialProgramId={editingProgramId}
+              startInCreate={creatingProgram}
+              onBackToList={backToList}
+              onProgramCreated={(id) => {
+                setCreatingProgram(false);
+                setEditingProgramId(id);
+              }}
             />
           ) : null}
         </div>
