@@ -14,7 +14,11 @@ const SIDEBAR = [
   { href: "/admin", label: "Home", match: "exact" as const },
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
-  { href: "/admin/programs", label: "Programs", match: "prefix" as const },
+  {
+    href: "/admin/programs/library",
+    label: "Library",
+    match: "programs" as const,
+  },
   { href: "/admin/inbox", label: "Inbox", match: "prefix" as const },
 ] as const;
 
@@ -22,22 +26,52 @@ const MOBILE = [
   { href: "/admin", label: "Home", match: "exact" as const },
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
-  { href: "/admin/programs", label: "Programs", match: "prefix" as const },
+  {
+    href: "/admin/programs/library",
+    label: "Library",
+    match: "programs" as const,
+  },
   { href: "/admin/settings", label: "More", match: "prefix" as const },
 ] as const;
 
-function isActive(pathname: string, href: string, match: "exact" | "prefix") {
+function isActive(
+  pathname: string,
+  href: string,
+  match: "exact" | "prefix" | "programs",
+) {
   if (match === "exact") return pathname === href;
+  if (match === "programs") {
+    return pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const programsLight =
+    pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
   return (
-    <div className="flex min-h-full flex-1 bg-background">
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-        <div className="border-b border-border px-4 py-5">
+    <div
+      className={cn(
+        "flex min-h-full flex-1",
+        programsLight ? "programs-th bg-[var(--th-bg)]" : "bg-background",
+      )}
+    >
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r lg:flex",
+          programsLight
+            ? "border-[var(--th-border)] bg-[var(--th-surface)]"
+            : "border-border bg-surface",
+        )}
+      >
+        <div
+          className={cn(
+            "border-b px-4 py-5",
+            programsLight ? "border-[var(--th-border)]" : "border-border",
+          )}
+        >
           <Link href="/admin" className="flex items-center gap-3">
             <Image
               src="/images/brand/ma5-logo.jpeg"
@@ -47,10 +81,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className="h-9 w-9 rounded-full object-cover"
             />
             <div>
-              <span className="block font-display text-lg tracking-[0.08em] uppercase">
+              <span
+                className={cn(
+                  "block font-display text-lg tracking-[0.08em] uppercase",
+                  programsLight && "text-[var(--th-text)]",
+                )}
+              >
                 {siteConfig.shortName}
               </span>
-              <span className="text-[10px] tracking-wide text-muted uppercase">
+              <span
+                className={cn(
+                  "text-[10px] tracking-wide uppercase",
+                  programsLight ? "text-[var(--th-muted)]" : "text-muted",
+                )}
+              >
                 Operations
               </span>
             </div>
@@ -65,9 +109,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={cn(
                   "px-3 py-2.5 text-sm tracking-wide transition",
-                  active
-                    ? "border-l-2 border-brand bg-brand/10 text-foreground"
-                    : "border-l-2 border-transparent text-muted hover:text-foreground",
+                  programsLight
+                    ? active
+                      ? "border-l-2 border-[var(--th-blue)] bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
+                      : "border-l-2 border-transparent text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                    : active
+                      ? "border-l-2 border-brand bg-brand/10 text-foreground"
+                      : "border-l-2 border-transparent text-muted hover:text-foreground",
                 )}
               >
                 {item.label}
@@ -75,23 +123,50 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="mt-auto space-y-1 border-t border-border p-4">
+        <div
+          className={cn(
+            "mt-auto space-y-1 border-t p-4",
+            programsLight ? "border-[var(--th-border)]" : "border-border",
+          )}
+        >
           <Link
             href="/admin/settings"
-            className="block px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground"
+            className={cn(
+              "block px-3 py-2 text-sm tracking-wide",
+              programsLight
+                ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                : "text-muted hover:text-foreground",
+            )}
           >
             Settings
           </Link>
           <ClientHubPreview
             label="Preview client view"
-            className="block w-full px-3 py-2"
+            className={cn(
+              "block w-full px-3 py-2",
+              programsLight && "text-[var(--th-muted)]",
+            )}
           />
-          <SignOutButton className="block w-full px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground" />
+          <SignOutButton
+            className={cn(
+              "block w-full px-3 py-2 text-sm tracking-wide",
+              programsLight
+                ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                : "text-muted hover:text-foreground",
+            )}
+          />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 lg:hidden">
+        <header
+          className={cn(
+            "flex items-center justify-between border-b px-4 py-3 lg:hidden",
+            programsLight
+              ? "border-[var(--th-border)] bg-[var(--th-surface)]"
+              : "border-border bg-surface",
+          )}
+        >
           <Link href="/admin" className="flex items-center gap-2">
             <Image
               src="/images/brand/ma5-logo.jpeg"
@@ -101,10 +176,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className="h-8 w-8 rounded-full object-cover"
             />
             <div>
-              <span className="block font-display text-sm tracking-wide uppercase">
+              <span
+                className={cn(
+                  "block font-display text-sm tracking-wide uppercase",
+                  programsLight && "text-[var(--th-text)]",
+                )}
+              >
                 {siteConfig.shortName}
               </span>
-              <span className="text-[10px] tracking-wide text-muted uppercase">
+              <span
+                className={cn(
+                  "text-[10px] tracking-wide uppercase",
+                  programsLight ? "text-[var(--th-muted)]" : "text-muted",
+                )}
+              >
                 Operations
               </span>
             </div>
@@ -114,17 +199,35 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               label="Preview"
               className="text-xs font-semibold tracking-wide uppercase"
             />
-            <SignOutButton className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground" />
+            <SignOutButton
+              className={cn(
+                "text-xs font-semibold tracking-wide uppercase",
+                programsLight
+                  ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                  : "text-muted hover:text-foreground",
+              )}
+            />
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main
+          id="main-content"
+          className={cn(
+            "flex-1 px-4 py-6 sm:px-6 lg:px-8",
+            programsLight && "bg-[var(--th-bg)] text-[var(--th-text)]",
+          )}
+        >
           {children}
         </main>
 
         <nav
           aria-label="Operations mobile"
-          className="sticky bottom-0 grid grid-cols-5 border-t border-border bg-surface lg:hidden"
+          className={cn(
+            "sticky bottom-0 grid grid-cols-5 border-t lg:hidden",
+            programsLight
+              ? "border-[var(--th-border)] bg-[var(--th-surface)]"
+              : "border-border bg-surface",
+          )}
         >
           {MOBILE.map((item) => {
             const active = isActive(pathname, item.href, item.match);
@@ -134,7 +237,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={cn(
                   "flex min-h-14 flex-col items-center justify-center px-1 text-[10px] font-semibold tracking-wide uppercase",
-                  active ? "text-brand" : "text-muted",
+                  programsLight
+                    ? active
+                      ? "text-[var(--th-blue)]"
+                      : "text-[var(--th-muted)]"
+                    : active
+                      ? "text-brand"
+                      : "text-muted",
                 )}
               >
                 {item.label}

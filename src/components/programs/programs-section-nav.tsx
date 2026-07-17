@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { id: "overview", href: "/admin/programs", label: "Overview" },
-  { id: "library", href: "/admin/programs/library", label: "Library" },
   { id: "teams", href: "/admin/programs/teams", label: "Teams" },
   { id: "assign", href: "/admin/programs/assign", label: "Assign" },
+  { id: "library", href: "/admin/programs/library", label: "Library" },
 ] as const;
 
 export function ProgramsSectionNav({
@@ -17,7 +17,7 @@ export function ProgramsSectionNav({
   return (
     <nav
       aria-label="Programs sections"
-      className="flex flex-wrap gap-1 border-b border-[var(--th-border)] pb-1"
+      className="flex flex-wrap items-center justify-end gap-1 border-b border-[var(--th-border)] pb-1"
     >
       {ITEMS.map((item) => (
         <Link

@@ -23,9 +23,9 @@ const LINKS = [
     body: "Publish and edit sessions.",
   },
   {
-    href: "/admin/programs",
-    title: "Programs",
-    body: "Exercise library, workouts, teams, and client assignment.",
+    href: "/admin/programs/library",
+    title: "Library",
+    body: "Programs, sessions, and exercises — create, edit, delete.",
   },
 ] as const;
 
