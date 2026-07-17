@@ -31,10 +31,11 @@ export function DemoPreviewChrome() {
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          "group fixed right-3 bottom-20 z-[60] flex items-center gap-2 px-3 py-2.5 text-left shadow-lg transition md:bottom-4",
+          "group fixed bottom-20 flex items-center gap-2 px-3 py-2.5 text-left shadow-lg transition md:bottom-4",
+          // Programs drawers/actions sit bottom-right — keep guide out of the way
           onProgramsLight
-            ? "border border-[#2563eb] bg-white text-[#111827] hover:bg-[#2563eb] hover:text-white"
-            : "border border-brand bg-surface hover:bg-brand hover:text-brand-foreground",
+            ? "left-3 z-40 border border-[#2563eb] bg-white text-[#111827] hover:bg-[#2563eb] hover:text-white"
+            : "right-3 z-[60] border border-brand bg-surface hover:bg-brand hover:text-brand-foreground",
         )}
       >
         <span

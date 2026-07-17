@@ -101,9 +101,23 @@ body {
   color: var(--th-text);
 }
 
-.programs-th .th-input:focus {
-  outline: 2px solid color-mix(in srgb, var(--th-blue) 45%, transparent);
-  outline-offset: 1px;
+.programs-th .th-input:focus,
+.programs-th .th-input:focus-visible {
+  outline: none;
+  border-color: var(--th-blue);
+  box-shadow: none;
+}
+
+/* Soften brand pink focus ring inside Programs UI */
+.programs-th :focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--th-blue) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.programs-th input:focus-visible,
+.programs-th select:focus-visible,
+.programs-th textarea:focus-visible {
+  outline: none;
 }
 
 .programs-th .th-btn-primary {

@@ -15,16 +15,23 @@ const PARAM_OPTIONS: { value: ExerciseParam; label: string }[] = [
 ];
 
 const inputClass =
-  "w-full border border-[#d1d5db] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]";
+  "w-full border border-[#d1d5db] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none focus:border-[#2563eb] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0";
 
 type Props = {
   open: boolean;
   mode: "create" | "edit";
   exercise?: Exercise | null;
   onClose: () => void;
+  onSaved?: (exercise: Exercise) => void;
 };
 
-export function ExerciseFormDrawer({ open, mode, exercise, onClose }: Props) {
+export function ExerciseFormDrawer({
+  open,
+  mode,
+  exercise,
+  onClose,
+  onSaved,
+}: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +114,9 @@ export function ExerciseFormDrawer({ open, mode, exercise, onClose }: Props) {
       setError(data.error ?? "Request failed");
       return;
     }
+    if (data.exercise) {
+      onSaved?.(data.exercise as Exercise);
+    }
     router.refresh();
     onClose();
   }
@@ -114,7 +124,7 @@ export function ExerciseFormDrawer({ open, mode, exercise, onClose }: Props) {
   const canSave = Boolean(title.trim()) && !pending;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[80] flex justify-end">
       <button
         type="button"
         className="absolute inset-0 bg-black/40"

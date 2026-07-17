@@ -8,6 +8,7 @@ import { ProgramGridManager } from "@/components/programs/program-grid-manager";
 import { WorkoutsManager } from "@/components/programs/workouts-manager";
 import {
   EXERCISE_CATEGORIES,
+  isLibraryExerciseId,
   type ExerciseCategory,
 } from "@/features/programs/exercise-library";
 import type {
@@ -59,8 +60,10 @@ export function LibraryWorkspace({
   const [exerciseDrawer, setExerciseDrawer] =
     useState<ExerciseDrawerState>(null);
   const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
+  const [localExercises, setLocalExercises] = useState<Exercise[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [exerciseCategory, setExerciseCategory] = useState<
@@ -77,6 +80,17 @@ export function LibraryWorkspace({
     );
   }, [programs, localPrograms]);
 
+  const mergedExercises = useMemo(() => {
+    const byId = new Map(exercises.map((e) => [e.id, e]));
+    for (const e of localExercises) byId.set(e.id, e);
+    return Array.from(byId.values()).sort((a, b) => {
+      const aLib = isLibraryExerciseId(a.id);
+      const bLib = isLibraryExerciseId(b.id);
+      if (aLib !== bLib) return aLib ? 1 : -1;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+  }, [exercises, localExercises]);
+
   useEffect(() => {
     const ids = new Set(programs.map((p) => p.id));
     setLocalPrograms((prev) => {
@@ -84,6 +98,20 @@ export function LibraryWorkspace({
       return next.length === prev.length ? prev : next;
     });
   }, [programs]);
+
+  useEffect(() => {
+    const ids = new Set(exercises.map((e) => e.id));
+    setLocalExercises((prev) => {
+      const next = prev.filter((e) => !ids.has(e.id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [exercises]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 3500);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   async function post(body: unknown) {
     setPending(true);
@@ -160,12 +188,12 @@ export function LibraryWorkspace({
 
   const filteredExercises = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return exercises.filter((e) => {
+    return mergedExercises.filter((e) => {
       if (exerciseCategory && e.category !== exerciseCategory) return false;
       if (q && !e.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [exercises, search, exerciseCategory]);
+  }, [mergedExercises, search, exerciseCategory]);
 
   const filteredWorkouts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -304,6 +332,14 @@ export function LibraryWorkspace({
               {error}
             </p>
           ) : null}
+          {toast ? (
+            <p
+              className="mb-3 rounded-sm border border-[#86efac] bg-[#f0fdf4] px-3 py-2 text-sm font-medium text-[#166534]"
+              role="status"
+            >
+              {toast}
+            </p>
+          ) : null}
 
           {tab === "exercises" ? (
             <LibraryTable
@@ -391,10 +427,20 @@ export function LibraryWorkspace({
             mode={exerciseDrawer?.mode === "edit" ? "edit" : "create"}
             exercise={
               exerciseDrawer?.mode === "edit"
-                ? (exercises.find((e) => e.id === exerciseDrawer.id) ?? null)
+                ? (mergedExercises.find((e) => e.id === exerciseDrawer.id) ??
+                  null)
                 : null
             }
             onClose={() => setExerciseDrawer(null)}
+            onSaved={(ex) => {
+              setLocalExercises((prev) => [
+                ex,
+                ...prev.filter((e) => e.id !== ex.id),
+              ]);
+              setExerciseCategory("");
+              setSearch("");
+              setToast(`Saved “${ex.title}” — it’s at the top of your list.`);
+            }}
           />
         </div>
       ) : (
@@ -408,7 +454,7 @@ export function LibraryWorkspace({
             <WorkoutsManager
               workouts={workouts}
               blocks={workoutBlocks}
-              exercises={exercises}
+              exercises={mergedExercises}
               startFresh={creatingSession}
               focusWorkoutId={editingSessionId}
               onBack={backToList}
@@ -424,7 +470,7 @@ export function LibraryWorkspace({
               programDays={programDays}
               workouts={workouts}
               workoutBlocks={workoutBlocks}
-              exercises={exercises}
+              exercises={mergedExercises}
               initialProgramId={editingProgramId}
               startInCreate={creatingProgram}
               onBackToList={backToList}
