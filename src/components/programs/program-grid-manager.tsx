@@ -407,6 +407,8 @@ export function ProgramGridManager({
               exercises={exercises}
               focusWorkoutId={editingDay.workoutId}
               embedded
+              onBack={() => setEditingDay(null)}
+              onSaved={() => setEditingDay(null)}
             />
           </div>
         </div>

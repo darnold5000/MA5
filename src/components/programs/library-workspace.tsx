@@ -458,9 +458,8 @@ export function LibraryWorkspace({
               startFresh={creatingSession}
               focusWorkoutId={editingSessionId}
               onBack={backToList}
-              onSaved={(id) => {
-                setCreatingSession(false);
-                setEditingSessionId(id);
+              onSaved={() => {
+                backToList();
               }}
             />
           ) : null}
