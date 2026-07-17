@@ -80,8 +80,8 @@ export function TeamsManager({
 
   return (
     <div className="space-y-6">
-      <div className="border border-border bg-surface p-5">
-        <h2 className="font-display text-xl tracking-wide uppercase">
+      <div className="th-card p-5">
+        <h2 className="text-lg font-bold">
           Create team
         </h2>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -90,7 +90,7 @@ export function TeamsManager({
             onChange={(e) => setName(e.target.value)}
             maxLength={75}
             placeholder="Performance Group"
-            className="min-h-11 w-72 border border-border bg-background px-3"
+            className="min-h-11 w-72 border border-[var(--th-border)] bg-white px-3"
           />
           <button
             type="button"
@@ -102,16 +102,16 @@ export function TeamsManager({
                 setName("");
               }
             }}
-            className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+            className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
           >
             Create team
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto border border-border">
+      <div className="overflow-x-auto border border-[var(--th-border)]">
         <table className="min-w-full text-sm">
-          <thead className="bg-surface text-left text-xs tracking-wide text-muted uppercase">
+          <thead className="bg-white text-left text-xs tracking-wide th-muted uppercase">
             <tr>
               <th className="px-3 py-2">Team</th>
               <th className="px-3 py-2">Athletes</th>
@@ -129,7 +129,7 @@ export function TeamsManager({
                 <tr
                   key={t.id}
                   className={`cursor-pointer border-t border-border ${
-                    selectedId === t.id ? "bg-brand/10" : "bg-surface"
+                    selectedId === t.id ? "bg-brand/10" : "bg-white"
                   }`}
                   onClick={() => setSelectedId(t.id)}
                 >
@@ -138,7 +138,7 @@ export function TeamsManager({
                   </td>
                   <td className="px-3 py-3">{count}</td>
                   <td className="px-3 py-3">{sessionCount}</td>
-                  <td className="px-3 py-3 text-muted">
+                  <td className="px-3 py-3 th-muted">
                     {t.createdAt.slice(0, 10)}
                   </td>
                 </tr>
@@ -150,36 +150,36 @@ export function TeamsManager({
 
       {selected ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          <section className="border border-border bg-surface p-5">
-            <h3 className="font-display text-xl tracking-wide uppercase">
+          <section className="th-card p-5">
+            <h3 className="text-lg font-bold">
               Roster · {selected.name}
             </h3>
             <ul className="mt-3 space-y-2">
               {members.map((m) => (
                 <li
                   key={m.id}
-                  className="flex items-center justify-between border border-border bg-background px-3 py-2"
+                  className="flex items-center justify-between border border-[var(--th-border)] bg-white px-3 py-2"
                 >
                   <span>{m.userName}</span>
                   <button
                     type="button"
                     disabled={pending}
                     onClick={() => post({ action: "removeTeamMember", id: m.id })}
-                    className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-brand"
+                    className="text-xs font-semibold tracking-wide th-muted uppercase hover:text-[var(--th-blue)]"
                   >
                     Remove
                   </button>
                 </li>
               ))}
               {members.length === 0 ? (
-                <li className="text-sm text-muted">No athletes yet.</li>
+                <li className="text-sm th-muted">No athletes yet.</li>
               ) : null}
             </ul>
             <div className="mt-4 flex flex-wrap gap-2">
               <select
                 value={memberId}
                 onChange={(e) => setMemberId(e.target.value)}
-                className="min-h-11 border border-border bg-background px-3"
+                className="th-input"
               >
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -200,16 +200,16 @@ export function TeamsManager({
                     userName: client.name,
                   });
                 }}
-                className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
               >
                 Add athlete
               </button>
             </div>
           </section>
 
-          <section className="border border-border bg-surface p-5">
+          <section className="th-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-display text-xl tracking-wide uppercase">
+              <h3 className="text-lg font-bold">
                 Team calendar
               </h3>
               <button
@@ -222,7 +222,7 @@ export function TeamsManager({
                     teamId: selected.id,
                   })
                 }
-                className="text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+                className="text-xs font-semibold tracking-wide text-[var(--th-blue)] uppercase hover:underline"
               >
                 Publish all
               </button>
@@ -231,16 +231,16 @@ export function TeamsManager({
               {entries.map((e) => (
                 <li
                   key={e.id}
-                  className="border border-border bg-background px-3 py-2 text-sm"
+                  className="border border-[var(--th-border)] bg-white px-3 py-2 text-sm"
                 >
                   <span className="font-semibold">{e.entryDate}</span> · {e.title}{" "}
-                  <span className="text-xs text-muted uppercase">
+                  <span className="text-xs th-muted uppercase">
                     {e.publishStatus}
                   </span>
                 </li>
               ))}
               {entries.length === 0 ? (
-                <li className="text-sm text-muted">No sessions yet.</li>
+                <li className="text-sm th-muted">No sessions yet.</li>
               ) : null}
             </ul>
             <div className="mt-4 space-y-2 border-t border-border pt-4">
@@ -251,12 +251,12 @@ export function TeamsManager({
                 type="date"
                 value={entryDate}
                 onChange={(e) => setEntryDate(e.target.value)}
-                className="min-h-11 w-full border border-border bg-background px-3"
+                className="th-input"
               />
               <select
                 value={workoutId}
                 onChange={(e) => setWorkoutId(e.target.value)}
-                className="min-h-11 w-full border border-border bg-background px-3"
+                className="th-input"
               >
                 {workouts.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -276,7 +276,7 @@ export function TeamsManager({
                     publish: false,
                   })
                 }
-                className="inline-flex min-h-11 w-full items-center justify-center border border-border px-4 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center border border-[var(--th-border)] px-4 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
               >
                 Add from library (draft)
               </button>
@@ -288,7 +288,7 @@ export function TeamsManager({
               <select
                 value={programId}
                 onChange={(e) => setProgramId(e.target.value)}
-                className="min-h-11 w-full border border-border bg-background px-3"
+                className="th-input"
               >
                 {programs.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -300,7 +300,7 @@ export function TeamsManager({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="min-h-11 w-full border border-border bg-background px-3"
+                className="th-input"
               />
               <button
                 type="button"
@@ -314,7 +314,7 @@ export function TeamsManager({
                     publish: true,
                   })
                 }
-                className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
               >
                 Assign & publish
               </button>
@@ -324,7 +324,7 @@ export function TeamsManager({
       ) : null}
 
       {error ? (
-        <p className="text-sm text-brand" role="alert">
+        <p className="text-sm text-[var(--th-blue)]" role="alert">
           {error}
         </p>
       ) : null}

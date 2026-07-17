@@ -257,6 +257,7 @@ export async function POST(request: Request) {
       const data = z
         .object({
           id: z.string(),
+          exerciseId: z.string().optional(),
           sessionCues: z.string().max(2000).optional(),
           sectionTitle: z.string().max(80).nullable().optional(),
           sets: z.array(setSchema).optional(),
@@ -268,6 +269,9 @@ export async function POST(request: Request) {
       }
       state.workoutBlocks[idx] = {
         ...state.workoutBlocks[idx],
+        ...(data.exerciseId !== undefined
+          ? { exerciseId: data.exerciseId }
+          : {}),
         ...(data.sessionCues !== undefined
           ? { sessionCues: data.sessionCues }
           : {}),

@@ -15,7 +15,7 @@ export function ProgramsLibraryNav({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="Programs library"
-      className="flex flex-wrap gap-1 border-b border-border pb-3"
+      className="flex flex-wrap gap-1 border-b border-[var(--th-border)] pb-1"
     >
       {TABS.map((tab) => {
         const active =
@@ -29,8 +29,8 @@ export function ProgramsLibraryNav({ pathname }: { pathname: string }) {
             className={cn(
               "px-3 py-2 text-xs font-semibold tracking-wide uppercase transition",
               active
-                ? "border-b-2 border-brand text-foreground"
-                : "text-muted hover:text-foreground",
+                ? "border-b-2 border-[var(--th-blue)] text-[var(--th-blue)]"
+                : "text-[var(--th-muted)] hover:text-[var(--th-text)]",
             )}
           >
             {tab.label}

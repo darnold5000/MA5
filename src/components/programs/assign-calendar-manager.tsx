@@ -65,7 +65,7 @@ export function AssignCalendarManager({
 
   return (
     <div className="space-y-6">
-      <div className="border border-border bg-surface p-5">
+      <div className="th-card p-5">
         <label className="space-y-1 text-sm">
           <span className="text-xs font-semibold tracking-wide uppercase">
             Client
@@ -73,7 +73,7 @@ export function AssignCalendarManager({
           <select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            className="mt-1 min-h-11 w-full max-w-md border border-border bg-background px-3"
+            className="mt-1 th-input max-w-md"
           >
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
@@ -85,8 +85,8 @@ export function AssignCalendarManager({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="border border-border bg-surface p-5">
-          <h2 className="font-display text-xl tracking-wide uppercase">
+        <section className="th-card p-5">
+          <h2 className="text-lg font-bold">
             Add workout day
           </h2>
           <div className="mt-4 space-y-3">
@@ -94,12 +94,12 @@ export function AssignCalendarManager({
               type="date"
               value={entryDate}
               onChange={(e) => setEntryDate(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3"
+              className="th-input"
             />
             <select
               value={workoutId}
               onChange={(e) => setWorkoutId(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3"
+              className="th-input"
             >
               {workouts.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -119,7 +119,7 @@ export function AssignCalendarManager({
                   publish: false,
                 })
               }
-              className="inline-flex min-h-11 items-center border border-border px-5 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
+              className="inline-flex min-h-11 items-center border border-[var(--th-border)] px-5 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
             >
               Add draft
             </button>
@@ -135,22 +135,22 @@ export function AssignCalendarManager({
                   publish: true,
                 })
               }
-              className="ml-2 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+              className="ml-2 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
             >
               Add & publish
             </button>
           </div>
         </section>
 
-        <section className="border border-border bg-surface p-5">
-          <h2 className="font-display text-xl tracking-wide uppercase">
+        <section className="th-card p-5">
+          <h2 className="text-lg font-bold">
             Assign program
           </h2>
           <div className="mt-4 space-y-3">
             <select
               value={programId}
               onChange={(e) => setProgramId(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3"
+              className="th-input"
             >
               {programs.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -162,7 +162,7 @@ export function AssignCalendarManager({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3"
+              className="th-input"
             />
             <button
               type="button"
@@ -176,7 +176,7 @@ export function AssignCalendarManager({
                   publish: true,
                 })
               }
-              className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+              className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
             >
               Assign & publish
             </button>
@@ -184,9 +184,9 @@ export function AssignCalendarManager({
         </section>
       </div>
 
-      <section className="border border-border bg-surface p-5">
+      <section className="th-card p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl tracking-wide uppercase">
+          <h2 className="text-lg font-bold">
             Calendar
           </h2>
           <button
@@ -199,7 +199,7 @@ export function AssignCalendarManager({
                 clientUserId: clientId,
               })
             }
-            className="text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
+            className="text-xs font-semibold tracking-wide text-[var(--th-blue)] uppercase hover:underline"
           >
             Publish all drafts
           </button>
@@ -208,24 +208,24 @@ export function AssignCalendarManager({
           {entries.map((e) => (
             <li
               key={e.id}
-              className="flex flex-wrap items-center justify-between gap-2 border border-border bg-background px-3 py-2 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 border border-[var(--th-border)] bg-white px-3 py-2 text-sm"
             >
               <span>
                 <span className="font-semibold">{e.entryDate}</span> · {e.title}
               </span>
-              <span className="text-xs tracking-wide text-muted uppercase">
+              <span className="text-xs tracking-wide th-muted uppercase">
                 {e.publishStatus} · {e.source}
               </span>
             </li>
           ))}
           {entries.length === 0 ? (
-            <li className="text-sm text-muted">No calendar entries yet.</li>
+            <li className="text-sm th-muted">No calendar entries yet.</li>
           ) : null}
         </ul>
       </section>
 
       {error ? (
-        <p className="text-sm text-brand" role="alert">
+        <p className="text-sm text-[var(--th-blue)]" role="alert">
           {error}
         </p>
       ) : null}

@@ -65,3 +65,91 @@ body {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
+
+/* TrainHeroic-inspired light theme — scoped to Programs admin */
+.programs-th {
+  --th-bg: #f3f4f6;
+  --th-surface: #ffffff;
+  --th-surface-muted: #f3f4f6;
+  --th-text: #111827;
+  --th-muted: #6b7280;
+  --th-border: #e5e7eb;
+  --th-border-strong: #d1d5db;
+  --th-blue: #2563eb;
+  --th-blue-hover: #1d4ed8;
+  --th-yellow: #eab308;
+  --th-danger: #dc2626;
+  background: var(--th-bg);
+  color: var(--th-text);
+}
+
+.programs-th .th-card {
+  background: var(--th-surface);
+  border: 1px solid var(--th-border);
+}
+
+.programs-th .th-muted {
+  color: var(--th-muted);
+}
+
+.programs-th .th-input {
+  min-height: 2.5rem;
+  width: 100%;
+  border: 1px solid var(--th-border);
+  background: var(--th-surface);
+  padding: 0.5rem 0.75rem;
+  color: var(--th-text);
+}
+
+.programs-th .th-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--th-blue) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.programs-th .th-btn-primary {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--th-blue);
+  padding: 0 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.programs-th .th-btn-primary:hover {
+  background: var(--th-blue-hover);
+}
+
+.programs-th .th-btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.programs-th .th-btn-ghost {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  border: 1px solid var(--th-border-strong);
+  background: var(--th-surface);
+  padding: 0 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--th-text);
+}
+
+.programs-th .th-link {
+  color: var(--th-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.programs-th .th-bar {
+  background: var(--th-surface-muted);
+  border: 1px solid var(--th-border);
+}
+

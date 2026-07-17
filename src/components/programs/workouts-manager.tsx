@@ -3,8 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Exercise, Workout, WorkoutBlock } from "@/features/programs/types";
-import { VideoPlayer } from "@/lib/video/player";
+import { ExerciseBlockCard } from "@/components/programs/exercise-block-card";
+import type {
+  Exercise,
+  Workout,
+  WorkoutBlock,
+  WorkoutBlockSet,
+} from "@/features/programs/types";
 
 type Props = {
   workouts: Workout[];
@@ -22,15 +27,21 @@ export function WorkoutsManager({ workouts, blocks, exercises }: Props) {
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [exerciseId, setExerciseId] = useState(exercises[0]?.id ?? "");
+  const [localBlocks, setLocalBlocks] = useState<WorkoutBlock[] | null>(null);
 
   const selected = workouts.find((w) => w.id === selectedId) ?? null;
-  const selectedBlocks = useMemo(
+  const serverBlocks = useMemo(
     () =>
       blocks
         .filter((b) => b.workoutId === selectedId)
         .sort((a, b) => a.sortOrder - b.sortOrder),
     [blocks, selectedId],
   );
+  const selectedBlocks = localBlocks ?? serverBlocks;
+
+  function syncLocal(next: WorkoutBlock[]) {
+    setLocalBlocks(next);
+  }
 
   async function post(body: unknown) {
     setPending(true);
@@ -46,37 +57,42 @@ export function WorkoutsManager({ workouts, blocks, exercises }: Props) {
       setError(data.error ?? "Request failed");
       return null;
     }
+    setLocalBlocks(null);
     router.refresh();
     return data;
   }
 
+  function patchBlockLocal(id: string, patch: Partial<WorkoutBlock>) {
+    const base = localBlocks ?? serverBlocks;
+    syncLocal(base.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  }
+
   return (
     <div className="space-y-6">
-      <div className="border border-border bg-surface p-5">
-        <h2 className="font-display text-xl tracking-wide uppercase">
-          Create workout
-        </h2>
+      <div className="th-card p-5">
+        <h2 className="text-lg font-bold text-[var(--th-text)]">Create workout</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 text-sm sm:col-span-2">
-            <span className="text-xs font-semibold tracking-wide uppercase">
+            <span className="text-xs font-semibold uppercase tracking-wide th-muted">
               Title
             </span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="min-h-11 w-full border border-border bg-background px-3"
+              className="th-input"
               placeholder="Upper Body Strength"
             />
           </label>
           <label className="space-y-1 text-sm sm:col-span-2">
-            <span className="text-xs font-semibold tracking-wide uppercase">
+            <span className="text-xs font-semibold uppercase tracking-wide th-muted">
               Coach instructions
             </span>
             <textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
               rows={2}
-              className="w-full border border-border bg-background px-3 py-2"
+              className="th-input min-h-[4rem]"
+              placeholder="Use this area to help the athlete understand goals for today's session."
             />
           </label>
         </div>
@@ -95,52 +111,79 @@ export function WorkoutsManager({ workouts, blocks, exercises }: Props) {
               setInstructions("");
             }
           }}
-          className="mt-4 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+          className="th-btn-primary mt-4"
         >
           Save workout
         </button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
         <div className="space-y-2">
           {workouts.map((w) => (
             <button
               key={w.id}
               type="button"
-              onClick={() => setSelectedId(w.id)}
-              className={`block w-full border px-3 py-3 text-left ${
+              onClick={() => {
+                setSelectedId(w.id);
+                setLocalBlocks(null);
+              }}
+              className={`block w-full border px-3 py-3 text-left text-sm font-semibold ${
                 selectedId === w.id
-                  ? "border-brand bg-brand/10"
-                  : "border-border bg-surface"
+                  ? "border-[var(--th-blue)] bg-white text-[var(--th-blue)]"
+                  : "border-[var(--th-border)] bg-white text-[var(--th-text)] hover:border-[var(--th-blue)]"
               }`}
             >
-              <span className="font-display text-sm tracking-wide uppercase">
-                {w.title}
-              </span>
+              {w.title}
             </button>
           ))}
         </div>
 
         {selected ? (
-          <div className="space-y-4 border border-border bg-surface p-5">
-            <div>
-              <h3 className="font-display text-2xl tracking-wide uppercase">
-                {selected.title}
-              </h3>
-              <p className="mt-2 text-sm text-muted">
-                {selected.coachInstructions || "No coach instructions yet."}
-              </p>
+          <div className="space-y-4">
+            <div className="th-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-2xl font-bold">{selected.title}</h3>
+                  <p className="mt-1 text-sm th-muted">
+                    Build blocks like TrainHeroic — pick an exercise, set reps,
+                    publish later from Assign / Teams.
+                  </p>
+                </div>
+              </div>
+
+              <label className="mt-4 block">
+                <span className="mb-1 flex justify-between text-xs font-semibold uppercase tracking-wide th-muted">
+                  Coach instructions
+                  <span>{selected.coachInstructions.length}/10000</span>
+                </span>
+                <textarea
+                  defaultValue={selected.coachInstructions}
+                  key={selected.id}
+                  rows={2}
+                  className="th-input min-h-[4rem]"
+                  placeholder="Use this area to help the athlete understand goals for today's session."
+                  onBlur={(e) => {
+                    if (e.target.value !== selected.coachInstructions) {
+                      void post({
+                        action: "updateWorkout",
+                        id: selected.id,
+                        coachInstructions: e.target.value,
+                      });
+                    }
+                  }}
+                />
+              </label>
             </div>
 
-            <div className="flex flex-wrap items-end gap-3 border border-border bg-background p-3">
-              <label className="min-w-[200px] flex-1 space-y-1 text-sm">
-                <span className="text-xs font-semibold tracking-wide uppercase">
-                  Add block from library
+            <div className="th-card flex flex-wrap items-end gap-3 p-4">
+              <label className="min-w-[220px] flex-1 space-y-1 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide th-muted">
+                  Add exercise from library
                 </span>
                 <select
                   value={exerciseId}
                   onChange={(e) => setExerciseId(e.target.value)}
-                  className="min-h-11 w-full border border-border bg-surface px-3"
+                  className="th-input"
                 >
                   {exercises.map((ex) => (
                     <option key={ex.id} value={ex.id}>
@@ -159,74 +202,52 @@ export function WorkoutsManager({ workouts, blocks, exercises }: Props) {
                     exerciseId,
                   })
                 }
-                className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+                className="th-btn-primary"
               >
                 Add block
               </button>
             </div>
 
-            <div className="space-y-3">
-              {selectedBlocks.map((block) => {
-                const exercise =
-                  exercises.find((e) => e.id === block.exerciseId) ?? null;
-                return (
-                  <article
-                    key={block.id}
-                    className="border border-border bg-background p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold tracking-wide text-brand uppercase">
-                          {block.label}
-                          {block.sectionTitle ? ` · ${block.sectionTitle}` : ""}
-                        </p>
-                        <h4 className="font-display text-xl tracking-wide uppercase">
-                          {exercise?.title ?? "Exercise"}
-                        </h4>
-                        <p className="mt-1 text-sm text-muted">
-                          {block.sets
-                            .map(
-                              (s) =>
-                                `${s.reps ?? "–"}${s.weightLb != null ? ` @ ${s.weightLb}lb` : ""}`,
-                            )
-                            .join(" · ")}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          post({ action: "removeBlock", id: block.id })
-                        }
-                        className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-brand"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    {exercise ? (
-                      <div className="mt-3 max-w-md">
-                        <VideoPlayer
-                          videoSource={exercise.videoSource}
-                          videoUrl={exercise.videoUrl}
-                          playbackUrl={exercise.demoPlaybackUrl}
-                          title={exercise.title}
-                        />
-                        {exercise.pointsOfPerformance ? (
-                          <p className="mt-2 text-xs text-muted">
-                            {exercise.pointsOfPerformance}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {block.sessionCues ? (
-                      <p className="mt-2 text-sm">{block.sessionCues}</p>
-                    ) : null}
-                  </article>
-                );
-              })}
+            <div className="space-y-4">
+              {selectedBlocks.map((block) => (
+                <ExerciseBlockCard
+                  key={block.id}
+                  block={block}
+                  exercises={exercises}
+                  pending={pending}
+                  onChangeExercise={(id) => {
+                    patchBlockLocal(block.id, { exerciseId: id });
+                    void post({
+                      action: "updateBlock",
+                      id: block.id,
+                      exerciseId: id,
+                    });
+                  }}
+                  onChangeCues={(cues) =>
+                    patchBlockLocal(block.id, { sessionCues: cues })
+                  }
+                  onChangeSets={(sets: WorkoutBlockSet[]) =>
+                    patchBlockLocal(block.id, { sets })
+                  }
+                  onSaveSets={(sets) => {
+                    const cues =
+                      (localBlocks ?? serverBlocks).find((b) => b.id === block.id)
+                        ?.sessionCues ?? block.sessionCues;
+                    void post({
+                      action: "updateBlock",
+                      id: block.id,
+                      sets,
+                      sessionCues: cues,
+                    });
+                  }}
+                  onRemove={() =>
+                    post({ action: "removeBlock", id: block.id })
+                  }
+                />
+              ))}
               {selectedBlocks.length === 0 ? (
-                <p className="text-sm text-muted">
-                  No blocks yet. Add exercises from the library.
+                <p className="th-card p-5 text-sm th-muted">
+                  No blocks yet. Add an exercise from the library dropdown.
                 </p>
               ) : null}
             </div>
@@ -235,7 +256,7 @@ export function WorkoutsManager({ workouts, blocks, exercises }: Props) {
       </div>
 
       {error ? (
-        <p className="text-sm text-brand" role="alert">
+        <p className="text-sm text-[var(--th-danger)]" role="alert">
           {error}
         </p>
       ) : null}

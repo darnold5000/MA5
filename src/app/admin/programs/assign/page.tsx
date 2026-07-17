@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AssignCalendarManager } from "@/components/programs/assign-calendar-manager";
 import { ProgramsLibraryNav } from "@/components/programs/programs-library-nav";
+import { ProgramsLightShell } from "@/components/programs/programs-light-shell";
 import {
   getProgramsState,
   listClientsForPrograms,
@@ -17,26 +18,25 @@ export default async function AdminAssignPage() {
   const clients = listClientsForPrograms(state);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Programs
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
-          Assign
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Individual client calendars — draft days, publish, or assign a full
-          program.
-        </p>
+    <ProgramsLightShell>
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--th-blue)]">
+            Programs
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Assign</h1>
+          <p className="mt-2 text-sm th-muted">
+            Individual client calendars — draft, publish, or assign a program.
+          </p>
+        </div>
+        <ProgramsLibraryNav pathname="/admin/programs/assign" />
+        <AssignCalendarManager
+          clients={clients}
+          workouts={state.workouts}
+          programs={state.programs}
+          calendarEntries={state.calendarEntries}
+        />
       </div>
-      <ProgramsLibraryNav pathname="/admin/programs/assign" />
-      <AssignCalendarManager
-        clients={clients}
-        workouts={state.workouts}
-        programs={state.programs}
-        calendarEntries={state.calendarEntries}
-      />
-    </div>
+    </ProgramsLightShell>
   );
 }
