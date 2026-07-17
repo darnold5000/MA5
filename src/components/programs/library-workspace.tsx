@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 
 import { ExerciseDetailDrawer } from "@/components/programs/exercise-detail-drawer";
 import { ExerciseFormDrawer } from "@/components/programs/exercise-form-drawer";
+import { ProgramDetailDrawer } from "@/components/programs/program-detail-drawer";
 import { ProgramGridManager } from "@/components/programs/program-grid-manager";
+import { SessionDetailDrawer } from "@/components/programs/session-detail-drawer";
 import { WorkoutsManager } from "@/components/programs/workouts-manager";
 import {
   EXERCISE_CATEGORIES,
@@ -63,6 +65,8 @@ export function LibraryWorkspace({
   const [viewingExerciseId, setViewingExerciseId] = useState<string | null>(
     null,
   );
+  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
+  const [viewingProgramId, setViewingProgramId] = useState<string | null>(null);
   const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
   const [localExercises, setLocalExercises] = useState<Exercise[]>([]);
   const [pending, setPending] = useState(false);
@@ -144,6 +148,8 @@ export function LibraryWorkspace({
     setCreatingSession(false);
     setExerciseDrawer(null);
     setViewingExerciseId(null);
+    setViewingSessionId(null);
+    setViewingProgramId(null);
     setSelectedIds([]);
     setSearch("");
     setExerciseCategory("");
@@ -155,6 +161,9 @@ export function LibraryWorkspace({
 
   function openCreate() {
     setError(null);
+    setViewingExerciseId(null);
+    setViewingSessionId(null);
+    setViewingProgramId(null);
     if (tab === "exercises") {
       setExerciseDrawer({ mode: "create" });
       return;
@@ -170,6 +179,7 @@ export function LibraryWorkspace({
   }
 
   function openEditProgram(id: string) {
+    setViewingProgramId(null);
     setEditingProgramId(id);
     setCreatingProgram(false);
     setMode("edit");
@@ -177,6 +187,7 @@ export function LibraryWorkspace({
   }
 
   function openEditSession(id: string) {
+    setViewingSessionId(null);
     setEditingSessionId(id);
     setCreatingSession(false);
     setMode("edit");
@@ -402,13 +413,22 @@ export function LibraryWorkspace({
                 return {
                   id: w.id,
                   cells: [
-                    w.title,
+                    <button
+                      key="t"
+                      type="button"
+                      onClick={() => setViewingSessionId(w.id)}
+                      className="text-left font-semibold text-[#111827] hover:text-[#2563eb] hover:underline"
+                    >
+                      {w.title}
+                    </button>,
                     "Coach",
                     String(blockCount),
                     w.createdAt.slice(0, 10),
                   ],
                   selected: selectedIds.includes(w.id),
                   onToggle: () => toggleSelect(w.id),
+                  onRowClick: () => setViewingSessionId(w.id),
+                  onView: () => setViewingSessionId(w.id),
                   onEdit: () => openEditSession(w.id),
                   onDelete: () => void deleteOne(w.id),
                 };
@@ -423,13 +443,22 @@ export function LibraryWorkspace({
               rows={filteredPrograms.map((p) => ({
                 id: p.id,
                 cells: [
-                  p.title,
-                  <TypeBadge key="t" label="Program" />,
+                  <button
+                    key="t"
+                    type="button"
+                    onClick={() => setViewingProgramId(p.id)}
+                    className="text-left font-semibold text-[#111827] hover:text-[#2563eb] hover:underline"
+                  >
+                    {p.title}
+                  </button>,
+                  <TypeBadge key="badge" label="Program" />,
                   `${p.weeks} weeks`,
                   p.createdAt.slice(0, 10),
                 ],
                 selected: selectedIds.includes(p.id),
                 onToggle: () => toggleSelect(p.id),
+                onRowClick: () => setViewingProgramId(p.id),
+                onView: () => setViewingProgramId(p.id),
                 onEdit: () => openEditProgram(p.id),
                 onDelete: () => void deleteOne(p.id),
               }))}
@@ -455,6 +484,57 @@ export function LibraryWorkspace({
               if (!viewingExerciseId) return;
               const id = viewingExerciseId;
               setViewingExerciseId(null);
+              void deleteOne(id);
+            }}
+          />
+
+          <SessionDetailDrawer
+            open={viewingSessionId != null && mode === "list"}
+            workout={
+              viewingSessionId
+                ? (workouts.find((w) => w.id === viewingSessionId) ?? null)
+                : null
+            }
+            blocks={workoutBlocks.filter(
+              (b) => b.workoutId === viewingSessionId,
+            )}
+            exercises={mergedExercises}
+            onClose={() => setViewingSessionId(null)}
+            onEdit={() => {
+              if (!viewingSessionId) return;
+              const id = viewingSessionId;
+              setViewingSessionId(null);
+              openEditSession(id);
+            }}
+            onDelete={() => {
+              if (!viewingSessionId) return;
+              const id = viewingSessionId;
+              setViewingSessionId(null);
+              void deleteOne(id);
+            }}
+          />
+
+          <ProgramDetailDrawer
+            open={viewingProgramId != null && mode === "list"}
+            program={
+              viewingProgramId
+                ? (mergedPrograms.find((p) => p.id === viewingProgramId) ??
+                  null)
+                : null
+            }
+            programDays={programDays}
+            workouts={workouts}
+            onClose={() => setViewingProgramId(null)}
+            onEdit={() => {
+              if (!viewingProgramId) return;
+              const id = viewingProgramId;
+              setViewingProgramId(null);
+              openEditProgram(id);
+            }}
+            onDelete={() => {
+              if (!viewingProgramId) return;
+              const id = viewingProgramId;
+              setViewingProgramId(null);
               void deleteOne(id);
             }}
           />
