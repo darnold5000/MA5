@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
-import { ExercisesManager } from "@/components/programs/exercises-manager";
+import { ExerciseFormDrawer } from "@/components/programs/exercise-form-drawer";
 import { ProgramGridManager } from "@/components/programs/program-grid-manager";
 import { WorkoutsManager } from "@/components/programs/workouts-manager";
 import type {
@@ -29,8 +29,13 @@ type LibraryWorkspaceProps = {
 const TABS: { id: LibraryTab; label: string; createLabel: string }[] = [
   { id: "programs", label: "Programs", createLabel: "Create Program" },
   { id: "sessions", label: "Sessions", createLabel: "Create Session Template" },
-  { id: "exercises", label: "Exercises", createLabel: "Create Exercises" },
+  { id: "exercises", label: "Exercises", createLabel: "Create Exercise" },
 ];
+
+type ExerciseDrawerState =
+  | null
+  | { mode: "create" }
+  | { mode: "edit"; id: string };
 
 export function LibraryWorkspace({
   initialTab = "exercises",
@@ -47,6 +52,8 @@ export function LibraryWorkspace({
   const [creatingProgram, setCreatingProgram] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [creatingSession, setCreatingSession] = useState(false);
+  const [exerciseDrawer, setExerciseDrawer] =
+    useState<ExerciseDrawerState>(null);
   const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +103,7 @@ export function LibraryWorkspace({
     setCreatingProgram(false);
     setEditingSessionId(null);
     setCreatingSession(false);
+    setExerciseDrawer(null);
     setSelectedIds([]);
     setSearch("");
     setError(null);
@@ -105,8 +113,12 @@ export function LibraryWorkspace({
   }
 
   function openCreate() {
-    setMode("edit");
     setError(null);
+    if (tab === "exercises") {
+      setExerciseDrawer({ mode: "create" });
+      return;
+    }
+    setMode("edit");
     if (tab === "programs") {
       setCreatingProgram(true);
       setEditingProgramId(null);
@@ -248,7 +260,9 @@ export function LibraryWorkspace({
               >
                 {tab === "sessions"
                   ? "Create Session Template"
-                  : `+ ${active.createLabel}`}
+                  : tab === "exercises"
+                    ? "Create Exercise"
+                    : `+ ${active.createLabel}`}
               </button>
             </div>
           </div>
@@ -280,7 +294,7 @@ export function LibraryWorkspace({
                 ],
                 selected: selectedIds.includes(ex.id),
                 onToggle: () => toggleSelect(ex.id),
-                onEdit: () => setMode("edit"),
+                onEdit: () => setExerciseDrawer({ mode: "edit", id: ex.id }),
                 onDelete: () => void deleteOne(ex.id),
               }))}
             />
@@ -335,28 +349,24 @@ export function LibraryWorkspace({
               }))}
             />
           ) : null}
+
+          <ExerciseFormDrawer
+            open={exerciseDrawer != null}
+            mode={exerciseDrawer?.mode === "edit" ? "edit" : "create"}
+            exercise={
+              exerciseDrawer?.mode === "edit"
+                ? (exercises.find((e) => e.id === exerciseDrawer.id) ?? null)
+                : null
+            }
+            onClose={() => setExerciseDrawer(null)}
+          />
         </div>
       ) : (
         <div className="space-y-4">
-          {tab === "exercises" ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={backToList}
-                className="th-link text-sm"
-              >
-                ← Back to {active.label}
-              </button>
-              <p className="text-sm font-semibold">{active.createLabel} / Edit</p>
-            </div>
-          ) : null}
           {error ? (
             <p className="text-sm text-[var(--th-danger)]" role="alert">
               {error}
             </p>
-          ) : null}
-          {tab === "exercises" ? (
-            <ExercisesManager exercises={exercises} />
           ) : null}
           {tab === "sessions" ? (
             <WorkoutsManager

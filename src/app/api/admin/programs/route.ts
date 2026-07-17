@@ -134,6 +134,8 @@ export async function POST(request: Request) {
               "Recovery",
             ])
             .optional(),
+          defaultParam1: z.enum(["reps", "weight_lb"]).optional(),
+          defaultParam2: z.enum(["reps", "weight_lb"]).optional(),
           pointsOfPerformance: z.string().max(5000).optional(),
           videoUrl: z.string().optional(),
         })
@@ -160,8 +162,8 @@ export async function POST(request: Request) {
         videoUrl,
         videoStoragePath: null,
         demoPlaybackUrl: null,
-        defaultParam1: "reps",
-        defaultParam2: "weight_lb",
+        defaultParam1: data.defaultParam1 ?? "reps",
+        defaultParam2: data.defaultParam2 ?? "weight_lb",
         createdAt: new Date().toISOString(),
       };
       state.exercises = [exercise, ...state.exercises];
@@ -190,6 +192,8 @@ export async function POST(request: Request) {
               "Recovery",
             ])
             .optional(),
+          defaultParam1: z.enum(["reps", "weight_lb"]).optional(),
+          defaultParam2: z.enum(["reps", "weight_lb"]).optional(),
           pointsOfPerformance: z.string().max(5000).optional(),
           videoUrl: z.string().nullable().optional(),
           clearVideo: z.boolean().optional(),
@@ -203,6 +207,8 @@ export async function POST(request: Request) {
       let next = { ...current };
       if (data.title !== undefined) next.title = data.title.trim();
       if (data.category !== undefined) next.category = data.category;
+      if (data.defaultParam1 !== undefined) next.defaultParam1 = data.defaultParam1;
+      if (data.defaultParam2 !== undefined) next.defaultParam2 = data.defaultParam2;
       if (data.pointsOfPerformance !== undefined) {
         next.pointsOfPerformance = data.pointsOfPerformance;
       }
