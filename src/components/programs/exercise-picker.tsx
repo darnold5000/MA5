@@ -17,6 +17,8 @@ type ExercisePickerProps = {
   disabled?: boolean;
   onChange: (exerciseId: string) => void;
   className?: string;
+  allowEmpty?: boolean;
+  emptyLabel?: string;
 };
 
 type PanelPos = { top: number; left: number; width: number };
@@ -27,6 +29,8 @@ export function ExercisePicker({
   disabled,
   onChange,
   className,
+  allowEmpty = false,
+  emptyLabel = "Select an exercise",
 }: ExercisePickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -39,7 +43,9 @@ export function ExercisePicker({
   const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const selected = exercises.find((e) => e.id === value) ?? null;
+  const selected = value
+    ? exercises.find((e) => e.id === value) ?? null
+    : null;
   const counts = useMemo(() => categoryCounts(exercises), [exercises]);
 
   const filtered = useMemo(() => {
@@ -255,7 +261,7 @@ export function ExercisePicker({
         className="th-bar flex w-full min-h-10 items-center gap-2 px-2 py-1.5 text-left disabled:opacity-50"
       >
         <span className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--th-text)]">
-          {selected?.title ?? "Select exercise"}
+          {selected?.title ?? (allowEmpty ? emptyLabel : "Select exercise")}
         </span>
         {selected ? (
           <span className="hidden shrink-0 text-[10px] font-semibold tracking-wide uppercase th-muted sm:inline">

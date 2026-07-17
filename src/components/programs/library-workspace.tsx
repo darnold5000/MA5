@@ -28,7 +28,7 @@ type LibraryWorkspaceProps = {
 
 const TABS: { id: LibraryTab; label: string; createLabel: string }[] = [
   { id: "programs", label: "Programs", createLabel: "Create Program" },
-  { id: "sessions", label: "Sessions", createLabel: "Create Session" },
+  { id: "sessions", label: "Sessions", createLabel: "Create Session Template" },
   { id: "exercises", label: "Exercises", createLabel: "Create Exercises" },
 ];
 
@@ -45,6 +45,8 @@ export function LibraryWorkspace({
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   const [creatingProgram, setCreatingProgram] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [creatingSession, setCreatingSession] = useState(false);
   const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,8 @@ export function LibraryWorkspace({
     setMode("list");
     setEditingProgramId(null);
     setCreatingProgram(false);
+    setEditingSessionId(null);
+    setCreatingSession(false);
     setSelectedIds([]);
     setSearch("");
     setError(null);
@@ -106,6 +110,9 @@ export function LibraryWorkspace({
     if (tab === "programs") {
       setCreatingProgram(true);
       setEditingProgramId(null);
+    } else if (tab === "sessions") {
+      setCreatingSession(true);
+      setEditingSessionId(null);
     }
   }
 
@@ -116,10 +123,19 @@ export function LibraryWorkspace({
     setError(null);
   }
 
+  function openEditSession(id: string) {
+    setEditingSessionId(id);
+    setCreatingSession(false);
+    setMode("edit");
+    setError(null);
+  }
+
   function backToList() {
     setMode("list");
     setEditingProgramId(null);
     setCreatingProgram(false);
+    setEditingSessionId(null);
+    setCreatingSession(false);
   }
 
   const filteredExercises = useMemo(() => {
@@ -230,7 +246,9 @@ export function LibraryWorkspace({
                 className="th-btn-primary"
                 onClick={openCreate}
               >
-                + {active.createLabel}
+                {tab === "sessions"
+                  ? "Create Session Template"
+                  : `+ ${active.createLabel}`}
               </button>
             </div>
           </div>
@@ -272,12 +290,11 @@ export function LibraryWorkspace({
             <LibraryTable
               headers={[
                 "Title",
-                "Type",
+                "Created By",
                 "Blocks",
-                "Instructions",
-                "Created",
+                "Date Created",
               ]}
-              empty="No sessions yet. Create a session to build workouts."
+              empty="No sessions yet. Create a session template."
               rows={filteredWorkouts.map((w) => {
                 const blockCount = workoutBlocks.filter(
                   (b) => b.workoutId === w.id,
@@ -286,14 +303,13 @@ export function LibraryWorkspace({
                   id: w.id,
                   cells: [
                     w.title,
-                    <TypeBadge key="t" label="Session" />,
+                    "Coach",
                     String(blockCount),
-                    truncate(w.coachInstructions, 48) || "—",
                     w.createdAt.slice(0, 10),
                   ],
                   selected: selectedIds.includes(w.id),
                   onToggle: () => toggleSelect(w.id),
-                  onEdit: () => setMode("edit"),
+                  onEdit: () => openEditSession(w.id),
                   onDelete: () => void deleteOne(w.id),
                 };
               })}
@@ -322,7 +338,7 @@ export function LibraryWorkspace({
         </div>
       ) : (
         <div className="space-y-4">
-          {tab !== "programs" ? (
+          {tab === "exercises" ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
@@ -347,6 +363,13 @@ export function LibraryWorkspace({
               workouts={workouts}
               blocks={workoutBlocks}
               exercises={exercises}
+              startFresh={creatingSession}
+              focusWorkoutId={editingSessionId}
+              onBack={backToList}
+              onSaved={(id) => {
+                setCreatingSession(false);
+                setEditingSessionId(id);
+              }}
             />
           ) : null}
           {tab === "programs" ? (

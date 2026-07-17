@@ -14,6 +14,8 @@ type ExerciseBlockCardProps = {
   block: WorkoutBlock;
   exercises: Exercise[];
   pending?: boolean;
+  /** Allow block with no exercise yet (session template draft). */
+  allowEmptyExercise?: boolean;
   onChangeExercise: (exerciseId: string) => void;
   onChangeCues: (cues: string) => void;
   onChangeSets: (sets: WorkoutBlockSet[]) => void;
@@ -25,6 +27,7 @@ export function ExerciseBlockCard({
   block,
   exercises,
   pending,
+  allowEmptyExercise = false,
   onChangeExercise,
   onChangeCues,
   onChangeSets,
@@ -33,7 +36,10 @@ export function ExerciseBlockCard({
 }: ExerciseBlockCardProps) {
   const [param2, setParam2] = useState<"weight_lb" | "optional">("weight_lb");
 
-  const exercise = exercises.find((e) => e.id === block.exerciseId) ?? null;
+  const exercise =
+    block.exerciseId
+      ? exercises.find((e) => e.id === block.exerciseId) ?? null
+      : null;
 
   const sets = block.sets.length
     ? block.sets
@@ -97,6 +103,8 @@ export function ExerciseBlockCard({
             exercises={exercises}
             value={block.exerciseId}
             disabled={pending}
+            allowEmpty={allowEmptyExercise}
+            emptyLabel="Select an exercise"
             onChange={onChangeExercise}
           />
 
