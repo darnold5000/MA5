@@ -1,8 +1,12 @@
 import { cookies } from "next/headers";
 
+import {
+  dehydrateExercisesForCookie,
+  libraryExerciseId,
+  mergeExerciseLibrary,
+} from "@/features/programs/exercise-library";
 import type {
   CalendarEntry,
-  Exercise,
   Program,
   ProgramAssignment,
   ProgramDay,
@@ -20,7 +24,7 @@ export const DEMO_UPLOAD_SAMPLE_URL =
   "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm";
 
 export type ProgramsState = {
-  exercises: Exercise[];
+  exercises: ReturnType<typeof mergeExerciseLibrary>;
   workouts: Workout[];
   workoutBlocks: WorkoutBlock[];
   programs: Program[];
@@ -38,45 +42,11 @@ function id(prefix: string) {
 
 function seedState(): ProgramsState {
   const now = new Date().toISOString();
-  const exBackSquat: Exercise = {
-    id: "ex_back_squat",
-    title: "Back Squat",
-    pointsOfPerformance:
-      "Place the barbell on the upper part of your back. Feet shoulder-width, toes slightly out. Brace, sit between the hips, drive up.",
-    videoSource: "youtube",
-    videoUrl: "https://www.youtube.com/watch?v=ultWZbUMPL8",
-    videoStoragePath: null,
-    demoPlaybackUrl: null,
-    defaultParam1: "reps",
-    defaultParam2: "weight_lb",
-    createdAt: now,
-  };
-  const exDeadlift: Exercise = {
-    id: "ex_deadlift",
-    title: "Deadlift",
-    pointsOfPerformance:
-      "Bar over mid-foot. Hinge, brace, push the floor away. Keep the bar close.",
-    videoSource: "youtube",
-    videoUrl: "https://www.youtube.com/watch?v=op9kVnSso6Q",
-    videoStoragePath: null,
-    demoPlaybackUrl: null,
-    defaultParam1: "reps",
-    defaultParam2: "weight_lb",
-    createdAt: now,
-  };
-  const exPullup: Exercise = {
-    id: "ex_pullup",
-    title: "Pull-Up",
-    pointsOfPerformance:
-      "Dead hang, full scap pack, pull elbows to ribs until chin clears the bar.",
-    videoSource: "none",
-    videoUrl: null,
-    videoStoragePath: null,
-    demoPlaybackUrl: null,
-    defaultParam1: "reps",
-    defaultParam2: "weight_lb",
-    createdAt: now,
-  };
+  const exercises = mergeExerciseLibrary([]);
+
+  const exBackSquat = libraryExerciseId("Legs", "Back Squat");
+  const exDeadlift = libraryExerciseId("Legs", "Conventional Deadlift");
+  const exPullup = libraryExerciseId("Back", "Pull-Up");
 
   const workoutId = "wo_upper_1";
   const workout: Workout = {
@@ -93,7 +63,7 @@ function seedState(): ProgramsState {
       sortOrder: 0,
       label: "A",
       sectionTitle: "Primary",
-      exerciseId: exBackSquat.id,
+      exerciseId: exBackSquat,
       sessionCues: "Build to a solid working set.",
       sets: [
         { setNumber: 1, reps: 5, weightLb: null },
@@ -107,7 +77,7 @@ function seedState(): ProgramsState {
       sortOrder: 1,
       label: "B1",
       sectionTitle: "Superset",
-      exerciseId: exDeadlift.id,
+      exerciseId: exDeadlift,
       sessionCues: "",
       sets: [
         { setNumber: 1, reps: 5, weightLb: null },
@@ -121,7 +91,7 @@ function seedState(): ProgramsState {
       sortOrder: 2,
       label: "B2",
       sectionTitle: "Superset",
-      exerciseId: exPullup.id,
+      exerciseId: exPullup,
       sessionCues: "Strict if possible.",
       sets: [
         { setNumber: 1, reps: 8, weightLb: null },
@@ -206,7 +176,7 @@ function seedState(): ProgramsState {
   ];
 
   return {
-    exercises: [exBackSquat, exDeadlift, exPullup],
+    exercises,
     workouts: [workout],
     workoutBlocks: blocks,
     programs: [program],
@@ -229,7 +199,7 @@ export function parseProgramsState(raw: string | undefined): ProgramsState {
     const parsed = JSON.parse(raw) as Partial<ProgramsState>;
     const base = emptyProgramsState();
     return {
-      exercises: Array.isArray(parsed.exercises) ? parsed.exercises : base.exercises,
+      exercises: mergeExerciseLibrary(parsed.exercises),
       workouts: Array.isArray(parsed.workouts) ? parsed.workouts : base.workouts,
       workoutBlocks: Array.isArray(parsed.workoutBlocks)
         ? parsed.workoutBlocks
@@ -263,7 +233,10 @@ export async function readProgramsState(): Promise<ProgramsState> {
 }
 
 export function serializeProgramsState(state: ProgramsState): string {
-  return JSON.stringify(state);
+  return JSON.stringify({
+    ...state,
+    exercises: dehydrateExercisesForCookie(state.exercises),
+  });
 }
 
 export function newId(prefix: string) {

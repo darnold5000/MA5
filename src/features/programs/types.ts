@@ -4,9 +4,25 @@ export type PublishStatus = "draft" | "published";
 export type CalendarSource = "program" | "library" | "adhoc";
 export type AssignmentStatus = "draft" | "active" | "completed";
 
+export type ExerciseCategory =
+  | "Chest"
+  | "Back"
+  | "Shoulders"
+  | "Legs"
+  | "Hamstrings / Glutes"
+  | "Arms"
+  | "Core"
+  | "Plyometrics"
+  | "Speed & Agility"
+  | "Olympic Lifts"
+  | "Conditioning"
+  | "Mobility"
+  | "Recovery";
+
 export type Exercise = {
   id: string;
   title: string;
+  category: ExerciseCategory;
   pointsOfPerformance: string;
   videoSource: VideoSource;
   videoUrl: string | null;

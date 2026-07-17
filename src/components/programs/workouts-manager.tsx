@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ExerciseBlockCard } from "@/components/programs/exercise-block-card";
+import { ExercisePicker } from "@/components/programs/exercise-picker";
 import type {
   Exercise,
   Workout,
@@ -228,22 +229,17 @@ export function WorkoutsManager({
             </div>
 
             <div className="th-card flex flex-wrap items-end gap-3 p-4">
-              <label className="min-w-[220px] flex-1 space-y-1 text-sm">
+              <div className="min-w-[280px] flex-1 space-y-1 text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide th-muted">
                   Add exercise from library
                 </span>
-                <select
+                <ExercisePicker
+                  exercises={exercises}
                   value={exerciseId}
-                  onChange={(e) => setExerciseId(e.target.value)}
-                  className="th-input"
-                >
-                  {exercises.map((ex) => (
-                    <option key={ex.id} value={ex.id}>
-                      {ex.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  disabled={pending || exercises.length === 0}
+                  onChange={setExerciseId}
+                />
+              </div>
               <button
                 type="button"
                 disabled={pending || !exerciseId}

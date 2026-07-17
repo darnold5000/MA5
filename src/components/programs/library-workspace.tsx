@@ -228,7 +228,7 @@ export function LibraryWorkspace({
             <LibraryTable
               headers={[
                 "Title",
-                "Type",
+                "Category",
                 "Video",
                 "Points of Performance",
                 "Created",
@@ -238,7 +238,7 @@ export function LibraryWorkspace({
                 id: ex.id,
                 cells: [
                   ex.title,
-                  <TypeBadge key="t" label="Exercise" />,
+                  ex.category,
                   ex.videoSource === "none" ? "—" : ex.videoSource,
                   truncate(ex.pointsOfPerformance, 48) || "—",
                   ex.createdAt.slice(0, 10),

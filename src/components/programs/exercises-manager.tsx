@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ExercisePicker } from "@/components/programs/exercise-picker";
+import {
+  EXERCISE_CATEGORIES,
+  type ExerciseCategory,
+} from "@/features/programs/exercise-library";
 import type { Exercise } from "@/features/programs/types";
 import { VideoPlayer } from "@/lib/video/player";
 
 type Props = {
   exercises: Exercise[];
 };
-
-type VideoFilter = "all" | "with-video" | "no-video";
 
 export function ExercisesManager({ exercises }: Props) {
   const router = useRouter();
@@ -19,26 +22,25 @@ export function ExercisesManager({ exercises }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(
     exercises[0]?.id ?? null,
   );
-  const [filter, setFilter] = useState<VideoFilter>("all");
-  const [filterOpen, setFilterOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<ExerciseCategory>("Legs");
   const [cues, setCues] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState<ExerciseCategory>("Legs");
   const [editCues, setEditCues] = useState("");
   const [editUrl, setEditUrl] = useState("");
 
-  const filtered = useMemo(() => {
-    return exercises.filter((ex) => {
-      if (filter === "with-video") return ex.videoSource !== "none";
-      if (filter === "no-video") return ex.videoSource === "none";
-      return true;
-    });
-  }, [exercises, filter]);
+  const selected = exercises.find((e) => e.id === selectedId) ?? null;
 
-  const selected =
-    exercises.find((e) => e.id === selectedId) ?? filtered[0] ?? null;
+  useEffect(() => {
+    if (!selected) return;
+    setEditTitle(selected.title);
+    setEditCategory(selected.category);
+    setEditCues(selected.pointsOfPerformance);
+    setEditUrl(selected.videoUrl ?? "");
+  }, [selected]);
 
   async function post(body: unknown) {
     setPending(true);
@@ -60,9 +62,6 @@ export function ExercisesManager({ exercises }: Props) {
 
   function selectExercise(ex: Exercise) {
     setSelectedId(ex.id);
-    setEditTitle(ex.title);
-    setEditCues(ex.pointsOfPerformance);
-    setEditUrl(ex.videoUrl ?? "");
     setCreating(false);
   }
 
@@ -87,9 +86,8 @@ export function ExercisesManager({ exercises }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm th-muted">
-          Library of movements (video + form cues). To program sets &amp; reps,
-          open <strong className="text-[var(--th-text)]">Workouts</strong> and
-          add blocks.
+          Generic library ({exercises.length} movements) with category filters.
+          Add video + form cues here; program sets &amp; reps in Sessions.
         </p>
         <button
           type="button"
@@ -103,75 +101,16 @@ export function ExercisesManager({ exercises }: Props) {
         </button>
       </div>
 
-      {/* TrainHeroic-style picker bar */}
       <div className="th-card">
-        <div className="th-bar flex items-center gap-2 px-3 py-2">
-          <select
-            value={selected?.id ?? ""}
-            onChange={(e) => {
-              const ex = exercises.find((x) => x.id === e.target.value);
+        <div className="border-b border-[var(--th-border)] p-3">
+          <ExercisePicker
+            exercises={exercises}
+            value={selected?.id ?? exercises[0]?.id ?? ""}
+            onChange={(id) => {
+              const ex = exercises.find((x) => x.id === id);
               if (ex) selectExercise(ex);
             }}
-            className="min-h-11 flex-1 border-0 bg-transparent text-base font-semibold outline-none"
-          >
-            {filtered.map((ex) => (
-              <option key={ex.id} value={ex.id}>
-                {ex.title}
-              </option>
-            ))}
-          </select>
-          <div className="relative">
-            <button
-              type="button"
-              aria-label="Filter exercises"
-              onClick={() => setFilterOpen((o) => !o)}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded border border-[var(--th-border)] bg-white th-muted"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M4 6h16M7 12h10M10 18h4"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              {filter !== "all" ? (
-                <span
-                  className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                  style={{ background: "var(--th-blue)" }}
-                >
-                  1
-                </span>
-              ) : null}
-            </button>
-            {filterOpen ? (
-              <div className="absolute right-0 z-20 mt-1 w-44 border border-[var(--th-border)] bg-white py-1 shadow-md">
-                {(
-                  [
-                    ["all", "All exercises"],
-                    ["with-video", "Has video"],
-                    ["no-video", "No video"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`block w-full px-3 py-2 text-left text-sm ${
-                      filter === value
-                        ? "bg-[var(--th-surface-muted)] font-semibold"
-                        : "hover:bg-[var(--th-surface-muted)]"
-                    }`}
-                    onClick={() => {
-                      setFilter(value);
-                      setFilterOpen(false);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          />
         </div>
 
         {creating ? (
@@ -183,6 +122,24 @@ export function ExercisesManager({ exercises }: Props) {
               className="th-input"
               placeholder="Title"
             />
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide th-muted">
+                Category
+              </span>
+              <select
+                value={category}
+                onChange={(e) =>
+                  setCategory(e.target.value as ExerciseCategory)
+                }
+                className="th-input"
+              >
+                {EXERCISE_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
             <textarea
               value={cues}
               onChange={(e) => setCues(e.target.value)}
@@ -205,6 +162,7 @@ export function ExercisesManager({ exercises }: Props) {
                   const data = await post({
                     action: "createExercise",
                     title,
+                    category,
                     pointsOfPerformance: cues,
                     videoUrl: videoUrl || undefined,
                   });
@@ -231,16 +189,34 @@ export function ExercisesManager({ exercises }: Props) {
           <div className="grid gap-0 border-t border-[var(--th-border)] lg:grid-cols-[1.2fr_0.9fr]">
             <div className="space-y-4 border-b border-[var(--th-border)] p-5 lg:border-r lg:border-b-0">
               <input
-                value={editTitle || selected.title}
+                value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 className="th-input text-lg font-semibold"
               />
+              <label className="block space-y-1 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide th-muted">
+                  Category
+                </span>
+                <select
+                  value={editCategory}
+                  onChange={(e) =>
+                    setEditCategory(e.target.value as ExerciseCategory)
+                  }
+                  className="th-input"
+                >
+                  {EXERCISE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide th-muted">
                   Points of performance
                 </span>
                 <textarea
-                  value={editCues || selected.pointsOfPerformance}
+                  value={editCues}
                   onChange={(e) => setEditCues(e.target.value)}
                   rows={4}
                   className="th-input min-h-[6rem]"
@@ -287,7 +263,7 @@ export function ExercisesManager({ exercises }: Props) {
                 <p className="text-sm font-semibold">Default prescription</p>
                 <p className="mt-1 text-xs th-muted">
                   Defaults for this movement. Actual sets &amp; reps are set per
-                  workout block on the Workouts tab.
+                  workout block on the Sessions tab.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -304,11 +280,6 @@ export function ExercisesManager({ exercises }: Props) {
                   <p className="mt-1 font-semibold">Weight (lb)</p>
                 </div>
               </div>
-              <p className="text-xs th-muted">
-                Tip: open <strong>Workouts</strong>, add this exercise as a
-                block, then edit the sets table beside the video — same layout as
-                TrainHeroic.
-              </p>
               <button
                 type="button"
                 disabled={pending}
@@ -318,6 +289,7 @@ export function ExercisesManager({ exercises }: Props) {
                     action: "updateExercise",
                     id: selected.id,
                     title: editTitle || selected.title,
+                    category: editCategory,
                     pointsOfPerformance:
                       editCues || selected.pointsOfPerformance,
                     videoUrl: editUrl || selected.videoUrl,

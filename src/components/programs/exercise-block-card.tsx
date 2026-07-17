@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
+import { ExercisePicker } from "@/components/programs/exercise-picker";
 import type {
   Exercise,
   WorkoutBlock,
   WorkoutBlockSet,
 } from "@/features/programs/types";
 import { VideoPlayer } from "@/lib/video/player";
-
-export type VideoFilter = "all" | "with-video" | "no-video";
 
 type ExerciseBlockCardProps = {
   block: WorkoutBlock;
@@ -32,22 +31,9 @@ export function ExerciseBlockCard({
   onSaveSets,
   onRemove,
 }: ExerciseBlockCardProps) {
-  const [filter, setFilter] = useState<VideoFilter>("all");
-  const [filterOpen, setFilterOpen] = useState(false);
   const [param2, setParam2] = useState<"weight_lb" | "optional">("weight_lb");
 
-  const filtered = useMemo(() => {
-    return exercises.filter((ex) => {
-      if (filter === "with-video") return ex.videoSource !== "none";
-      if (filter === "no-video") return ex.videoSource === "none";
-      return true;
-    });
-  }, [exercises, filter]);
-
-  const exercise =
-    exercises.find((e) => e.id === block.exerciseId) ??
-    filtered.find((e) => e.id === block.exerciseId) ??
-    null;
+  const exercise = exercises.find((e) => e.id === block.exerciseId) ?? null;
 
   const sets = block.sets.length
     ? block.sets
@@ -106,73 +92,13 @@ export function ExerciseBlockCard({
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[1.2fr_0.9fr]">
-        {/* Left: exercise picker + media + cues */}
         <div className="border-b border-[var(--th-border)] p-4 lg:border-r lg:border-b-0">
-          <div className="th-bar flex items-center gap-2 px-2 py-1.5">
-            <select
-              value={block.exerciseId}
-              disabled={pending}
-              onChange={(e) => onChangeExercise(e.target.value)}
-              className="min-h-10 flex-1 border-0 bg-transparent text-base font-semibold text-[var(--th-text)] outline-none"
-            >
-              {filtered.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.title}
-                </option>
-              ))}
-              {/* Keep current selected even if filtered out */}
-              {exercise &&
-              !filtered.some((e) => e.id === exercise.id) ? (
-                <option value={exercise.id}>{exercise.title}</option>
-              ) : null}
-            </select>
-            <div className="relative">
-              <button
-                type="button"
-                aria-label="Filter exercises"
-                aria-expanded={filterOpen}
-                onClick={() => setFilterOpen((o) => !o)}
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded border border-[var(--th-border)] bg-white text-[var(--th-muted)] hover:text-[var(--th-text)]"
-              >
-                <FilterIcon />
-                {filter !== "all" ? (
-                  <span
-                    className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                    style={{ background: "var(--th-blue)" }}
-                  >
-                    1
-                  </span>
-                ) : null}
-              </button>
-              {filterOpen ? (
-                <div className="absolute right-0 z-20 mt-1 w-44 border border-[var(--th-border)] bg-white py-1 shadow-md">
-                  {(
-                    [
-                      ["all", "All exercises"],
-                      ["with-video", "Has video"],
-                      ["no-video", "No video"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={`block w-full px-3 py-2 text-left text-sm ${
-                        filter === value
-                          ? "bg-[var(--th-surface-muted)] font-semibold"
-                          : "hover:bg-[var(--th-surface-muted)]"
-                      }`}
-                      onClick={() => {
-                        setFilter(value);
-                        setFilterOpen(false);
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <ExercisePicker
+            exercises={exercises}
+            value={block.exerciseId}
+            disabled={pending}
+            onChange={onChangeExercise}
+          />
 
           <label className="mt-3 block">
             <span className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide th-muted">
@@ -219,7 +145,6 @@ export function ExerciseBlockCard({
           </div>
         </div>
 
-        {/* Right: prescription */}
         <div className="p-4">
           <div className="th-bar flex items-center justify-between gap-2 px-3 py-2">
             <span className="text-sm font-semibold">
@@ -333,18 +258,5 @@ export function ExerciseBlockCard({
         </div>
       </div>
     </article>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 6h16M7 12h10M10 18h4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

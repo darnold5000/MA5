@@ -103,6 +103,23 @@ export async function POST(request: Request) {
       const data = z
         .object({
           title: z.string().min(1).max(120),
+          category: z
+            .enum([
+              "Chest",
+              "Back",
+              "Shoulders",
+              "Legs",
+              "Hamstrings / Glutes",
+              "Arms",
+              "Core",
+              "Plyometrics",
+              "Speed & Agility",
+              "Olympic Lifts",
+              "Conditioning",
+              "Mobility",
+              "Recovery",
+            ])
+            .optional(),
           pointsOfPerformance: z.string().max(5000).optional(),
           videoUrl: z.string().optional(),
         })
@@ -123,6 +140,7 @@ export async function POST(request: Request) {
       const exercise: Exercise = {
         id: newId("ex"),
         title: data.title.trim(),
+        category: data.category ?? "Legs",
         pointsOfPerformance: data.pointsOfPerformance?.trim() ?? "",
         videoSource,
         videoUrl,
@@ -141,6 +159,23 @@ export async function POST(request: Request) {
         .object({
           id: z.string(),
           title: z.string().min(1).max(120).optional(),
+          category: z
+            .enum([
+              "Chest",
+              "Back",
+              "Shoulders",
+              "Legs",
+              "Hamstrings / Glutes",
+              "Arms",
+              "Core",
+              "Plyometrics",
+              "Speed & Agility",
+              "Olympic Lifts",
+              "Conditioning",
+              "Mobility",
+              "Recovery",
+            ])
+            .optional(),
           pointsOfPerformance: z.string().max(5000).optional(),
           videoUrl: z.string().nullable().optional(),
           clearVideo: z.boolean().optional(),
@@ -153,6 +188,7 @@ export async function POST(request: Request) {
       const current = state.exercises[idx];
       let next = { ...current };
       if (data.title !== undefined) next.title = data.title.trim();
+      if (data.category !== undefined) next.category = data.category;
       if (data.pointsOfPerformance !== undefined) {
         next.pointsOfPerformance = data.pointsOfPerformance;
       }

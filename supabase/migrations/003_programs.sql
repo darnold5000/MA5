@@ -9,6 +9,12 @@
 create table if not exists public.ma5_exercises (
   id uuid primary key default gen_random_uuid(),
   title text not null,
+  category text not null default 'Legs'
+    check (category in (
+      'Chest', 'Back', 'Shoulders', 'Legs', 'Hamstrings / Glutes', 'Arms',
+      'Core', 'Plyometrics', 'Speed & Agility', 'Olympic Lifts',
+      'Conditioning', 'Mobility', 'Recovery'
+    )),
   points_of_performance text not null default '',
   video_source text not null default 'none'
     check (video_source in ('upload', 'youtube', 'vimeo', 'none')),
@@ -26,6 +32,9 @@ create table if not exists public.ma5_exercises (
 
 create index if not exists ma5_exercises_title_idx
   on public.ma5_exercises (title);
+
+create index if not exists ma5_exercises_category_idx
+  on public.ma5_exercises (category);
 
 -- ---------------------------------------------------------------------------
 -- Workouts (session templates)
