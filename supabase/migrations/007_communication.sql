@@ -1,6 +1,15 @@
 -- MA5 Communication System (v1)
 -- Direct messages, announcements, read tracking, in-app notifications.
--- Single-facility: no facility_id column (see ma5_facility_settings singleton).
+--
+-- TENANCY WARNING (do not ignore when porting to Signal Works):
+-- This schema is intentionally SINGLE-FACILITY / NOT multi-tenant.
+-- There is no facility_id (or tenant_id) on threads, messages, announcements,
+-- recipients, or notifications. RLS scopes by user role and client ownership
+-- only — it does NOT isolate data between gyms.
+-- When Signal Works reuses this for multiple gyms, you MUST add a tenant key
+-- and rewrite policies before calling the communication schema "tenant-safe."
+-- Matches MA5 today (ma5_facility_settings singleton, id = 1).
+--
 -- External email/SMS/advanced push deferred — see docs/COMMUNICATION_PHASE2_DEFERRED.md
 
 -- ---------------------------------------------------------------------------

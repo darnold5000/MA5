@@ -34,7 +34,22 @@ Migration: `supabase/migrations/007_communication.sql`
 - `ma5_announcements` + `ma5_announcement_recipients`
 - Extends existing `ma5_notifications` with `type`, `entity_type`, `entity_id`
 
-Single-facility: no `facility_id` column (matches the rest of MA5).
+### Tenancy — not multi-tenant yet
+
+**This communication schema is intentionally single-facility and is not tenant-safe.**
+
+MA5 today is one gym. There is no `facility_id` / `tenant_id` on communication tables. RLS only answers “is this user staff, or the client on this thread?” — it does **not** isolate Gym A’s messages from Gym B’s.
+
+That is fine for MA5. It is **not** fine to assume when Signal Works reuses this platform for other gyms.
+
+Before multi-tenant reuse:
+
+1. Add a tenant key (`facility_id` or equivalent) to threads, announcements, recipients, and notifications
+2. Scope every RLS policy and every query with that key
+3. Ensure service-role publish jobs never fan out across tenants
+4. Do not treat the current `ma5_*` communication tables as already portable
+
+Until then, treat this as MA5-only operational messaging.
 
 ## APIs
 
