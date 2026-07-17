@@ -46,14 +46,14 @@ export default function OperationsHomePage() {
         </Link>
       </div>
 
-      <HealthSnapshot metrics={data.health} />
+      <HealthSnapshot metrics={data.health} animate />
 
       <section>
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
           Business overview
         </p>
         <div className="mt-4">
-          <OverviewGrid metrics={data.overview} />
+          <OverviewGrid metrics={data.overview} animate />
         </div>
       </section>
 

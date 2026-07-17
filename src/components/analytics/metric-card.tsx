@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 
+import { CountUpValue } from "@/components/analytics/count-up-value";
 import type { OverviewMetric, PeriodMetric } from "@/features/analytics/types";
 import { cn } from "@/lib/utils";
 
@@ -9,12 +12,16 @@ export function MetricCard({
   note,
   href,
   className,
+  animate = false,
+  delayMs = 0,
 }: {
   label: string;
   value: string;
   note?: string;
   href?: string;
   className?: string;
+  animate?: boolean;
+  delayMs?: number;
 }) {
   const body = (
     <>
@@ -22,7 +29,11 @@ export function MetricCard({
         {label}
       </p>
       <p className="mt-4 font-display text-4xl tracking-wide text-foreground">
-        {value}
+        {animate ? (
+          <CountUpValue value={value} delayMs={delayMs} />
+        ) : (
+          value
+        )}
       </p>
       {note ? <p className="mt-2 text-xs text-muted">{note}</p> : null}
       {href ? <div className="mt-4 h-px w-full bg-border" /> : null}
@@ -50,15 +61,23 @@ export function MetricCard({
   );
 }
 
-export function OverviewGrid({ metrics }: { metrics: OverviewMetric[] }) {
+export function OverviewGrid({
+  metrics,
+  animate = false,
+}: {
+  metrics: OverviewMetric[];
+  animate?: boolean;
+}) {
   return (
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {metrics.map((m) => (
+      {metrics.map((m, i) => (
         <MetricCard
           key={m.id}
           label={m.label}
           value={m.value}
           href={m.href}
+          animate={animate}
+          delayMs={animate ? 120 + i * 80 : 0}
         />
       ))}
     </section>
@@ -68,9 +87,11 @@ export function OverviewGrid({ metrics }: { metrics: OverviewMetric[] }) {
 export function PeriodGrid({
   metrics,
   columns = 4,
+  animate = false,
 }: {
   metrics: PeriodMetric[];
   columns?: 4 | 5;
+  animate?: boolean;
 }) {
   return (
     <div
@@ -79,12 +100,14 @@ export function PeriodGrid({
         columns === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4",
       )}
     >
-      {metrics.map((m) => (
+      {metrics.map((m, i) => (
         <MetricCard
           key={m.id}
           label={m.label}
           value={m.value}
           note={m.note}
+          animate={animate}
+          delayMs={animate ? i * 70 : 0}
         />
       ))}
     </div>
