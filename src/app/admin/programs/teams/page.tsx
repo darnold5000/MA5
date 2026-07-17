@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { ProgramsLibraryNav } from "@/components/programs/programs-library-nav";
 import { ProgramsLightShell } from "@/components/programs/programs-light-shell";
+import { ProgramsSectionNav } from "@/components/programs/programs-section-nav";
 import { TeamsManager } from "@/components/programs/teams-manager";
 import {
   getProgramsState,
@@ -29,7 +29,7 @@ export default async function AdminTeamsPage() {
             Shared calendars for group programming.
           </p>
         </div>
-        <ProgramsLibraryNav pathname="/admin/programs/teams" />
+        <ProgramsSectionNav active="teams" />
         <TeamsManager
           teams={state.teams}
           teamMembers={state.teamMembers}

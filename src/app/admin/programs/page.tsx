@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ProgramsLibraryNav } from "@/components/programs/programs-library-nav";
 import { ProgramsLightShell } from "@/components/programs/programs-light-shell";
+import { ProgramsSectionNav } from "@/components/programs/programs-section-nav";
 import { getProgramsState } from "@/features/programs/queries";
 
 export const metadata: Metadata = {
@@ -15,19 +15,9 @@ export default async function AdminProgramsPage() {
 
   const cards = [
     {
-      href: "/admin/programs/exercises",
-      title: "Exercises",
-      detail: `${state.exercises.length} in library`,
-    },
-    {
-      href: "/admin/programs/workouts",
-      title: "Workouts",
-      detail: `${state.workouts.length} templates · sets & reps`,
-    },
-    {
-      href: "/admin/programs/library",
-      title: "Programs",
-      detail: `${state.programs.length} multi-week`,
+      href: "/admin/programs/library?tab=exercises",
+      title: "Library",
+      detail: `${state.exercises.length} exercises · ${state.workouts.length} sessions · ${state.programs.length} programs`,
     },
     {
       href: "/admin/programs/teams",
@@ -37,7 +27,7 @@ export default async function AdminProgramsPage() {
     {
       href: "/admin/programs/assign",
       title: "Assign",
-      detail: "Client calendars",
+      detail: "Client calendars & publish",
     },
   ];
 
@@ -46,20 +36,17 @@ export default async function AdminProgramsPage() {
       <div className="mx-auto max-w-5xl space-y-6">
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--th-blue)]">
-            Library
+            Operations
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-[var(--th-text)]">
-            Programs
-          </h1>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Programs</h1>
           <p className="mt-2 max-w-2xl text-sm th-muted">
-            Light TrainHeroic-style programming workspace. Build exercises,
-            then prescribe sets &amp; reps on Workouts.
+            Build content in Library, deliver via Teams or Assign.
           </p>
         </div>
 
-        <ProgramsLibraryNav pathname="/admin/programs" />
+        <ProgramsSectionNav active="overview" />
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {cards.map((card) => (
             <Link
               key={card.href}

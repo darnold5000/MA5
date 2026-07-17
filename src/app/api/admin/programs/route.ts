@@ -289,6 +289,51 @@ export async function POST(request: Request) {
       return withCookie(state, { ok: true });
     }
 
+    case "deleteExercise": {
+      const data = z.object({ id: z.string() }).parse(json);
+      const inUse = state.workoutBlocks.some((b) => b.exerciseId === data.id);
+      if (inUse) {
+        return NextResponse.json(
+          { error: "Exercise is used in a workout. Remove it from blocks first." },
+          { status: 400 },
+        );
+      }
+      state.exercises = state.exercises.filter((e) => e.id !== data.id);
+      return withCookie(state, { ok: true });
+    }
+
+    case "deleteWorkout": {
+      const data = z.object({ id: z.string() }).parse(json);
+      const inProgram = state.programDays.some((d) => d.workoutId === data.id);
+      const inCalendar = state.calendarEntries.some((e) => e.workoutId === data.id);
+      if (inProgram || inCalendar) {
+        return NextResponse.json(
+          {
+            error:
+              "Workout is used in a program or calendar. Clear those references first.",
+          },
+          { status: 400 },
+        );
+      }
+      state.workouts = state.workouts.filter((w) => w.id !== data.id);
+      state.workoutBlocks = state.workoutBlocks.filter(
+        (b) => b.workoutId !== data.id,
+      );
+      return withCookie(state, { ok: true });
+    }
+
+    case "deleteProgram": {
+      const data = z.object({ id: z.string() }).parse(json);
+      state.programs = state.programs.filter((p) => p.id !== data.id);
+      state.programDays = state.programDays.filter(
+        (d) => d.programId !== data.id,
+      );
+      state.assignments = state.assignments.filter(
+        (a) => a.programId !== data.id,
+      );
+      return withCookie(state, { ok: true });
+    }
+
     case "createProgram": {
       const data = z
         .object({

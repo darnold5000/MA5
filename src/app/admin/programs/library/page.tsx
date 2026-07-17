@@ -1,16 +1,31 @@
 import type { Metadata } from "next";
 
-import { ProgramGridManager } from "@/components/programs/program-grid-manager";
-import { ProgramsLibraryNav } from "@/components/programs/programs-library-nav";
+import {
+  LibraryWorkspace,
+  type LibraryTab,
+} from "@/components/programs/library-workspace";
 import { ProgramsLightShell } from "@/components/programs/programs-light-shell";
+import { ProgramsSectionNav } from "@/components/programs/programs-section-nav";
 import { getProgramsState } from "@/features/programs/queries";
 
 export const metadata: Metadata = {
-  title: "Program library · Programs",
+  title: "Library · Programs",
   robots: { index: false, follow: false },
 };
 
-export default async function AdminProgramLibraryPage() {
+type PageProps = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
+function parseTab(raw: string | undefined): LibraryTab {
+  if (raw === "programs" || raw === "sessions" || raw === "exercises") {
+    return raw;
+  }
+  return "exercises";
+}
+
+export default async function AdminLibraryPage({ searchParams }: PageProps) {
+  const params = await searchParams;
   const state = await getProgramsState();
 
   return (
@@ -18,19 +33,24 @@ export default async function AdminProgramLibraryPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--th-blue)]">
-            Library
+            Programs
           </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">Programs</h1>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Library</h1>
           <p className="mt-2 text-sm th-muted">
-            Multi-week grids. Drop workouts into days, then assign to clients or
-            teams.
+            One place for programs, sessions, and exercises — switch tabs to
+            browse, edit, delete, or create.
           </p>
         </div>
-        <ProgramsLibraryNav pathname="/admin/programs/library" />
-        <ProgramGridManager
+
+        <ProgramsSectionNav active="library" />
+
+        <LibraryWorkspace
+          initialTab={parseTab(params.tab)}
+          exercises={state.exercises}
+          workouts={state.workouts}
+          workoutBlocks={state.workoutBlocks}
           programs={state.programs}
           programDays={state.programDays}
-          workouts={state.workouts}
         />
       </div>
     </ProgramsLightShell>

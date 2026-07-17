@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { AssignCalendarManager } from "@/components/programs/assign-calendar-manager";
-import { ProgramsLibraryNav } from "@/components/programs/programs-library-nav";
 import { ProgramsLightShell } from "@/components/programs/programs-light-shell";
+import { ProgramsSectionNav } from "@/components/programs/programs-section-nav";
 import {
   getProgramsState,
   listClientsForPrograms,
@@ -29,7 +29,7 @@ export default async function AdminAssignPage() {
             Individual client calendars — draft, publish, or assign a program.
           </p>
         </div>
-        <ProgramsLibraryNav pathname="/admin/programs/assign" />
+        <ProgramsSectionNav active="assign" />
         <AssignCalendarManager
           clients={clients}
           workouts={state.workouts}
