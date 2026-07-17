@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
+import { ExerciseDetailDrawer } from "@/components/programs/exercise-detail-drawer";
 import { ExerciseFormDrawer } from "@/components/programs/exercise-form-drawer";
 import { ProgramGridManager } from "@/components/programs/program-grid-manager";
 import { WorkoutsManager } from "@/components/programs/workouts-manager";
@@ -59,6 +60,9 @@ export function LibraryWorkspace({
   const [creatingSession, setCreatingSession] = useState(false);
   const [exerciseDrawer, setExerciseDrawer] =
     useState<ExerciseDrawerState>(null);
+  const [viewingExerciseId, setViewingExerciseId] = useState<string | null>(
+    null,
+  );
   const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
   const [localExercises, setLocalExercises] = useState<Exercise[]>([]);
   const [pending, setPending] = useState(false);
@@ -139,6 +143,7 @@ export function LibraryWorkspace({
     setEditingSessionId(null);
     setCreatingSession(false);
     setExerciseDrawer(null);
+    setViewingExerciseId(null);
     setSelectedIds([]);
     setSearch("");
     setExerciseCategory("");
@@ -358,14 +363,23 @@ export function LibraryWorkspace({
               rows={filteredExercises.map((ex) => ({
                 id: ex.id,
                 cells: [
-                  ex.title,
+                  <button
+                    key="t"
+                    type="button"
+                    onClick={() => setViewingExerciseId(ex.id)}
+                    className="text-left font-semibold text-[#111827] hover:text-[#2563eb] hover:underline"
+                  >
+                    {ex.title}
+                  </button>,
                   ex.category,
-                  ex.videoSource === "none" ? "—" : ex.videoSource,
+                  videoLabel(ex.videoSource),
                   truncate(ex.pointsOfPerformance, 48) || "—",
                   ex.createdAt.slice(0, 10),
                 ],
                 selected: selectedIds.includes(ex.id),
                 onToggle: () => toggleSelect(ex.id),
+                onRowClick: () => setViewingExerciseId(ex.id),
+                onView: () => setViewingExerciseId(ex.id),
                 onEdit: () => setExerciseDrawer({ mode: "edit", id: ex.id }),
                 onDelete: () => void deleteOne(ex.id),
               }))}
@@ -422,6 +436,29 @@ export function LibraryWorkspace({
             />
           ) : null}
 
+          <ExerciseDetailDrawer
+            open={viewingExerciseId != null && exerciseDrawer == null}
+            exercise={
+              viewingExerciseId
+                ? (mergedExercises.find((e) => e.id === viewingExerciseId) ??
+                  null)
+                : null
+            }
+            onClose={() => setViewingExerciseId(null)}
+            onEdit={() => {
+              if (!viewingExerciseId) return;
+              const id = viewingExerciseId;
+              setViewingExerciseId(null);
+              setExerciseDrawer({ mode: "edit", id });
+            }}
+            onDelete={() => {
+              if (!viewingExerciseId) return;
+              const id = viewingExerciseId;
+              setViewingExerciseId(null);
+              void deleteOne(id);
+            }}
+          />
+
           <ExerciseFormDrawer
             open={exerciseDrawer != null}
             mode={exerciseDrawer?.mode === "edit" ? "edit" : "create"}
@@ -434,6 +471,7 @@ export function LibraryWorkspace({
             onClose={() => setExerciseDrawer(null)}
             onSaved={(ex) => {
               setExerciseDrawer(null);
+              setViewingExerciseId(null);
               setLocalExercises((prev) => [
                 ex,
                 ...prev.filter((e) => e.id !== ex.id),
@@ -496,6 +534,14 @@ function truncate(value: string, max: number) {
   return t.length > max ? `${t.slice(0, max)}…` : t;
 }
 
+function videoLabel(source: Exercise["videoSource"]) {
+  if (source === "none") return "—";
+  if (source === "upload") return "Uploaded";
+  if (source === "youtube") return "YouTube";
+  if (source === "vimeo") return "Vimeo";
+  return source;
+}
+
 function TypeBadge({ label }: { label: string }) {
   return (
     <span className="inline-block rounded border border-[var(--th-border)] px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase th-muted">
@@ -518,20 +564,6 @@ function TrashIcon() {
   );
 }
 
-type TableRow = {
-  headers: string[];
-  empty: string;
-  rows: Array<{
-    id: string;
-    cells: ReactNode[];
-    selected: boolean;
-    onToggle: () => void;
-    onEdit: () => void;
-    onDelete: () => void;
-  }>;
-};
-
-
 function LibraryTable({
   headers,
   empty,
@@ -544,6 +576,8 @@ function LibraryTable({
     cells: ReactNode[];
     selected: boolean;
     onToggle: () => void;
+    onRowClick?: () => void;
+    onView?: () => void;
     onEdit: () => void;
     onDelete: () => void;
   }>;
@@ -569,16 +603,27 @@ function LibraryTable({
                 {h}
               </th>
             ))}
-            <th className="px-3 py-3 font-semibold">Actions</th>
+            <th className="w-28 px-3 py-3 text-right font-semibold">
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr
               key={row.id}
-              className="border-t border-[var(--th-border)] bg-white hover:bg-[var(--th-surface-muted)]/60"
+              className={cn(
+                "border-t border-[var(--th-border)] bg-white hover:bg-[var(--th-surface-muted)]/60",
+                row.onRowClick && "cursor-pointer",
+              )}
+              onClick={(e) => {
+                if (!row.onRowClick) return;
+                const target = e.target as HTMLElement;
+                if (target.closest("button, a, input, label")) return;
+                row.onRowClick();
+              }}
             >
-              <td className="px-3 py-3">
+              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   checked={row.selected}
@@ -591,21 +636,36 @@ function LibraryTable({
                   {cell}
                 </td>
               ))}
-              <td className="px-3 py-3">
-                <div className="flex gap-2">
+              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-end gap-0.5">
+                  {row.onView ? (
+                    <button
+                      type="button"
+                      onClick={row.onView}
+                      className="inline-flex h-8 w-8 items-center justify-center text-[#6b7280] hover:text-[#111827]"
+                      aria-label="View"
+                      title="View"
+                    >
+                      <EyeIcon />
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={row.onEdit}
-                    className="th-link"
+                    className="inline-flex h-8 w-8 items-center justify-center text-[#6b7280] hover:text-[#111827]"
+                    aria-label="Edit"
+                    title="Edit"
                   >
-                    Edit
+                    <PencilIcon />
                   </button>
                   <button
                     type="button"
                     onClick={row.onDelete}
-                    className="text-xs font-semibold uppercase tracking-wide text-[var(--th-danger)]"
+                    className="inline-flex h-8 w-8 items-center justify-center text-[#9ca3af] hover:text-[#dc2626]"
+                    aria-label="Delete"
+                    title="Delete"
                   >
-                    Delete
+                    <RowTrashIcon />
                   </button>
                 </div>
               </td>
@@ -614,5 +674,47 @@ function LibraryTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function RowTrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M5 7h14M10 11v6M14 11v6M8 7V5h8v2M7 7l1 12h8l1-12"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
