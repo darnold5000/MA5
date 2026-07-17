@@ -56,7 +56,7 @@ export function ProgramGridManager({
   const [libraryPicker, setLibraryPicker] = useState<ActiveCell | null>(null);
   const [librarySearch, setLibrarySearch] = useState("");
   const [editingDay, setEditingDay] = useState<
-    (ActiveCell & { workoutId: string }) | null
+    (ActiveCell & { workoutId: string | null }) | null
   >(null);
   const [extraWorkouts, setExtraWorkouts] = useState<Workout[]>([]);
   const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
@@ -172,37 +172,21 @@ export function ProgramGridManager({
     });
   }
 
-  async function createSession(weekIndex: number, dayIndex: number) {
-    if (!selected) return;
-    setToast("Creating session…");
-    const data = await post({
-      action: "createWorkout",
-      title: `Week ${weekIndex} Day ${dayIndex}`,
-      coachInstructions: "",
-    });
-    if (!data?.workout) {
-      setToast(null);
-      return;
-    }
-    setExtraWorkouts((prev) => [data.workout as Workout, ...prev]);
-    patchLocalDay(weekIndex, dayIndex, data.workout.id);
-    await post({
-      action: "setProgramDayWorkout",
-      programId: selected.id,
-      weekIndex,
-      dayIndex,
-      workoutId: data.workout.id,
-    });
-    setToast("Session added");
-    setEditingDay({ weekIndex, dayIndex, workoutId: data.workout.id });
+  function startNewSession(weekIndex: number, dayIndex: number) {
+    setError(null);
+    setEditingDay({ weekIndex, dayIndex, workoutId: null });
   }
 
-  async function addFromLibrary(
+  async function attachSessionToDay(
     weekIndex: number,
     dayIndex: number,
     workoutId: string,
+    workout?: Workout,
   ) {
-    if (!selected) return;
+    if (!selected) return false;
+    if (workout) {
+      setExtraWorkouts((prev) => [workout, ...prev.filter((w) => w.id !== workout.id)]);
+    }
     patchLocalDay(weekIndex, dayIndex, workoutId);
     const ok = await post({
       action: "setProgramDayWorkout",
@@ -211,9 +195,19 @@ export function ProgramGridManager({
       dayIndex,
       workoutId,
     });
+    if (ok) setToast("Session added");
+    return Boolean(ok);
+  }
+
+  async function addFromLibrary(
+    weekIndex: number,
+    dayIndex: number,
+    workoutId: string,
+  ) {
+    if (!selected) return;
+    const ok = await attachSessionToDay(weekIndex, dayIndex, workoutId);
     if (ok) {
       setLibraryPicker(null);
-      setToast("Session added");
       setEditingDay({ weekIndex, dayIndex, workoutId });
     }
   }
@@ -228,6 +222,7 @@ export function ProgramGridManager({
       dayIndex,
       workoutId: null,
     });
+    setToast("Session removed");
   }
 
   if (showCreate && !selected) {
@@ -329,6 +324,7 @@ export function ProgramGridManager({
 
   // Day session editor: left mini calendar + workout builder
   if (editingDay) {
+    const isNewSession = !editingDay.workoutId;
     return (
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -341,6 +337,9 @@ export function ProgramGridManager({
           </button>
           <p className="text-sm font-semibold text-[var(--th-text)]">
             Week {editingDay.weekIndex} Day {editingDay.dayIndex}
+            {isNewSession ? (
+              <span className="ml-2 font-normal th-muted">(not on calendar yet)</span>
+            ) : null}
           </p>
         </div>
 
@@ -377,7 +376,7 @@ export function ProgramGridManager({
                                   workoutId: cell.workoutId,
                                 });
                               } else {
-                                void createSession(weekIndex, dayIndex);
+                                startNewSession(weekIndex, dayIndex);
                               }
                             }}
                             className={cn(
@@ -406,9 +405,33 @@ export function ProgramGridManager({
               blocks={workoutBlocks}
               exercises={exercises}
               focusWorkoutId={editingDay.workoutId}
+              startFresh={isNewSession}
+              initialTitle={
+                isNewSession
+                  ? `Week ${editingDay.weekIndex} Day ${editingDay.dayIndex}`
+                  : undefined
+              }
+              saveLabel={isNewSession ? "Add Session" : "Save Template"}
               embedded
               onBack={() => setEditingDay(null)}
-              onSaved={() => setEditingDay(null)}
+              onSaved={async (workoutId, meta) => {
+                if (isNewSession) {
+                  const stub: Workout = {
+                    id: workoutId,
+                    title: meta?.title ?? `Week ${editingDay.weekIndex} Day ${editingDay.dayIndex}`,
+                    coachInstructions: "",
+                    createdAt: new Date().toISOString(),
+                  };
+                  const ok = await attachSessionToDay(
+                    editingDay.weekIndex,
+                    editingDay.dayIndex,
+                    workoutId,
+                    stub,
+                  );
+                  if (!ok) return;
+                }
+                setEditingDay(null);
+              }}
             />
           </div>
         </div>
@@ -493,38 +516,43 @@ export function ProgramGridManager({
                   >
                     {workout && cell?.workoutId ? (
                       <>
-                        <button
-                          type="button"
-                          disabled={pending}
-                          className="absolute inset-0 w-full p-2 text-left"
-                          onClick={() => {
-                            setEditingDay({
-                              weekIndex,
-                              dayIndex,
-                              workoutId: cell.workoutId!,
-                            });
-                          }}
-                        >
-                          <div className="rounded border border-[var(--th-border)] bg-white p-2 shadow-sm">
-                            <p className="text-xs font-semibold leading-snug text-[var(--th-text)]">
+                        <div className="absolute inset-0 w-full p-2">
+                          <div className="flex h-full flex-col rounded border border-[var(--th-border)] bg-white p-2 shadow-sm">
+                            <p className="flex-1 text-xs font-semibold leading-snug text-[var(--th-text)]">
                               {workout.title}
                             </p>
-                            <p className="mt-1 text-[10px] font-semibold tracking-wide text-[var(--th-blue)] uppercase">
-                              Edit session
-                            </p>
+                            <div className="mt-2 flex items-center justify-end gap-0.5">
+                              <button
+                                type="button"
+                                disabled={pending}
+                                className="inline-flex h-7 w-7 items-center justify-center text-[#6b7280] hover:text-[#111827] disabled:opacity-50"
+                                aria-label="Edit session"
+                                title="Edit session"
+                                onClick={() => {
+                                  setEditingDay({
+                                    weekIndex,
+                                    dayIndex,
+                                    workoutId: cell.workoutId!,
+                                  });
+                                }}
+                              >
+                                <PencilIcon />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={pending}
+                                className="inline-flex h-7 w-7 items-center justify-center text-[#9ca3af] hover:text-[var(--th-text)] disabled:opacity-50"
+                                aria-label="Remove session"
+                                title="Remove session"
+                                onClick={() =>
+                                  void clearDay(weekIndex, dayIndex)
+                                }
+                              >
+                                <TrashIcon />
+                              </button>
+                            </div>
                           </div>
-                        </button>
-                        <button
-                          type="button"
-                          className="absolute top-1 right-1 z-10 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase th-muted hover:bg-white hover:text-[var(--th-danger)]"
-                          title="Clear day"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void clearDay(weekIndex, dayIndex);
-                          }}
-                        >
-                          Clear
-                        </button>
+                        </div>
                       </>
                     ) : (
                       <>
@@ -535,7 +563,9 @@ export function ProgramGridManager({
                           <button
                             type="button"
                             disabled={pending}
-                            onClick={() => void createSession(weekIndex, dayIndex)}
+                            onClick={() =>
+                              startNewSession(weekIndex, dayIndex)
+                            }
                             className="text-sm font-bold tracking-wide text-[var(--th-blue)] uppercase hover:underline disabled:opacity-50"
                           >
                             Create Session
@@ -655,5 +685,33 @@ function Toast({ message }: { message: string }) {
       <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
       {message}
     </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

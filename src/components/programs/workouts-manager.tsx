@@ -22,8 +22,12 @@ type Props = {
   embedded?: boolean;
   /** Start a brand-new session template (Library → Create Session). */
   startFresh?: boolean;
+  /** Prefill title when starting fresh (e.g. program day label). */
+  initialTitle?: string;
+  /** Primary save button label. */
+  saveLabel?: string;
   onBack?: () => void;
-  onSaved?: (workoutId: string) => void;
+  onSaved?: (workoutId: string, meta?: { title: string }) => void;
 };
 
 type DraftBlock = {
@@ -64,6 +68,8 @@ export function WorkoutsManager({
   focusWorkoutId = null,
   embedded = false,
   startFresh = false,
+  initialTitle,
+  saveLabel = "Save Template",
   onBack,
   onSaved,
 }: Props) {
@@ -74,7 +80,7 @@ export function WorkoutsManager({
   const [workoutId, setWorkoutId] = useState<string | null>(
     startFresh ? null : (focusWorkoutId ?? null),
   );
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(startFresh ? (initialTitle ?? "") : "");
   const [instructions, setInstructions] = useState("");
   const [draftBlocks, setDraftBlocks] = useState<DraftBlock[]>([]);
   const hydratedKeyRef = useRef<string | null>(null);
@@ -83,14 +89,16 @@ export function WorkoutsManager({
 
   // Boot / switch template when Library asks for a different session
   useEffect(() => {
-    const nextKey = startFresh ? "new" : (focusWorkoutId ?? "none");
+    const nextKey = startFresh
+      ? `new:${initialTitle ?? ""}`
+      : (focusWorkoutId ?? "none");
     // Same session after router.refresh — keep local draft
     if (hydratedKeyRef.current === nextKey) return;
     hydratedKeyRef.current = nextKey;
 
     if (startFresh || !focusWorkoutId) {
       setWorkoutId(null);
-      setTitle("");
+      setTitle(initialTitle ?? "");
       setInstructions("");
       setDraftBlocks([]);
       setDirty(false);
@@ -115,7 +123,7 @@ export function WorkoutsManager({
     );
     setDirty(false);
     setError(null);
-  }, [startFresh, focusWorkoutId, workouts, blocks]);
+  }, [startFresh, focusWorkoutId, initialTitle, workouts, blocks]);
 
   async function post(body: unknown) {
     setPending(true);
@@ -249,7 +257,7 @@ export function WorkoutsManager({
     setDraftBlocks(nextDrafts);
     setDirty(false);
     setError(null);
-    onSaved?.(id);
+    onSaved?.(id, { title: title.trim() });
   }
 
   function discardChanges() {
@@ -479,7 +487,7 @@ export function WorkoutsManager({
               onClick={() => void saveTemplate()}
               className="th-btn-primary disabled:opacity-40"
             >
-              {pending ? "Saving…" : "Save Template"}
+              {pending ? "Saving…" : saveLabel}
             </button>
           </div>
         </div>
