@@ -3,6 +3,7 @@ import { Manrope, Oswald } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { env } from "@/lib/env";
 import { siteConfig } from "@/content/site-config";
 
@@ -27,6 +28,25 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  applicationName: siteConfig.shortName,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: siteConfig.shortName,
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   openGraph: {
     title: siteConfig.name,
     description: siteConfig.description,
@@ -61,6 +81,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <ServiceWorkerRegister />
         <Analytics />
         <SpeedInsights />
       </body>

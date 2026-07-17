@@ -1,7 +1,10 @@
 /**
  * External notification delivery adapter.
- * Phase 1: in-app only. Email/SMS/advanced push — see docs/COMMUNICATION_PHASE2_DEFERRED.md
+ * Email / SMS deferred — see docs/COMMUNICATION_PHASE2_DEFERRED.md
+ * Web Push is wired when VAPID env vars are set.
  */
+
+import { WebPushDeliveryAdapter } from "@/lib/push/web-push";
 
 export type DeliveryPayload = {
   userId: string;
@@ -24,7 +27,7 @@ export interface NotificationDeliveryAdapter {
   sendPush(payload: DeliveryPayload): Promise<DeliveryResult>;
 }
 
-/** No-provider fallback — never throws; logs and returns skipped. */
+/** Fallback when adapter not set — Web Push adapter is the default. */
 export class NoopDeliveryAdapter implements NotificationDeliveryAdapter {
   async sendEmail(payload: DeliveryPayload): Promise<DeliveryResult> {
     if (!payload.allowExternal) {
@@ -67,13 +70,13 @@ export class NoopDeliveryAdapter implements NotificationDeliveryAdapter {
   }
 }
 
-let adapter: NotificationDeliveryAdapter = new NoopDeliveryAdapter();
+let adapter: NotificationDeliveryAdapter = new WebPushDeliveryAdapter();
 
 export function getDeliveryAdapter(): NotificationDeliveryAdapter {
   return adapter;
 }
 
-/** Tests / future provider wiring only — never call from client components. */
+/** Tests / alternate providers only — never call from client components. */
 export function setDeliveryAdapter(next: NotificationDeliveryAdapter) {
   adapter = next;
 }

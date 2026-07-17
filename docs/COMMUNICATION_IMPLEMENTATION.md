@@ -10,6 +10,7 @@ External SMS/email/advanced push are deferred — see `docs/COMMUNICATION_PHASE2
 - Canonical unread badge source: `ma5_notifications` (demo: communication notification rows)
 - Profile toggles control **external** delivery only — in-app always works
 - Service-role key only in server routes (announcement bulk publish)
+- Installable PWA + basic Web Push — see `docs/PWA_WEB_PUSH.md`
 
 ## Routes
 

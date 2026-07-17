@@ -14,7 +14,8 @@ The Phase 1 system remains fully functional using:
 - Unread badges (canonical source: `ma5_notifications`)
 - Supabase-backed notification records
 - Optional Realtime subscriptions (refresh fallback always works)
-- Delivery adapter hooks with no-provider fallback
+- Installable PWA + basic Web Push (see `docs/PWA_WEB_PUSH.md`)
+- Delivery adapter hooks (email still deferred)
 
 ---
 
@@ -73,6 +74,9 @@ Required future work:
 
 Phase 1 creates in-app notifications even when no email provider exists.
 
+**Basic Web Push is part of Phase 1 completion** — see `docs/PWA_WEB_PUSH.md`.
+Advanced / native push remains deferred below.
+
 **Message sending must never fail because email delivery is unavailable.**
 
 The adapter already exists:
@@ -91,7 +95,9 @@ Wire a real provider only after approval.
 
 ## 3. Advanced Push Infrastructure
 
-Phase 1 may include basic Web Push later; defer advanced capabilities:
+Phase 1 includes basic Web Push (VAPID + service worker) — see `docs/PWA_WEB_PUSH.md`.
+
+Defer advanced capabilities:
 
 - Native iOS / Android application push
 - Firebase Cloud Messaging / APNs
@@ -101,6 +107,10 @@ Phase 1 may include basic Web Push later; defer advanced capabilities:
 - Scheduled push campaigns / automated sequences
 
 If basic Web Push is added before Phase 2, limit it to:
+
+~~(superseded — basic Web Push is in Phase 1; see `docs/PWA_WEB_PUSH.md`)~~
+
+Phase 1 Web Push already supports:
 
 - New direct message / new announcement
 - Click opens related screen

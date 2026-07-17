@@ -23,6 +23,8 @@ export const env = {
   gaMeasurementId: readPublic("NEXT_PUBLIC_GA_MEASUREMENT_ID"),
   supabaseUrl: readPublic("NEXT_PUBLIC_SUPABASE_URL"),
   supabaseAnonKey: readPublic("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  /** Public VAPID key for Web Push subscribe (safe to expose). */
+  vapidPublicKey: readPublic("NEXT_PUBLIC_VAPID_PUBLIC_KEY"),
 } as const;
 
 export function isSupabasePublicConfigured(): boolean {

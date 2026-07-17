@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { SignOutButton } from "@/components/platform/sign-out-button";
+import { InstallMa5Section } from "@/components/pwa/install-ma5-section";
 import { ProfileAvatarUpload } from "@/components/profile/profile-avatar-upload";
 import {
   ProfileContactForm,
@@ -155,6 +156,15 @@ export default async function ProfilePage() {
             notifyProgramUpdates: profile.notifyProgramUpdates,
             notifyBillingAlerts: profile.notifyBillingAlerts,
           }}
+        />
+      </Section>
+
+      <Section title="Install MA5">
+        <InstallMa5Section
+          signedIn={Boolean(session)}
+          vapidPublicKey={
+            process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() || null
+          }
         />
       </Section>
 
