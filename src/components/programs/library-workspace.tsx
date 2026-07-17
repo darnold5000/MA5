@@ -433,6 +433,7 @@ export function LibraryWorkspace({
             }
             onClose={() => setExerciseDrawer(null)}
             onSaved={(ex) => {
+              setExerciseDrawer(null);
               setLocalExercises((prev) => [
                 ex,
                 ...prev.filter((e) => e.id !== ex.id),

@@ -3,18 +3,19 @@ import {
   createServiceClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import {
+  ALLOWED_VIDEO_TYPES,
+  EXERCISE_VIDEO_BUCKET,
+  isAllowedVideoType,
+  MAX_VIDEO_BYTES,
+} from "@/lib/video/constants";
 
-export const EXERCISE_VIDEO_BUCKET = "ma5-exercise-videos";
-export const MAX_VIDEO_BYTES = 524_288_000;
-export const ALLOWED_VIDEO_TYPES = [
-  "video/mp4",
-  "video/webm",
-  "video/quicktime",
-] as const;
-
-export function isAllowedVideoType(type: string): boolean {
-  return (ALLOWED_VIDEO_TYPES as readonly string[]).includes(type);
-}
+export {
+  ALLOWED_VIDEO_TYPES,
+  EXERCISE_VIDEO_BUCKET,
+  isAllowedVideoType,
+  MAX_VIDEO_BYTES,
+};
 
 function requireServiceClient() {
   if (!isSupabaseConfigured()) {
@@ -28,6 +29,7 @@ function requireServiceClient() {
   return createServiceClient();
 }
 
+/** Server-side upload (small files / scripts). Prefer browser upload for large videos. */
 export async function uploadExerciseVideo(input: {
   exerciseId: string;
   file: File | Blob;
@@ -69,7 +71,6 @@ export async function createSignedVideoUrl(
 ): Promise<string | null> {
   if (!isSupabaseConfigured() || !path) return null;
   try {
-    // Prefer service role so coaches/clients get stable signed URLs
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createServiceClient();
       const { data, error } = await supabase.storage

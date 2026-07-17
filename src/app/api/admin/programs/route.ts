@@ -295,6 +295,36 @@ async function postSupabase(request: Request) {
         });
       }
 
+      case "attachExerciseVideo": {
+        // Path already uploaded from the browser (avoids Vercel 413).
+        const data = z
+          .object({
+            id: uuid,
+            storagePath: z.string().min(1).max(500),
+          })
+          .parse(json);
+        const expectedPrefix = `exercises/${data.id}/`;
+        if (!data.storagePath.startsWith(expectedPrefix)) {
+          return jsonError("Invalid storage path for this exercise");
+        }
+        const { data: row, error } = await supabase
+          .from(MA5_TABLES.exercises)
+          .update({
+            video_source: "upload",
+            video_url: null,
+            video_storage_path: data.storagePath,
+          })
+          .eq("id", data.id)
+          .select("*")
+          .maybeSingle();
+        if (error) return jsonError(error.message, 500);
+        if (!row) return jsonError("Not found", 404);
+        return jsonOk({
+          ok: true,
+          exercise: mapExerciseRow(row as Record<string, unknown>),
+        });
+      }
+
       case "createWorkout": {
         const data = z
           .object({

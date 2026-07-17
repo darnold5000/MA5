@@ -8,6 +8,7 @@ import {
   type ExerciseCategory,
 } from "@/features/programs/exercise-library";
 import type { Exercise, ExerciseParam } from "@/features/programs/types";
+import { uploadExerciseVideoFromBrowser } from "@/lib/video/browser-upload";
 import { VideoPlayer } from "@/lib/video/player";
 
 const PARAM_OPTIONS: { value: ExerciseParam; label: string }[] = [
@@ -91,16 +92,26 @@ export function ExerciseFormDrawer({
   if (!open) return null;
 
   async function uploadVideo(exerciseId: string, file: File) {
-    const form = new FormData();
-    form.set("exerciseId", exerciseId);
-    form.set("file", file);
+    // Direct to Supabase Storage — not through Vercel (avoids 413).
+    const uploaded = await uploadExerciseVideoFromBrowser({
+      exerciseId,
+      file,
+    });
+    if ("error" in uploaded) {
+      throw new Error(uploaded.error);
+    }
     const res = await fetch("/api/admin/programs", {
       method: "POST",
-      body: form,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "attachExerciseVideo",
+        id: exerciseId,
+        storagePath: uploaded.path,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error ?? "Video upload failed");
+      throw new Error(data.error ?? "Could not attach video");
     }
     return data.exercise as Exercise;
   }
@@ -161,9 +172,9 @@ export function ExerciseFormDrawer({
         saved = await uploadVideo(saved.id, videoFile);
       }
 
+      onClose();
       onSaved?.(saved);
       router.refresh();
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
