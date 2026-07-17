@@ -20,10 +20,24 @@ import {
 } from "@/lib/video/storage";
 
 function withCookie(state: ProgramsState, body: unknown, status = 200) {
-  const response = NextResponse.json(body, { status });
+  const value = serializeProgramsState(state);
+  const cookieBytes = new TextEncoder().encode(value).length;
+  const payload =
+    typeof body === "object" && body !== null
+      ? {
+          ...body,
+          ...(cookieBytes > 3500
+            ? {
+                cookieWarning:
+                  "Demo storage is near the browser cookie limit. Keep this tab open; refresh may reset until Programs is on Supabase.",
+              }
+            : {}),
+        }
+      : body;
+  const response = NextResponse.json(payload, { status });
   response.cookies.set({
     name: PROGRAMS_COOKIE,
-    value: serializeProgramsState(state),
+    value,
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -397,7 +411,7 @@ export async function POST(request: Request) {
       }
       state.programs = [program, ...state.programs];
       state.programDays = [...state.programDays, ...days];
-      return withCookie(state, { ok: true, program });
+      return withCookie(state, { ok: true, program, programDays: days });
     }
 
     case "setProgramDayWorkout": {

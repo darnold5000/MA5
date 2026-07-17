@@ -24,7 +24,7 @@ type Props = {
   /** Start on create form when true and no program selected. */
   startInCreate?: boolean;
   onBackToList?: () => void;
-  onProgramCreated?: (programId: string) => void;
+  onProgramCreated?: (program: Program) => void;
 };
 
 type ActiveCell = { weekIndex: number; dayIndex: number };
@@ -60,6 +60,26 @@ export function ProgramGridManager({
     (ActiveCell & { workoutId: string }) | null
   >(null);
   const [extraWorkouts, setExtraWorkouts] = useState<Workout[]>([]);
+  const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
+  const [localProgramDays, setLocalProgramDays] = useState<ProgramDay[]>([]);
+
+  const allPrograms = useMemo(() => {
+    const byId = new Map(programs.map((p) => [p.id, p]));
+    for (const p of localPrograms) byId.set(p.id, p);
+    return Array.from(byId.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }, [programs, localPrograms]);
+
+  const allProgramDays = useMemo(() => {
+    const key = (d: ProgramDay) =>
+      `${d.programId}:${d.weekIndex}:${d.dayIndex}`;
+    const byKey = new Map(programDays.map((d) => [key(d), d]));
+    for (const d of localProgramDays) {
+      byKey.set(key(d), d);
+    }
+    return Array.from(byKey.values());
+  }, [programDays, localProgramDays]);
 
   const allWorkouts = useMemo(() => {
     const ids = new Set(workouts.map((w) => w.id));
@@ -76,16 +96,27 @@ export function ProgramGridManager({
     }
   }, [initialProgramId]);
 
+  // Drop local copies once the server props include them.
+  useEffect(() => {
+    const serverIds = new Set(programs.map((p) => p.id));
+    setLocalPrograms((prev) => prev.filter((p) => !serverIds.has(p.id)));
+  }, [programs]);
+
+  useEffect(() => {
+    const serverIds = new Set(programDays.map((d) => d.id));
+    setLocalProgramDays((prev) => prev.filter((d) => !serverIds.has(d.id)));
+  }, [programDays]);
+
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 2500);
     return () => window.clearTimeout(t);
   }, [toast]);
 
-  const selected = programs.find((p) => p.id === selectedId) ?? null;
+  const selected = allPrograms.find((p) => p.id === selectedId) ?? null;
   const days = useMemo(
-    () => programDays.filter((d) => d.programId === selectedId),
-    [programDays, selectedId],
+    () => allProgramDays.filter((d) => d.programId === selectedId),
+    [allProgramDays, selectedId],
   );
 
   const filteredLibrary = useMemo(() => {
@@ -124,6 +155,30 @@ export function ProgramGridManager({
     );
   }
 
+  function patchLocalDay(
+    weekIndex: number,
+    dayIndex: number,
+    workoutId: string | null,
+  ) {
+    if (!selectedId) return;
+    const targetKey = `${selectedId}:${weekIndex}:${dayIndex}`;
+    setLocalProgramDays((prev) => {
+      const key = (d: ProgramDay) =>
+        `${d.programId}:${d.weekIndex}:${d.dayIndex}`;
+      const existing = prev.find((d) => key(d) === targetKey);
+      const next: ProgramDay = existing
+        ? { ...existing, workoutId }
+        : {
+            id: `pd_local_${selectedId}_${weekIndex}_${dayIndex}`,
+            programId: selectedId,
+            weekIndex,
+            dayIndex,
+            workoutId,
+          };
+      return [next, ...prev.filter((d) => key(d) !== targetKey)];
+    });
+  }
+
   async function createSession(weekIndex: number, dayIndex: number) {
     if (!selected) return;
     setMenuCell(null);
@@ -138,6 +193,7 @@ export function ProgramGridManager({
       return;
     }
     setExtraWorkouts((prev) => [data.workout as Workout, ...prev]);
+    patchLocalDay(weekIndex, dayIndex, data.workout.id);
     await post({
       action: "setProgramDayWorkout",
       programId: selected.id,
@@ -155,6 +211,7 @@ export function ProgramGridManager({
     workoutId: string,
   ) {
     if (!selected) return;
+    patchLocalDay(weekIndex, dayIndex, workoutId);
     const ok = await post({
       action: "setProgramDayWorkout",
       programId: selected.id,
@@ -172,6 +229,7 @@ export function ProgramGridManager({
   async function clearDay(weekIndex: number, dayIndex: number) {
     if (!selected) return;
     setMenuCell(null);
+    patchLocalDay(weekIndex, dayIndex, null);
     await post({
       action: "setProgramDayWorkout",
       programId: selected.id,
@@ -230,10 +288,22 @@ export function ProgramGridManager({
                   weeks,
                 });
                 if (data?.program) {
-                  setSelectedId(data.program.id);
+                  const created = data.program as Program;
+                  const createdDays = (data.programDays as ProgramDay[] | undefined) ?? [];
+                  setLocalPrograms((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
+                  if (createdDays.length > 0) {
+                    setLocalProgramDays((prev) => {
+                      const without = prev.filter((d) => d.programId !== created.id);
+                      return [...createdDays, ...without];
+                    });
+                  }
+                  setSelectedId(created.id);
                   setShowCreate(false);
                   setTitle("");
-                  onProgramCreated?.(data.program.id);
+                  if (data.cookieWarning) {
+                    setError(String(data.cookieWarning));
+                  }
+                  onProgramCreated?.(created);
                 }
               }}
               className="th-btn-primary w-full"
@@ -375,7 +445,7 @@ export function ProgramGridManager({
           </h2>
           <span className="text-sm th-muted">{selected.weeks} week program</span>
         </div>
-        {programs.length > 1 ? (
+        {programs.length > 1 || allPrograms.length > 1 ? (
           <label className="flex items-center gap-2 text-sm">
             <span className="th-muted">Program</span>
             <select
@@ -383,7 +453,7 @@ export function ProgramGridManager({
               value={selected.id}
               onChange={(e) => setSelectedId(e.target.value)}
             >
-              {programs.map((p) => (
+              {allPrograms.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
                 </option>

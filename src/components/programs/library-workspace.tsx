@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { ExercisesManager } from "@/components/programs/exercises-manager";
@@ -45,12 +45,29 @@ export function LibraryWorkspace({
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   const [creatingProgram, setCreatingProgram] = useState(false);
+  const [localPrograms, setLocalPrograms] = useState<Program[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
 
   const active = TABS.find((t) => t.id === tab)!;
+
+  const mergedPrograms = useMemo(() => {
+    const byId = new Map(programs.map((p) => [p.id, p]));
+    for (const p of localPrograms) byId.set(p.id, p);
+    return Array.from(byId.values()).sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }, [programs, localPrograms]);
+
+  useEffect(() => {
+    const ids = new Set(programs.map((p) => p.id));
+    setLocalPrograms((prev) => {
+      const next = prev.filter((p) => !ids.has(p.id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [programs]);
 
   async function post(body: unknown) {
     setPending(true);
@@ -119,9 +136,9 @@ export function LibraryWorkspace({
 
   const filteredPrograms = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return programs;
-    return programs.filter((p) => p.title.toLowerCase().includes(q));
-  }, [programs, search]);
+    if (!q) return mergedPrograms;
+    return mergedPrograms.filter((p) => p.title.toLowerCase().includes(q));
+  }, [mergedPrograms, search]);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) =>
@@ -334,7 +351,7 @@ export function LibraryWorkspace({
           ) : null}
           {tab === "programs" ? (
             <ProgramGridManager
-              programs={programs}
+              programs={mergedPrograms}
               programDays={programDays}
               workouts={workouts}
               workoutBlocks={workoutBlocks}
@@ -342,9 +359,13 @@ export function LibraryWorkspace({
               initialProgramId={editingProgramId}
               startInCreate={creatingProgram}
               onBackToList={backToList}
-              onProgramCreated={(id) => {
+              onProgramCreated={(program) => {
                 setCreatingProgram(false);
-                setEditingProgramId(id);
+                setEditingProgramId(program.id);
+                setLocalPrograms((prev) => [
+                  program,
+                  ...prev.filter((p) => p.id !== program.id),
+                ]);
               }}
             />
           ) : null}
