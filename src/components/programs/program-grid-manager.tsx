@@ -353,20 +353,20 @@ export function ProgramGridManager({
           </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
-          <aside className="th-card overflow-hidden">
+        <div className="grid gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)]">
+          <aside className="border border-[var(--th-border)] bg-white">
             <div className="border-b border-[var(--th-border)] bg-[#111827] px-3 py-2 text-xs font-semibold tracking-wide text-white uppercase">
               {selected.title}
             </div>
-            <div className="max-h-[70vh] space-y-3 overflow-y-auto p-3">
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto p-3">
               {Array.from({ length: selected.weeks }, (_, wi) => {
                 const weekIndex = wi + 1;
                 return (
                   <div key={weekIndex}>
-                    <p className="mb-1.5 text-[10px] font-bold tracking-wide uppercase th-muted">
+                    <p className="mb-2 text-[10px] font-bold tracking-wide uppercase th-muted">
                       Week {weekIndex}
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-nowrap gap-1.5">
                       {Array.from({ length: 7 }, (_, di) => {
                         const dayIndex = di + 1;
                         const cell = dayCell(weekIndex, dayIndex);
@@ -391,7 +391,7 @@ export function ProgramGridManager({
                               }
                             }}
                             className={cn(
-                              "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold",
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                               active
                                 ? "bg-[#111827] text-white"
                                 : hasSession
@@ -410,7 +410,7 @@ export function ProgramGridManager({
             </div>
           </aside>
 
-          <div>
+          <div className="min-w-0">
             <WorkoutsManager
               workouts={allWorkouts}
               blocks={workoutBlocks}
@@ -465,7 +465,7 @@ export function ProgramGridManager({
 
       {/* TrainHeroic-style weeks × days grid */}
       <div
-        className="overflow-hidden border border-[var(--th-border)] bg-white shadow-sm"
+        className="border border-[var(--th-border)] bg-white"
         onClick={() => setMenuCell(null)}
       >
         <div className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))] border-b border-[#111827] bg-[#111827] text-center text-[11px] font-bold tracking-wide text-white uppercase">

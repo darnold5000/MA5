@@ -30,7 +30,7 @@ export default async function AdminLibraryPage({ searchParams }: PageProps) {
 
   return (
     <ProgramsLightShell>
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6">
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[var(--th-blue)]">
             Programs

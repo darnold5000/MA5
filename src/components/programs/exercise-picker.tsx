@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   categoryCounts,
@@ -15,9 +16,10 @@ type ExercisePickerProps = {
   value: string;
   disabled?: boolean;
   onChange: (exerciseId: string) => void;
-  /** Compact trigger for block headers */
   className?: string;
 };
+
+type PanelPos = { top: number; left: number; width: number };
 
 export function ExercisePicker({
   exercises,
@@ -31,7 +33,10 @@ export function ExercisePicker({
   const [selectedCategories, setSelectedCategories] = useState<
     ExerciseCategory[]
   >([]);
+  const [pos, setPos] = useState<PanelPos | null>(null);
+  const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const selected = exercises.find((e) => e.id === value) ?? null;
@@ -52,16 +57,53 @@ export function ExercisePicker({
   }, [exercises, search, selectedCategories]);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  function updatePosition() {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 480), window.innerWidth - 24);
+    let left = rect.left;
+    if (left + width > window.innerWidth - 12) {
+      left = Math.max(12, window.innerWidth - width - 12);
+    }
+    const below = rect.bottom + 6;
+    const maxPanel = Math.min(window.innerHeight * 0.7, 420);
+    const top =
+      below + maxPanel > window.innerHeight - 12
+        ? Math.max(12, rect.top - maxPanel - 6)
+        : below;
+    setPos({ top, left, width });
+  }
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    queueMicrotask(() => searchRef.current?.focus());
+    const onScroll = () => updatePosition();
+    window.addEventListener("resize", onScroll);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t)) return;
+      if (panelRef.current?.contains(t)) return;
+      setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
-    queueMicrotask(() => searchRef.current?.focus());
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
@@ -73,6 +115,122 @@ export function ExercisePicker({
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
     );
   }
+
+  const panel =
+    open && mounted && pos
+      ? createPortal(
+          <div
+            ref={panelRef}
+            className="border border-[var(--th-border)] bg-white shadow-xl"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              width: pos.width,
+              zIndex: 80,
+            }}
+          >
+            <div className="grid max-h-[min(70vh,420px)] grid-cols-1 sm:grid-cols-[1fr_180px]">
+              <div className="flex min-h-0 flex-col border-b border-[var(--th-border)] sm:border-r sm:border-b-0">
+                <div className="border-b border-[var(--th-border)] px-3 py-2">
+                  <input
+                    ref={searchRef}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search exercises"
+                    className="th-input h-9"
+                  />
+                  <p className="mt-1.5 text-[10px] font-bold tracking-wide uppercase th-muted">
+                    {filtered.length} exercises shown
+                  </p>
+                </div>
+                <ul
+                  className="min-h-0 flex-1 overflow-y-auto"
+                  role="listbox"
+                  aria-label="Exercises"
+                >
+                  {filtered.length === 0 ? (
+                    <li className="px-3 py-8 text-center text-sm th-muted">
+                      No exercises match these filters.
+                    </li>
+                  ) : (
+                    filtered.map((ex) => {
+                      const active = ex.id === value;
+                      return (
+                        <li key={ex.id}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={active}
+                            className={cn(
+                              "flex w-full items-center gap-2 border-b border-[var(--th-border)] px-3 py-2.5 text-left text-sm hover:bg-[var(--th-surface-muted)]",
+                              active && "bg-[var(--th-surface-muted)]",
+                            )}
+                            onClick={() => {
+                              onChange(ex.id);
+                              setOpen(false);
+                              setSearch("");
+                            }}
+                          >
+                            <span
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-xs font-bold text-white"
+                              style={{ background: "var(--th-yellow)" }}
+                              aria-hidden
+                            >
+                              #
+                            </span>
+                            <span className="min-w-0 flex-1 font-semibold text-[var(--th-text)]">
+                              {ex.title}
+                            </span>
+                            <span className="shrink-0 text-[10px] font-semibold tracking-wide uppercase th-muted">
+                              {ex.category}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              </div>
+
+              <div className="flex min-h-0 flex-col bg-[var(--th-surface-muted)]/40">
+                <p className="border-b border-[var(--th-border)] px-3 py-2 text-[10px] font-bold tracking-wide uppercase th-muted">
+                  Filters
+                </p>
+                <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+                  {EXERCISE_CATEGORIES.map((cat) => {
+                    const checked = selectedCategories.includes(cat);
+                    return (
+                      <li key={cat}>
+                        <label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-sm hover:bg-white/80">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleCategory(cat)}
+                            className="accent-[var(--th-blue)]"
+                          />
+                          <span className="min-w-0 flex-1 text-[var(--th-text)]">
+                            {cat}
+                          </span>
+                          <span className="text-xs th-muted">{counts[cat]}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <button
+                  type="button"
+                  className="border-t border-[var(--th-border)] px-3 py-2.5 text-left text-xs font-bold tracking-wide text-[var(--th-blue)] uppercase hover:bg-white"
+                  onClick={() => setSelectedCategories([])}
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -95,108 +253,7 @@ export function ExercisePicker({
         <FilterBadge count={selectedCategories.length} />
         <ChevronIcon open={open} />
       </button>
-
-      {open ? (
-        <div className="absolute left-0 right-0 z-40 mt-1 overflow-hidden border border-[var(--th-border)] bg-white shadow-xl sm:left-0 sm:right-auto sm:w-[min(100vw-2rem,520px)]">
-          <div className="grid max-h-[min(70vh,420px)] grid-cols-1 sm:grid-cols-[1fr_180px]">
-            <div className="flex min-h-0 flex-col border-b border-[var(--th-border)] sm:border-r sm:border-b-0">
-              <div className="border-b border-[var(--th-border)] px-3 py-2">
-                <input
-                  ref={searchRef}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search exercises"
-                  className="th-input h-9"
-                />
-                <p className="mt-1.5 text-[10px] font-bold tracking-wide uppercase th-muted">
-                  {filtered.length} exercises shown
-                </p>
-              </div>
-              <ul
-                className="min-h-0 flex-1 overflow-y-auto"
-                role="listbox"
-                aria-label="Exercises"
-              >
-                {filtered.length === 0 ? (
-                  <li className="px-3 py-8 text-center text-sm th-muted">
-                    No exercises match these filters.
-                  </li>
-                ) : (
-                  filtered.map((ex) => {
-                    const active = ex.id === value;
-                    return (
-                      <li key={ex.id}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={active}
-                          className={cn(
-                            "flex w-full items-center gap-2 border-b border-[var(--th-border)] px-3 py-2.5 text-left text-sm hover:bg-[var(--th-surface-muted)]",
-                            active && "bg-[var(--th-surface-muted)]",
-                          )}
-                          onClick={() => {
-                            onChange(ex.id);
-                            setOpen(false);
-                            setSearch("");
-                          }}
-                        >
-                          <span
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-xs font-bold text-white"
-                            style={{ background: "var(--th-yellow)" }}
-                            aria-hidden
-                          >
-                            #
-                          </span>
-                          <span className="min-w-0 flex-1 font-semibold text-[var(--th-text)]">
-                            {ex.title}
-                          </span>
-                          <span className="shrink-0 text-[10px] font-semibold tracking-wide uppercase th-muted">
-                            {ex.category}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })
-                )}
-              </ul>
-            </div>
-
-            <div className="flex min-h-0 flex-col bg-[var(--th-surface-muted)]/40">
-              <p className="border-b border-[var(--th-border)] px-3 py-2 text-[10px] font-bold tracking-wide uppercase th-muted">
-                Filters
-              </p>
-              <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-                {EXERCISE_CATEGORIES.map((cat) => {
-                  const checked = selectedCategories.includes(cat);
-                  return (
-                    <li key={cat}>
-                      <label className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1.5 text-sm hover:bg-white/80">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleCategory(cat)}
-                          className="accent-[var(--th-blue)]"
-                        />
-                        <span className="min-w-0 flex-1 text-[var(--th-text)]">
-                          {cat}
-                        </span>
-                        <span className="text-xs th-muted">{counts[cat]}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-              <button
-                type="button"
-                className="border-t border-[var(--th-border)] px-3 py-2.5 text-left text-xs font-bold tracking-wide text-[var(--th-blue)] uppercase hover:bg-white"
-                onClick={() => setSelectedCategories([])}
-              >
-                Clear Filters
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {panel}
     </div>
   );
 }

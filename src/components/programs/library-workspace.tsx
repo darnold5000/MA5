@@ -173,9 +173,9 @@ export function LibraryWorkspace({
   }
 
   return (
-    <div className="space-y-0 overflow-hidden rounded-sm border border-[var(--th-border)] bg-white shadow-sm">
-      {/* TrainHeroic-style library sub-tabs */}
-      <div className="flex flex-wrap items-center gap-1 bg-[#111827] px-3 pt-2">
+    <div className="space-y-4">
+      {/* Sub-nav sits on the page — no outer card so dropdowns aren't clipped */}
+      <div className="flex flex-wrap items-center gap-1 border-b border-[var(--th-border)] bg-[#111827] px-3 pt-2">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -194,7 +194,7 @@ export function LibraryWorkspace({
       </div>
 
       {mode === "list" ? (
-        <div className="p-4 sm:p-5">
+        <div className="space-y-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-[var(--th-text)]">
@@ -321,7 +321,7 @@ export function LibraryWorkspace({
           ) : null}
         </div>
       ) : (
-        <div className="space-y-4 p-4 sm:p-5">
+        <div className="space-y-4">
           {tab !== "programs" ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <button
