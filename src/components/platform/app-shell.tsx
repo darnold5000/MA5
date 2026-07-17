@@ -93,6 +93,12 @@ export function AppShell({
               ) : null}
             </Link>
             <Link
+              href="/app/profile"
+              className="hidden text-xs tracking-wide text-muted transition hover:text-foreground sm:inline sm:text-sm"
+            >
+              Profile
+            </Link>
+            <Link
               href="/"
               className="hidden text-xs tracking-wide text-muted transition hover:text-foreground sm:inline sm:text-sm"
             >
@@ -106,8 +112,10 @@ export function AppShell({
       <div className="flex min-h-0 flex-1">
         <aside className="sticky top-[57px] hidden h-[calc(100vh-57px)] w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
           <div className="border-b border-border px-4 py-5">
-            <p className="text-sm font-medium text-foreground">{memberName}</p>
-            <p className="mt-1 text-xs tracking-wide text-muted">{memberPlan}</p>
+            <Link href="/app/profile" className="block transition hover:opacity-90">
+              <p className="text-sm font-medium text-foreground">{memberName}</p>
+              <p className="mt-1 text-xs tracking-wide text-muted">{memberPlan}</p>
+            </Link>
           </div>
           <nav aria-label="App" className="flex flex-1 flex-col gap-1 p-3">
             {SIDEBAR.map((item) => {
@@ -129,6 +137,17 @@ export function AppShell({
             })}
           </nav>
           <div className="mt-auto space-y-2 border-t border-border p-4">
+            <Link
+              href="/app/profile"
+              className={cn(
+                "block px-3 py-2 text-sm tracking-wide transition",
+                pathname.startsWith("/app/profile")
+                  ? "text-foreground"
+                  : "text-muted hover:text-foreground",
+              )}
+            >
+              Profile
+            </Link>
             <Link
               href="/"
               className="block px-3 py-2 text-sm tracking-wide text-muted transition hover:text-foreground lg:hidden"

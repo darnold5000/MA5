@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-export function ManageBillingButton() {
+export function ManageBillingButton({
+  className,
+  label = "Manage billing",
+}: {
+  className?: string;
+  label?: string;
+}) {
   const [pending, setPending] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -29,9 +35,12 @@ export function ManageBillingButton() {
         type="button"
         disabled={pending}
         onClick={onClick}
-        className="inline-flex min-h-11 items-center justify-center border border-border px-4 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
+        className={
+          className ??
+          "inline-flex min-h-11 items-center justify-center border border-border px-4 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
+        }
       >
-        {pending ? "Opening…" : "Manage billing"}
+        {pending ? "Opening…" : label}
       </button>
       {open ? (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-4 sm:items-center">

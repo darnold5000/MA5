@@ -45,8 +45,10 @@ export type CoachClientProgressRow = {
 
 export type CoachAttentionKind =
   | "inactive"
+  | "program_complete"
   | "program_ending"
-  | "program_complete";
+  | "no_program"
+  | "membership_ending";
 
 /** Simple coach nudges — no AI, just useful automatic surfacing. */
 export type CoachAttentionAlert = {

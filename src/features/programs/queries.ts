@@ -162,12 +162,62 @@ export async function listCoachAttentionAlerts(): Promise<
 > {
   const state = await getProgramsState();
   const roster = await listRosterClients();
+  const membershipEnds = await listMembershipPeriodEnds(
+    roster.map((c) => c.id),
+  );
   const clients = roster.map((client) => ({
     clientId: client.id,
     clientName: client.name,
     days: mapClientDays(state, [client.id]),
+    membershipPeriodEnd: membershipEnds[client.id] ?? null,
   }));
   return buildCoachAttentionAlerts(clients, state);
+}
+
+/** Membership period ends keyed by client id — demo + live when available. */
+async function listMembershipPeriodEnds(
+  clientIds: string[],
+): Promise<Record<string, string>> {
+  const ends: Record<string, string> = {};
+
+  // Demo fallbacks so coaches see the membership rule in walkthroughs
+  const inDays = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  if (clientIds.includes("client-alex")) {
+    ends["client-alex"] = inDays(5);
+  }
+
+  if (!isSupabaseConfigured()) {
+    return ends;
+  }
+
+  try {
+    const session = await getSessionUser();
+    if (!session || clientIds.length === 0) return ends;
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from(MA5_TABLES.memberships)
+      .select("user_id, current_period_end, status")
+      .in("user_id", clientIds)
+      .in("status", ["active", "trialing", "past_due"]);
+    if (error) throw new Error(error.message);
+
+    for (const row of data ?? []) {
+      const userId = String(row.user_id);
+      const end = row.current_period_end
+        ? String(row.current_period_end).slice(0, 10)
+        : null;
+      if (end) ends[userId] = end;
+    }
+  } catch (err) {
+    console.error("[programs] membership ends load failed", err);
+  }
+
+  return ends;
 }
 
 /** Real roster: active profiles with the client role. */
@@ -230,6 +280,7 @@ export function listClientsForPrograms(state: ProgramsState) {
     known.set("client-jordan", known.get("client-jordan") ?? "Jordan Lee");
     known.set("client-sam", known.get("client-sam") ?? "Sam Patel");
     known.set("client-emily", known.get("client-emily") ?? "Emily Chen");
+    known.set("client-marcus", known.get("client-marcus") ?? "Marcus Webb");
   }
   return Array.from(known.entries()).map(([id, name]) => ({ id, name }));
 }

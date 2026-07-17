@@ -253,11 +253,13 @@ type AttentionInput = {
   clientId: string;
   clientName: string;
   days: ClientProgramDay[];
+  /** ISO date (YYYY-MM-DD) when membership period ends, if known. */
+  membershipPeriodEnd?: string | null;
 };
 
 /**
- * Surfacing useful coach nudges from the same training data —
- * inactive athletes, programs ending soon, completed programs.
+ * Surfacing useful coach nudges from existing data —
+ * no AI, just simple business rules.
  */
 export function buildCoachAttentionAlerts(
   clients: AttentionInput[],
@@ -276,45 +278,73 @@ export function buildCoachAttentionAlerts(
     const progress = buildClientTrainingProgress(client.days, state, [
       client.clientId,
     ]);
-    const assignment = findActiveAssignment(state, [client.clientId]);
-    const program = assignment?.programId
-      ? state.programs.find((p) => p.id === assignment.programId)
+
+    const activeAssignment = state.assignments.find(
+      (a) =>
+        a.status === "active" &&
+        a.clientUserId === client.clientId,
+    );
+    const completedAssignment = state.assignments.find(
+      (a) =>
+        a.status === "completed" &&
+        a.clientUserId === client.clientId,
+    );
+    const anyAssignment = activeAssignment ?? completedAssignment ?? null;
+    const program = anyAssignment?.programId
+      ? state.programs.find((p) => p.id === anyAssignment.programId)
       : null;
 
     const isComplete =
-      assignment?.status === "completed" ||
-      (progress.totalCount > 0 &&
+      completedAssignment != null ||
+      (activeAssignment != null &&
+        progress.totalCount > 0 &&
         progress.completedCount >= progress.totalCount &&
         progress.progressPercent >= 100);
 
+    // 1) Program completed
     if (isComplete) {
       alerts.push({
         id: `${client.clientId}-complete`,
         clientId: client.clientId,
         clientName: client.clientName,
         kind: "program_complete",
-        reason: "Completed current program",
+        reason: "Program completed",
         href: "/admin/programs/assign",
       });
-      continue;
     }
 
-    if (since != null && since >= 5) {
+    // 2) No program assigned
+    if (!activeAssignment && !isComplete) {
+      alerts.push({
+        id: `${client.clientId}-no-program`,
+        clientId: client.clientId,
+        clientName: client.clientName,
+        kind: "no_program",
+        reason: "No program assigned",
+        href: "/admin/programs/assign",
+      });
+    }
+
+    // 3) No workout in X days (skip if they never had a program/workouts)
+    if (
+      !isComplete &&
+      activeAssignment &&
+      since != null &&
+      since >= 5
+    ) {
       alerts.push({
         id: `${client.clientId}-inactive`,
         clientId: client.clientId,
         clientName: client.clientName,
         kind: "inactive",
-        reason:
-          since === 1
-            ? "No workout in 1 day"
-            : `No workout in ${since} days`,
+        reason: `No workout in ${since} days`,
         href: "/admin/clients",
       });
     }
 
-    if (assignment && program && assignment.status === "active") {
-      const end = programEndDate(assignment.startDate, program.weeks);
+    // 4) Program expires soon
+    if (activeAssignment && program && !isComplete) {
+      const end = programEndDate(activeAssignment.startDate, program.weeks);
       const endMs = new Date(`${end}T12:00:00`).getTime();
       const left = Math.ceil(
         (endMs - today.getTime()) / (1000 * 60 * 60 * 24),
@@ -328,21 +358,48 @@ export function buildCoachAttentionAlerts(
           kind: "program_ending",
           reason:
             left === 0
-              ? "Program ends today"
+              ? "Program expires today"
               : left === 1
                 ? "Program expires tomorrow"
-                : "Program expires next week",
+                : "Program expires soon",
           href: "/admin/programs/assign",
+        });
+      }
+    }
+
+    // 5) Membership expires soon (when we have period end data)
+    if (client.membershipPeriodEnd) {
+      const endMs = new Date(
+        `${client.membershipPeriodEnd}T12:00:00`,
+      ).getTime();
+      const left = Math.ceil(
+        (endMs - today.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (left >= 0 && left <= 14) {
+        alerts.push({
+          id: `${client.clientId}-membership`,
+          clientId: client.clientId,
+          clientName: client.clientName,
+          kind: "membership_ending",
+          reason:
+            left === 0
+              ? "Membership expires today"
+              : left === 1
+                ? "Membership expires tomorrow"
+                : "Membership expires soon",
+          href: "/admin/clients",
         });
       }
     }
   }
 
-  const kindRank = {
+  const kindRank: Record<CoachAttentionAlert["kind"], number> = {
     inactive: 0,
-    program_ending: 1,
-    program_complete: 2,
-  } as const;
+    no_program: 1,
+    program_ending: 2,
+    membership_ending: 3,
+    program_complete: 4,
+  };
 
   return alerts.sort((a, b) => {
     if (kindRank[a.kind] !== kindRank[b.kind]) {
