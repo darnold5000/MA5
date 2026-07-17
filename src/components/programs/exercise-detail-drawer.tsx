@@ -186,7 +186,7 @@ function IconButton({
       title={label}
       className={
         danger
-          ? "inline-flex h-9 w-9 items-center justify-center text-[#9ca3af] hover:text-[#dc2626]"
+          ? "inline-flex h-9 w-9 items-center justify-center text-[#9ca3af] hover:text-[var(--th-text)]"
           : "inline-flex h-9 w-9 items-center justify-center text-[#6b7280] hover:text-[#111827]"
       }
     >

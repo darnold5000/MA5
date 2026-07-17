@@ -102,7 +102,7 @@ export function TeamsManager({
                 setName("");
               }
             }}
-            className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
+            className="th-btn-primary disabled:opacity-50"
           >
             Create team
           </button>
@@ -129,7 +129,9 @@ export function TeamsManager({
                 <tr
                   key={t.id}
                   className={`cursor-pointer border-t border-border ${
-                    selectedId === t.id ? "bg-brand/10" : "bg-white"
+                    selectedId === t.id
+                      ? "bg-[var(--th-blue)]/10"
+                      : "bg-white"
                   }`}
                   onClick={() => setSelectedId(t.id)}
                 >
@@ -200,7 +202,7 @@ export function TeamsManager({
                     userName: client.name,
                   });
                 }}
-                className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
+                className="th-btn-primary disabled:opacity-50"
               >
                 Add athlete
               </button>
@@ -314,7 +316,7 @@ export function TeamsManager({
                     publish: true,
                   })
                 }
-                className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
+                className="th-btn-primary w-full disabled:opacity-50"
               >
                 Assign & publish
               </button>

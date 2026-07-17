@@ -78,7 +78,11 @@ body {
   --th-blue: #2563eb;
   --th-blue-hover: #1d4ed8;
   --th-yellow: #eab308;
-  --th-danger: #dc2626;
+  /* No MA5 red on the light Programs UI — blue accents only */
+  --brand: #2563eb;
+  --brand-foreground: #ffffff;
+  --focus: #2563eb;
+  --th-danger: #4b5563;
   background: var(--th-bg);
   color: var(--th-text);
 }
@@ -96,7 +100,7 @@ body {
   min-height: 2.5rem;
   width: 100%;
   border: 1px solid var(--th-border);
-  background: var(--th-surface);
+  background-color: var(--th-surface);
   padding: 0.5rem 0.75rem;
   color: var(--th-text);
 }
@@ -106,6 +110,21 @@ body {
   outline: none;
   border-color: var(--th-blue);
   box-shadow: none;
+}
+
+/* Inset native select chevron so it isn’t flush to the edge */
+.programs-th select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.25rem;
+}
+
+.programs-th select.th-input {
+  background-color: var(--th-surface);
 }
 
 /* Soften brand pink focus ring inside Programs UI */

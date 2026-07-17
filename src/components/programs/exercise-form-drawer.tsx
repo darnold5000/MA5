@@ -200,7 +200,7 @@ export function ExerciseFormDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="exercise-drawer-title"
-        className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
+        className="programs-th relative flex h-full w-full max-w-md flex-col bg-white text-[var(--th-text)] shadow-2xl"
       >
         <div className="flex items-center gap-3 border-b border-[#e5e7eb] px-5 py-4">
           <button
@@ -372,7 +372,7 @@ export function ExerciseFormDrawer({
           </Field>
 
           {error ? (
-            <p className="text-sm text-[#dc2626]" role="alert">
+            <p className="text-sm text-[var(--th-danger)]" role="alert">
               {error}
             </p>
           ) : null}

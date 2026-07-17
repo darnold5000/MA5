@@ -741,7 +741,7 @@ function LibraryTable({
                   <button
                     type="button"
                     onClick={row.onDelete}
-                    className="inline-flex h-8 w-8 items-center justify-center text-[#9ca3af] hover:text-[#dc2626]"
+                    className="inline-flex h-8 w-8 items-center justify-center text-[#9ca3af] hover:text-[var(--th-text)]"
                     aria-label="Delete"
                     title="Delete"
                   >

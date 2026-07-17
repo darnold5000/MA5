@@ -135,7 +135,7 @@ export function AssignCalendarManager({
                   publish: true,
                 })
               }
-              className="ml-2 inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
+              className="th-btn-primary ml-2 disabled:opacity-50"
             >
               Add & publish
             </button>
@@ -176,7 +176,7 @@ export function AssignCalendarManager({
                   publish: true,
                 })
               }
-              className="inline-flex min-h-11 items-center bg-brand px-5 text-xs font-semibold tracking-wide text-[var(--th-blue)]-foreground uppercase disabled:opacity-50"
+              className="th-btn-primary disabled:opacity-50"
             >
               Assign & publish
             </button>

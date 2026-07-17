@@ -389,7 +389,7 @@ export function WorkoutsManager({
               placeholder="Session title"
             />
             {!title.trim() ? (
-              <span className="text-xs text-[#dc2626]">Required</span>
+              <span className="text-xs text-[var(--th-muted)]">Required</span>
             ) : null}
           </label>
 
@@ -454,7 +454,7 @@ export function WorkoutsManager({
           </div>
 
           {error ? (
-            <p className="text-sm text-[#dc2626]" role="alert">
+            <p className="text-sm text-[var(--th-danger)]" role="alert">
               {error}
             </p>
           ) : null}
