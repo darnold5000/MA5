@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { DEMO_PERSONA_COOKIE, isDemoPersona } from "@/content/demo-persona";
+import { canAccessAdmin, type PlatformRole } from "@/lib/permissions/roles";
+import { MA5_TABLES } from "@/lib/supabase/tables";
 
 /**
  * Refresh the Auth session on (almost) every navigation so clients stay signed
@@ -10,15 +11,11 @@ import { DEMO_PERSONA_COOKIE, isDemoPersona } from "@/content/demo-persona";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const demoPersonaRaw = request.cookies.get(DEMO_PERSONA_COOKIE)?.value;
-  const demoPersona = isDemoPersona(demoPersonaRaw) ? demoPersonaRaw : null;
-  const hasDemoAccess = Boolean(demoPersona);
-  const hasDemoStaffAccess = demoPersona === "staff";
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   let user: { id: string } | null = null;
+  let roles: PlatformRole[] = [];
 
   if (url && anonKey) {
     const supabase = createServerClient(url, anonKey, {
@@ -42,11 +39,21 @@ export async function updateSession(request: NextRequest) {
       },
     });
 
-    // Touches / refreshes the session cookie on every matched request.
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
     user = authUser;
+
+    if (user) {
+      const { data: roleRows } = await supabase
+        .from(MA5_TABLES.userRoles)
+        .select("role")
+        .eq("user_id", user.id);
+      roles = (roleRows ?? [])
+        .map((r) => r.role as PlatformRole)
+        .filter(Boolean);
+      if (roles.length === 0) roles = ["client"];
+    }
   }
 
   const pathname = request.nextUrl.pathname;
@@ -55,7 +62,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
 
-  if (isAppRoute && !user && !hasDemoAccess) {
+  if (isAppRoute && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.search = "";
@@ -64,13 +71,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (isAdminRoute && !user && !hasDemoStaffAccess) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.search = "";
-    const nextTarget = `${pathname}${request.nextUrl.search}`;
-    redirectUrl.searchParams.set("next", nextTarget);
-    return NextResponse.redirect(redirectUrl);
+  if (isAdminRoute) {
+    if (!user) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      redirectUrl.search = "";
+      const nextTarget = `${pathname}${request.nextUrl.search}`;
+      redirectUrl.searchParams.set("next", nextTarget);
+      return NextResponse.redirect(redirectUrl);
+    }
+    if (!canAccessAdmin(roles)) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/app";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   if (isAuthRoute && user) {
@@ -80,6 +95,9 @@ export async function updateSession(request: NextRequest) {
       const dest = new URL(next, request.nextUrl.origin);
       redirectUrl.pathname = dest.pathname;
       redirectUrl.search = dest.search;
+    } else if (canAccessAdmin(roles)) {
+      redirectUrl.pathname = "/admin";
+      redirectUrl.search = "";
     } else {
       redirectUrl.pathname = "/app";
       redirectUrl.search = "";

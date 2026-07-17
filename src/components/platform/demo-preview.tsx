@@ -155,15 +155,14 @@ export function DemoPreviewChrome() {
                 Sign in for payments
               </p>
               <p className="mt-2">
-                Use a real account for Stripe. “Continue as Demo Client” can
-                explore the hub but cannot complete Checkout.
+                Sign in with a real account for Stripe Checkout and membership.
               </p>
               <p className="mt-2">
                 Go to{" "}
                 <a href="/login" className="text-brand underline">
                   /login
                 </a>{" "}
-                (or Client login) with:
+                with the client account:
               </p>
               <dl className="mt-3 space-y-2 border border-border bg-surface p-3 text-foreground">
                 <div>
@@ -194,21 +193,28 @@ export function DemoPreviewChrome() {
                 Operations (staff)
               </p>
               <p className="mt-2">
-                From{" "}
-                <a href="/login" className="text-brand underline">
-                  /login
-                </a>
-                , choose{" "}
-                <span className="text-foreground">
-                  Continue as Operations Demo
-                </span>{" "}
-                — or open{" "}
+                Sign in as coach Mike, then open{" "}
                 <a href="/admin" className="text-brand underline">
                   /admin
-                </a>{" "}
-                after staff access. This is the owner / coach board: “what needs
-                my attention today?”
+                </a>
+                . Coaches land in Operations automatically after login.
               </p>
+              <dl className="mt-3 space-y-2 border border-border bg-surface p-3 text-foreground">
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Email
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm break-all">
+                    mike@ma5.com
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] font-semibold tracking-wide text-muted uppercase">
+                    Password
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-sm">1Password</dd>
+                </div>
+              </dl>
               <ul className="mt-3 list-disc space-y-1.5 pl-5">
                 <li>
                   <span className="text-foreground">Home</span> — today’s

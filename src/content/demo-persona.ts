@@ -5,6 +5,9 @@ export type DemoPersona = "client" | "staff";
 /** Real Supabase test client used for Stripe / Hub demos */
 export const TEST_CLIENT_EMAIL = "ma5client@example.com";
 
+/** Real Supabase test coach used for Operations / Programs demos */
+export const TEST_COACH_EMAIL = "mike@ma5.com";
+
 export const demoClient = {
   firstName: "Alex",
   fullName: "Alex",

@@ -4,11 +4,22 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { DEMO_PERSONA_COOKIE } from "@/content/demo-persona";
+import {
+  canAccessAdmin,
+  PLATFORM_ROLES,
+  type PlatformRole,
+} from "@/lib/permissions/roles";
+import { MA5_TABLES } from "@/lib/supabase/tables";
 
 const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  next: z.string().optional().nullable(),
 });
+
+function isPlatformRole(value: string): value is PlatformRole {
+  return (PLATFORM_ROLES as readonly string[]).includes(value);
+}
 
 /**
  * Server-side password login so Auth uses runtime env on Vercel Preview.
@@ -38,7 +49,11 @@ export async function POST(request: Request) {
   }
 
   const cookieStore = await cookies();
-  const response = NextResponse.json({ ok: true });
+  const pendingCookies: {
+    name: string;
+    value: string;
+    options?: Parameters<typeof cookieStore.set>[2];
+  }[] = [];
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -47,13 +62,13 @@ export async function POST(request: Request) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
+          pendingCookies.push({ name, value, options });
         });
       },
     },
   });
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: signIn, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
@@ -62,6 +77,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
 
+  const userId = signIn.user?.id;
+  let roles: PlatformRole[] = ["client"];
+  if (userId) {
+    const { data: roleRows } = await supabase
+      .from(MA5_TABLES.userRoles)
+      .select("role")
+      .eq("user_id", userId);
+    const parsedRoles = (roleRows ?? [])
+      .map((r) => r.role as string)
+      .filter(isPlatformRole);
+    if (parsedRoles.length > 0) roles = parsedRoles;
+  }
+
+  const next = parsed.data.next;
+  let redirectTo = "/app";
+  if (next && next.startsWith("/") && !next.startsWith("//")) {
+    redirectTo = next;
+  } else if (canAccessAdmin(roles)) {
+    redirectTo = "/admin";
+  }
+
+  const response = NextResponse.json({ ok: true, redirectTo, roles });
+  for (const c of pendingCookies) {
+    response.cookies.set(c.name, c.value, c.options);
+  }
+  // Clear any leftover demo persona cookie.
   response.cookies.set(DEMO_PERSONA_COOKIE, "", {
     path: "/",
     maxAge: 0,

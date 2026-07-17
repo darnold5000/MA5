@@ -61,6 +61,33 @@ Checkout requires a signed-in user (not the “Continue as client” demo cookie
 | Email | `ma5client@example.com` |
 | Password | `1Password` |
 
+**Demo coach account**
+
+| | |
+| --- | --- |
+| Name | Mike |
+| Email | `mike@ma5.com` |
+| Password | `1Password` |
+| Role | `coach` (staff access to `/admin`) |
+
+Create/update coach (needs service role in `.env.local`):
+
+```bash
+node --env-file=.env.local scripts/create-demo-coach.mjs
+```
+
+Or in Supabase Dashboard → Authentication → Users → Add user (`mike@ma5.com` / `1Password`, auto-confirm), then SQL:
+
+```sql
+insert into public.ma5_user_roles (user_id, role)
+select id, 'coach' from public.ma5_profiles where email ilike 'mike@ma5.com'
+on conflict (user_id, role) do nothing;
+
+update public.ma5_profiles
+set full_name = 'Mike'
+where email ilike 'mike@ma5.com';
+```
+
 Then:
 
 1. `/login` → sign in with the account above  

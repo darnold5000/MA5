@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
-import { DEMO_PERSONA_COOKIE } from "@/content/demo-persona";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,16 +17,11 @@ export function SignupForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  function continueAsClient() {
-    document.cookie = `${DEMO_PERSONA_COOKIE}=client; path=/; max-age=${60 * 60 * 24 * 30}; samesite=lax`;
-    window.location.assign("/app");
-  }
-
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!configured) {
       setError(
-        "Supabase is not configured on this deploy. Redeploy after setting NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, or use Continue as Demo Client.",
+        "Supabase is not configured on this deploy. Redeploy after setting NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
       );
       return;
     }
@@ -53,7 +47,6 @@ export function SignupForm() {
       }
 
       if (data.session) {
-        document.cookie = `${DEMO_PERSONA_COOKIE}=; path=/; max-age=0; samesite=lax`;
         window.location.assign("/app");
         return;
       }
@@ -69,17 +62,9 @@ export function SignupForm() {
   return (
     <AuthCard
       title="Join MA5"
-      description="Create your member account, or continue with a preview profile."
+      description="Create your member account to book sessions and view your training."
     >
-      <button
-        type="button"
-        onClick={continueAsClient}
-        className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-      >
-        Continue as Demo Client
-      </button>
-
-      <form className="mt-8 space-y-4" onSubmit={onSubmit}>
+      <form className="space-y-4" onSubmit={onSubmit}>
         <label className="block space-y-2 text-sm">
           <span className="font-semibold tracking-wide uppercase">Full name</span>
           <input
@@ -124,7 +109,7 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex min-h-11 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase disabled:opacity-50"
+          className="inline-flex min-h-11 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
         >
           {pending ? "Creating…" : "Create account"}
         </button>
