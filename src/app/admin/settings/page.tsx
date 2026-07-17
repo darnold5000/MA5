@@ -27,12 +27,17 @@ const LINKS = [
     title: "Library",
     body: "Programs, sessions, and exercises — create, edit, delete.",
   },
+  {
+    href: "/admin/reports",
+    title: "Reports",
+    body: "Revenue, bookings, memberships, capacity, and key KPIs.",
+  },
 ] as const;
 
 const LATER = [
   {
-    title: "Analytics",
-    body: "Business health and AI insights — hidden from nav until ready.",
+    title: "AI insights",
+    body: "Automated recommendations on top of Reports — ships later.",
   },
 ] as const;
 

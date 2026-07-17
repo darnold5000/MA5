@@ -20,6 +20,7 @@ const SIDEBAR = [
     label: "Library",
     match: "programs" as const,
   },
+  { href: "/admin/reports", label: "Reports", match: "prefix" as const },
   { href: "/admin/inbox", label: "Inbox", match: "prefix" as const },
 ] as const;
 
@@ -27,11 +28,7 @@ const MOBILE = [
   { href: "/admin", label: "Home", match: "exact" as const },
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
-  {
-    href: "/admin/programs",
-    label: "Library",
-    match: "programs" as const,
-  },
+  { href: "/admin/reports", label: "Reports", match: "prefix" as const },
   { href: "/admin/settings", label: "More", match: "prefix" as const },
 ] as const;
 

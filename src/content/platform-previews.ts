@@ -90,13 +90,13 @@ export const platformPreviews: PlatformPreviewItem[] = [
     title: "Analytics + AI",
     branch: "demo/ma5-analytics-ai",
     summary:
-      "Revenue, attendance, retention, utilization, program engagement, and AI-generated business insights.",
+      "Daily Ops dashboard and business Reports — revenue, bookings, memberships, capacity. AI insights still planned.",
     evaluates: [
       "Owner decision support",
-      "Retention signals",
-      "AI summary usefulness",
+      "Daily ops glanceability",
+      "Trend reporting usefulness",
     ],
-    href: null,
-    status: "planned",
+    href: "/admin/reports",
+    status: "built",
   },
 ];
