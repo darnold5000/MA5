@@ -57,9 +57,9 @@ export function ClientHubPreview({
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative flex h-[min(90vh,820px)] w-full max-w-5xl flex-col border border-border bg-background shadow-2xl"
+            className="relative flex h-[min(90vh,820px)] w-full max-w-5xl flex-col border border-border bg-background text-foreground shadow-2xl"
           >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
               <div>
                 <p
                   id={titleId}
@@ -74,7 +74,7 @@ export function ClientHubPreview({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex min-h-10 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
+                className="inline-flex min-h-10 items-center border border-border bg-surface-strong px-4 text-xs font-semibold tracking-wide text-foreground uppercase transition hover:border-brand hover:bg-brand hover:text-brand-foreground"
               >
                 Close preview
               </button>

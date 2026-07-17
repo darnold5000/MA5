@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -21,8 +21,6 @@ type ExercisePickerProps = {
   emptyLabel?: string;
 };
 
-type PanelPos = { top: number; left: number; width: number };
-
 export function ExercisePicker({
   exercises,
   value,
@@ -35,24 +33,38 @@ export function ExercisePicker({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ExerciseCategory | "">("");
-  const [pos, setPos] = useState<PanelPos | null>(null);
   const [mounted, setMounted] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   const selected = value
     ? (exercises.find((e) => e.id === value) ?? null)
     : null;
   const counts = useMemo(() => categoryCounts(exercises), [exercises]);
 
-  // When opening with a selected exercise, start filtered to its type
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-    if (selected) {
-      setCategory(selected.category);
-    }
+    if (selected) setCategory(selected.category);
+    const t = window.setTimeout(() => searchRef.current?.focus(), 50);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.clearTimeout(t);
+      document.body.style.overflow = "";
+    };
   }, [open, selected]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const filtered = useMemo(() => {
     if (!category) return [];
@@ -64,89 +76,53 @@ export function ExercisePicker({
     });
   }, [exercises, search, category]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  function updatePosition() {
-    const el = rootRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const width = Math.min(Math.max(rect.width, 420), window.innerWidth - 24);
-    let left = rect.left;
-    if (left + width > window.innerWidth - 12) {
-      left = Math.max(12, window.innerWidth - width - 12);
-    }
-    const below = rect.bottom + 6;
-    const maxPanel = Math.min(window.innerHeight * 0.7, 420);
-    const top =
-      below + maxPanel > window.innerHeight - 12
-        ? Math.max(12, rect.top - maxPanel - 6)
-        : below;
-    setPos({ top, left, width });
+  function pick(exerciseId: string) {
+    onChange(exerciseId);
+    setOpen(false);
+    setSearch("");
   }
 
-  useLayoutEffect(() => {
-    if (!open) return;
-    updatePosition();
-    queueMicrotask(() => searchRef.current?.focus());
-    const onScroll = () => updatePosition();
-    window.addEventListener("resize", onScroll);
-    window.addEventListener("scroll", onScroll, true);
-    return () => {
-      window.removeEventListener("resize", onScroll);
-      window.removeEventListener("scroll", onScroll, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (rootRef.current?.contains(t)) return;
-      if (panelRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const panel =
-    open && mounted && pos
+  const drawer =
+    open && mounted
       ? createPortal(
-          <div
-            ref={panelRef}
-            className="programs-th border border-[var(--th-border)] bg-white text-[var(--th-text)] shadow-xl"
-            style={{
-              position: "fixed",
-              top: pos.top,
-              left: pos.left,
-              width: pos.width,
-              zIndex: 80,
-              ["--th-bg" as string]: "#f3f4f6",
-              ["--th-surface" as string]: "#ffffff",
-              ["--th-surface-muted" as string]: "#f3f4f6",
-              ["--th-text" as string]: "#111827",
-              ["--th-muted" as string]: "#6b7280",
-              ["--th-border" as string]: "#e5e7eb",
-              ["--th-border-strong" as string]: "#d1d5db",
-              ["--th-blue" as string]: "#2563eb",
-              ["--th-yellow" as string]: "#eab308",
-              color: "#111827",
-              background: "#ffffff",
-            }}
-          >
-            <div className="flex max-h-[min(70vh,420px)] flex-col">
-              <div className="space-y-2 border-b border-[var(--th-border)] px-3 py-3">
+          <div className="fixed inset-0 z-[80] flex justify-end">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40"
+              aria-label="Close exercise picker"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              className="programs-th relative flex h-full w-full max-w-md flex-col bg-white text-[var(--th-text)] shadow-2xl"
+            >
+              <div className="flex items-center gap-3 border-b border-[var(--th-border)] px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                  aria-label="Close"
+                >
+                  <CloseIcon />
+                </button>
+                <div className="min-w-0">
+                  <h2
+                    id={titleId}
+                    className="text-base font-semibold text-[var(--th-text)]"
+                  >
+                    Choose exercise
+                  </h2>
+                  <p className="text-xs th-muted">
+                    Pick a type, then select from the list
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-b border-[var(--th-border)] px-5 py-4">
                 <label className="block space-y-1">
-                  <span className="text-[10px] font-bold tracking-wide text-[#6b7280] uppercase">
+                  <span className="text-[10px] font-bold tracking-wide uppercase th-muted">
                     Type
                   </span>
                   <select
@@ -155,7 +131,7 @@ export function ExercisePicker({
                       setCategory(e.target.value as ExerciseCategory | "");
                       setSearch("");
                     }}
-                    className="h-9 w-full border border-[#d1d5db] bg-white px-2 text-sm text-[#111827] outline-none focus:border-[#2563eb]"
+                    className="th-input h-10"
                   >
                     <option value="">Select type…</option>
                     {EXERCISE_CATEGORIES.map((cat) => (
@@ -177,10 +153,10 @@ export function ExercisePicker({
                         ? `Search ${category.toLowerCase()}…`
                         : "Select a type first"
                     }
-                    className="h-9 w-full border border-[#d1d5db] bg-white px-3 text-sm text-[#111827] outline-none focus:border-[#2563eb] disabled:bg-[#f9fafb] disabled:text-[#9ca3af]"
+                    className="th-input h-10 disabled:bg-[var(--th-surface-muted)] disabled:text-[var(--th-muted)]"
                   />
                 </label>
-                <p className="text-[10px] font-bold tracking-wide text-[#6b7280] uppercase">
+                <p className="text-[10px] font-bold tracking-wide uppercase th-muted">
                   {category
                     ? `${filtered.length} exercises`
                     : "Choose a type to browse"}
@@ -193,11 +169,11 @@ export function ExercisePicker({
                 aria-label="Exercises"
               >
                 {!category ? (
-                  <li className="px-3 py-10 text-center text-sm text-[#6b7280]">
+                  <li className="px-5 py-12 text-center text-sm th-muted">
                     Select a type above to see exercises.
                   </li>
                 ) : filtered.length === 0 ? (
-                  <li className="px-3 py-8 text-center text-sm text-[#6b7280]">
+                  <li className="px-5 py-12 text-center text-sm th-muted">
                     No exercises match this type / search.
                   </li>
                 ) : (
@@ -210,25 +186,26 @@ export function ExercisePicker({
                           role="option"
                           aria-selected={active}
                           className={cn(
-                            "flex w-full items-center gap-2 border-b border-[#e5e7eb] px-3 py-2.5 text-left text-sm text-[#111827] hover:bg-[#f3f4f6]",
-                            active && "bg-[#f3f4f6]",
+                            "flex w-full items-center gap-3 border-b border-[var(--th-border)] px-5 py-3 text-left text-sm hover:bg-[var(--th-surface-muted)]",
+                            active && "bg-[var(--th-surface-muted)]",
                           )}
-                          onClick={() => {
-                            onChange(ex.id);
-                            setOpen(false);
-                            setSearch("");
-                          }}
+                          onClick={() => pick(ex.id)}
                         >
                           <span
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-xs font-bold text-white"
-                            style={{ background: "#eab308" }}
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-xs font-bold text-white"
+                            style={{ background: "var(--th-yellow)" }}
                             aria-hidden
                           >
                             #
                           </span>
-                          <span className="min-w-0 flex-1 font-semibold text-[#111827]">
+                          <span className="min-w-0 flex-1 font-semibold text-[var(--th-text)]">
                             {ex.title}
                           </span>
+                          {active ? (
+                            <span className="text-[10px] font-bold tracking-wide text-[var(--th-blue)] uppercase">
+                              Selected
+                            </span>
+                          ) : null}
                         </button>
                       </li>
                     );
@@ -242,13 +219,13 @@ export function ExercisePicker({
       : null;
 
   return (
-    <div ref={rootRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)}>
       <button
         type="button"
         disabled={disabled}
         aria-expanded={open}
-        aria-haspopup="listbox"
-        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="dialog"
+        onClick={() => setOpen(true)}
         className="th-bar flex w-full min-h-10 items-center gap-2 px-2 py-1.5 text-left disabled:opacity-50"
       >
         <span className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--th-text)]">
@@ -259,32 +236,42 @@ export function ExercisePicker({
             {selected.category}
           </span>
         ) : null}
-        <ChevronIcon open={open} />
+        <ChevronIcon />
       </button>
-      {panel}
+      {drawer}
     </div>
   );
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
+function ChevronIcon() {
   return (
     <svg
       width="16"
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      className={cn(
-        "shrink-0 text-[var(--th-muted)] transition",
-        open && "rotate-180",
-      )}
+      className="shrink-0 text-[var(--th-muted)]"
       aria-hidden
     >
       <path
-        d="M6 9l6 6 6-6"
+        d="M9 6l6 6-6 6"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
       />
     </svg>
   );

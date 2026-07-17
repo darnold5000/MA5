@@ -239,7 +239,7 @@ export function ProgramGridManager({
             Name the program, then build weeks and days on the grid.
           </p>
           <div className="mt-5 space-y-4">
-            <label className="block space-y-1 text-sm">
+            <label className="block space-y-2 text-sm">
               <span className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Name
               </span>
@@ -251,7 +251,7 @@ export function ProgramGridManager({
                 placeholder="4 Week Program"
               />
             </label>
-            <label className="block space-y-1 text-sm">
+            <label className="block space-y-2 text-sm">
               <span className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Weeks
               </span>

@@ -16,7 +16,7 @@ const SIDEBAR = [
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
   {
-    href: "/admin/programs/library",
+    href: "/admin/programs",
     label: "Library",
     match: "programs" as const,
   },
@@ -28,7 +28,7 @@ const MOBILE = [
   { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
   { href: "/admin/clients", label: "Clients", match: "prefix" as const },
   {
-    href: "/admin/programs/library",
+    href: "/admin/programs",
     label: "Library",
     match: "programs" as const,
   },

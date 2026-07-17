@@ -383,7 +383,7 @@ export function WorkoutsManager({
             )}
           </div>
 
-          <label className="block space-y-1">
+          <label className="block space-y-2">
             <span className="text-xs font-semibold tracking-wide text-[#2563eb] uppercase">
               Session Title
             </span>
@@ -401,7 +401,7 @@ export function WorkoutsManager({
             ) : null}
           </label>
 
-          <label className="block space-y-1">
+          <label className="block space-y-2">
             <span className="text-xs font-semibold tracking-wide text-[#6b7280] uppercase">
               Session Instructions
             </span>

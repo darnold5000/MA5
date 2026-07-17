@@ -84,14 +84,19 @@ export function TeamsManager({
         <h2 className="text-lg font-bold">
           Create team
         </h2>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={75}
-            placeholder="Performance Group"
-            className="min-h-11 w-72 border border-[var(--th-border)] bg-white px-3"
-          />
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="block space-y-2 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase th-muted">
+              Name
+            </span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={75}
+              placeholder="Performance Group"
+              className="th-input min-h-11 w-72"
+            />
+          </label>
           <button
             type="button"
             disabled={pending || !name.trim()}

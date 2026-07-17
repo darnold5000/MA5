@@ -66,14 +66,14 @@ export function AssignCalendarManager({
   return (
     <div className="space-y-6">
       <div className="th-card p-5">
-        <label className="space-y-1 text-sm">
-          <span className="text-xs font-semibold tracking-wide uppercase">
+        <label className="block max-w-md space-y-2 text-sm">
+          <span className="text-xs font-semibold tracking-wide uppercase th-muted">
             Client
           </span>
           <select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            className="mt-1 th-input max-w-md"
+            className="th-input"
           >
             {clients.map((c) => (
               <option key={c.id} value={c.id}>

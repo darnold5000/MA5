@@ -17,7 +17,7 @@ export function ProgramsSectionNav({
   return (
     <nav
       aria-label="Programs sections"
-      className="flex flex-wrap items-center justify-end gap-1 border-b border-[var(--th-border)] pb-1"
+      className="flex flex-wrap items-center justify-start gap-1 border-b border-[var(--th-border)] pb-1"
     >
       {ITEMS.map((item) => (
         <Link
