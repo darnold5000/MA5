@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { ClientProgramsView } from "@/components/programs/client-programs-view";
 import { listClientProgramDays } from "@/features/programs/queries";
+import { getSessionUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Programs",
   robots: { index: false, follow: false },
 };
 
-const DEMO_CLIENT_ID = "client-alex";
-
 export default async function ProgramsPage() {
-  const days = await listClientProgramDays(DEMO_CLIENT_ID);
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/login?next=/app/programs");
+  }
+
+  const days = await listClientProgramDays(session.id);
 
   return (
     <div className="space-y-6">
@@ -26,7 +31,7 @@ export default async function ProgramsPage() {
           Published workouts from your coach — individual and team assignments.
         </p>
       </div>
-      <ClientProgramsView days={days} clientUserId={DEMO_CLIENT_ID} />
+      <ClientProgramsView days={days} clientUserId={session.id} />
     </div>
   );
 }

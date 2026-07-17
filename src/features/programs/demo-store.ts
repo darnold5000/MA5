@@ -19,10 +19,6 @@ import type {
 
 export const PROGRAMS_COOKIE = "ma5_programs";
 
-/** Sample MP4 used when coach “uploads” in demo mode without Supabase Storage */
-export const DEMO_UPLOAD_SAMPLE_URL =
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm";
-
 export type ProgramsState = {
   exercises: ReturnType<typeof mergeExerciseLibrary>;
   workouts: Workout[];

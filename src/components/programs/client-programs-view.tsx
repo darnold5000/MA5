@@ -9,13 +9,11 @@ import { VideoPlayer } from "@/lib/video/player";
 
 type Props = {
   days: ClientProgramDay[];
+  /** Kept for call-site clarity; completion uses the signed-in session. */
   clientUserId?: string;
 };
 
-export function ClientProgramsView({
-  days,
-  clientUserId = "client-alex",
-}: Props) {
+export function ClientProgramsView({ days }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = days.filter((d) => d.entry.entryDate >= today);
   const history = days.filter((d) => d.entry.entryDate < today || d.completed);
@@ -110,10 +108,7 @@ type PlayerProps = {
   clientUserId?: string;
 };
 
-export function ClientWorkoutPlayer({
-  day,
-  clientUserId = "client-alex",
-}: PlayerProps) {
+export function ClientWorkoutPlayer({ day }: PlayerProps) {
   const router = useRouter();
   const [note, setNote] = useState(day.completion?.clientNote ?? "");
   const [pending, setPending] = useState(false);
@@ -127,7 +122,6 @@ export function ClientWorkoutPlayer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         calendarEntryId: day.entry.id,
-        clientUserId,
         clientNote: note,
       }),
     });

@@ -10,7 +10,19 @@ import type {
 } from "@/features/programs/types";
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { MA5_TABLES } from "@/lib/supabase/tables";
 import { createSignedVideoUrl } from "@/lib/video/storage";
+
+async function withSignedPlayback(state: ProgramsState): Promise<ProgramsState> {
+  const exercises = await Promise.all(
+    state.exercises.map(async (ex) => {
+      if (ex.videoSource !== "upload" || !ex.videoStoragePath) return ex;
+      const url = await createSignedVideoUrl(ex.videoStoragePath);
+      return { ...ex, demoPlaybackUrl: url };
+    }),
+  );
+  return { ...state, exercises };
+}
 
 export async function getProgramsState(): Promise<ProgramsState> {
   if (!isSupabaseConfigured()) {
@@ -21,9 +33,9 @@ export async function getProgramsState(): Promise<ProgramsState> {
     if (!session) {
       return readProgramsState();
     }
-    // Authenticated user — RLS scopes staff (full library) vs client (published)
     const supabase = await createClient();
-    return await loadProgramsStateFromSupabase(supabase);
+    const state = await loadProgramsStateFromSupabase(supabase);
+    return withSignedPlayback(state);
   } catch (err) {
     console.error("[programs] Supabase load failed, falling back to cookie", err);
     return readProgramsState();
@@ -49,11 +61,10 @@ export function getWorkoutDetail(
 export async function resolveExercisePlayback(
   exercise: Exercise,
 ): Promise<string | null> {
-  if (exercise.videoSource === "upload") {
-    if (exercise.demoPlaybackUrl) return exercise.demoPlaybackUrl;
-    if (exercise.videoStoragePath) {
-      return createSignedVideoUrl(exercise.videoStoragePath);
-    }
+  if (exercise.videoSource !== "upload") return null;
+  if (exercise.demoPlaybackUrl) return exercise.demoPlaybackUrl;
+  if (exercise.videoStoragePath) {
+    return createSignedVideoUrl(exercise.videoStoragePath);
   }
   return null;
 }
@@ -98,6 +109,50 @@ export async function listClientProgramDays(
   });
 }
 
+/** Real roster: active profiles with the client role. */
+export async function listRosterClients(): Promise<
+  Array<{ id: string; name: string }>
+> {
+  if (!isSupabaseConfigured()) {
+    return listClientsForPrograms(await readProgramsState());
+  }
+  try {
+    const session = await getSessionUser();
+    if (!session) {
+      return listClientsForPrograms(await readProgramsState());
+    }
+    const supabase = await createClient();
+    const { data: roleRows, error: roleError } = await supabase
+      .from(MA5_TABLES.userRoles)
+      .select("user_id")
+      .eq("role", "client");
+    if (roleError) throw new Error(roleError.message);
+
+    const ids = [...new Set((roleRows ?? []).map((r) => String(r.user_id)))];
+    if (ids.length === 0) return [];
+
+    const { data: profiles, error } = await supabase
+      .from(MA5_TABLES.profiles)
+      .select("id, full_name, email, active")
+      .in("id", ids)
+      .eq("active", true)
+      .order("full_name", { ascending: true });
+    if (error) throw new Error(error.message);
+
+    return (profiles ?? []).map((p) => ({
+      id: String(p.id),
+      name:
+        (p.full_name as string | null)?.trim() ||
+        (p.email as string | null) ||
+        "Client",
+    }));
+  } catch (err) {
+    console.error("[programs] roster load failed", err);
+    return listClientsForPrograms(await getProgramsState());
+  }
+}
+
+/** @deprecated Prefer listRosterClients — kept for cookie-demo fallbacks */
 export function listClientsForPrograms(state: ProgramsState) {
   const known = new Map<string, string>();
   for (const m of state.teamMembers) known.set(m.userId, m.userName);

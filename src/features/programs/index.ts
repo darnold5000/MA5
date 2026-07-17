@@ -4,5 +4,6 @@ export {
   getWorkoutDetail,
   listClientProgramDays,
   listClientsForPrograms,
+  listRosterClients,
   resolveExercisePlayback,
 } from "./queries";

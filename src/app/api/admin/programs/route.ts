@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  DEMO_UPLOAD_SAMPLE_URL,
   materializeProgramDays,
   newId,
   PROGRAMS_COOKIE,
@@ -26,11 +25,7 @@ import type { Exercise, WorkoutBlock, WorkoutBlockSet } from "@/features/program
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 import { detectVideoSourceFromUrl } from "@/lib/video/parse";
-import {
-  createClient,
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import {
   isAllowedVideoType,
@@ -116,14 +111,6 @@ async function getAdminSupabase() {
     return { supabase, userId: session.id };
   } catch {
     return { error: jsonError("Supabase is not configured", 500) as NextResponse };
-  }
-}
-
-function getServiceSupabase() {
-  try {
-    return createServiceClient();
-  } catch {
-    return null;
   }
 }
 
@@ -835,29 +822,22 @@ async function postCookie(request: Request) {
       return jsonError("Exercise not found", 404);
     }
 
-    let storagePath: string | null = null;
-    let demoPlaybackUrl: string | null = DEMO_UPLOAD_SAMPLE_URL;
-
-    if (isSupabaseConfigured() && getServiceSupabase()) {
-      const uploaded = await uploadExerciseVideo({
-        exerciseId,
-        file,
-        fileName: file.name,
-        contentType: file.type,
-      });
-      if ("error" in uploaded) {
-        return jsonError(uploaded.error);
-      }
-      storagePath = uploaded.path;
-      demoPlaybackUrl = null;
+    const uploaded = await uploadExerciseVideo({
+      exerciseId,
+      file,
+      fileName: file.name,
+      contentType: file.type,
+    });
+    if ("error" in uploaded) {
+      return jsonError(uploaded.error);
     }
 
     state.exercises[idx] = {
       ...state.exercises[idx],
       videoSource: "upload",
       videoUrl: null,
-      videoStoragePath: storagePath,
-      demoPlaybackUrl,
+      videoStoragePath: uploaded.path,
+      demoPlaybackUrl: null,
     };
     return withCookie(state, { ok: true, exercise: state.exercises[idx] });
   }

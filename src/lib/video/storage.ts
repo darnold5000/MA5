@@ -1,4 +1,8 @@
-import { createClient, createServiceClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import {
+  createClient,
+  createServiceClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
 
 export const EXERCISE_VIDEO_BUCKET = "ma5-exercise-videos";
 export const MAX_VIDEO_BYTES = 524_288_000;
@@ -12,15 +16,24 @@ export function isAllowedVideoType(type: string): boolean {
   return (ALLOWED_VIDEO_TYPES as readonly string[]).includes(type);
 }
 
+function requireServiceClient() {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured for video uploads.");
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      "Set SUPABASE_SERVICE_ROLE_KEY so exercise videos can upload to Storage.",
+    );
+  }
+  return createServiceClient();
+}
+
 export async function uploadExerciseVideo(input: {
   exerciseId: string;
   file: File | Blob;
   fileName: string;
   contentType: string;
 }): Promise<{ path: string } | { error: string }> {
-  if (!isSupabaseConfigured()) {
-    return { error: "Supabase is not configured for video uploads." };
-  }
   if (!isAllowedVideoType(input.contentType)) {
     return { error: "Use MP4, WebM, or MOV." };
   }
@@ -34,7 +47,7 @@ export async function uploadExerciseVideo(input: {
   const path = `exercises/${input.exerciseId}/${crypto.randomUUID()}.${ext}`;
 
   try {
-    const supabase = createServiceClient();
+    const supabase = requireServiceClient();
     const { error } = await supabase.storage
       .from(EXERCISE_VIDEO_BUCKET)
       .upload(path, input.file, {
@@ -56,6 +69,14 @@ export async function createSignedVideoUrl(
 ): Promise<string | null> {
   if (!isSupabaseConfigured() || !path) return null;
   try {
+    // Prefer service role so coaches/clients get stable signed URLs
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createServiceClient();
+      const { data, error } = await supabase.storage
+        .from(EXERCISE_VIDEO_BUCKET)
+        .createSignedUrl(path, expiresIn);
+      if (!error && data?.signedUrl) return data.signedUrl;
+    }
     const supabase = await createClient();
     const { data, error } = await supabase.storage
       .from(EXERCISE_VIDEO_BUCKET)
@@ -72,7 +93,7 @@ export async function deleteExerciseVideo(
 ): Promise<{ error?: string }> {
   if (!isSupabaseConfigured() || !path) return {};
   try {
-    const supabase = createServiceClient();
+    const supabase = requireServiceClient();
     const { error } = await supabase.storage
       .from(EXERCISE_VIDEO_BUCKET)
       .remove([path]);

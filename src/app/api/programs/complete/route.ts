@@ -7,13 +7,16 @@ import {
   readProgramsState,
   serializeProgramsState,
 } from "@/features/programs/demo-store";
+import { mapCompletionRow } from "@/features/programs/supabase-store";
+import { getSessionUser } from "@/lib/auth/session";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { MA5_TABLES } from "@/lib/supabase/tables";
 
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);
   const parsed = z
     .object({
-      calendarEntryId: z.string(),
-      clientUserId: z.string().default("client-alex"),
+      calendarEntryId: z.string().min(1),
       clientNote: z.string().max(2000).optional(),
     })
     .safeParse(json);
@@ -22,6 +25,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  const session = await getSessionUser();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+
+  const clientUserId = session.id;
+  const note = parsed.data.clientNote?.trim() ?? "";
+
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createClient();
+      const { data: entry, error: entryError } = await supabase
+        .from(MA5_TABLES.calendarEntries)
+        .select("id, publish_status")
+        .eq("id", parsed.data.calendarEntryId)
+        .maybeSingle();
+      if (entryError) {
+        return NextResponse.json({ error: entryError.message }, { status: 500 });
+      }
+      if (!entry || entry.publish_status !== "published") {
+        return NextResponse.json({ error: "Workout not found" }, { status: 404 });
+      }
+
+      const { data: existing } = await supabase
+        .from(MA5_TABLES.workoutCompletions)
+        .select("id")
+        .eq("calendar_entry_id", parsed.data.calendarEntryId)
+        .eq("client_user_id", clientUserId)
+        .maybeSingle();
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from(MA5_TABLES.workoutCompletions)
+          .update({
+            completed_at: new Date().toISOString(),
+            client_note: note,
+          })
+          .eq("id", existing.id)
+          .select("*")
+          .single();
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        return NextResponse.json({
+          ok: true,
+          completion: mapCompletionRow(data as Record<string, unknown>),
+        });
+      }
+
+      const { data, error } = await supabase
+        .from(MA5_TABLES.workoutCompletions)
+        .insert({
+          calendar_entry_id: parsed.data.calendarEntryId,
+          client_user_id: clientUserId,
+          client_note: note,
+        })
+        .select("*")
+        .single();
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({
+        ok: true,
+        completion: mapCompletionRow(data as Record<string, unknown>),
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Could not complete" },
+        { status: 500 },
+      );
+    }
+  }
+
+  // Cookie fallback (local demos without Supabase)
   const state = await readProgramsState();
   const entry = state.calendarEntries.find(
     (e) => e.id === parsed.data.calendarEntryId,
@@ -33,15 +110,15 @@ export async function POST(request: Request) {
   const existing = state.completions.findIndex(
     (c) =>
       c.calendarEntryId === parsed.data.calendarEntryId &&
-      c.clientUserId === parsed.data.clientUserId,
+      c.clientUserId === clientUserId,
   );
 
   const completion = {
     id: existing >= 0 ? state.completions[existing].id : newId("done"),
     calendarEntryId: parsed.data.calendarEntryId,
-    clientUserId: parsed.data.clientUserId,
+    clientUserId,
     completedAt: new Date().toISOString(),
-    clientNote: parsed.data.clientNote?.trim() ?? "",
+    clientNote: note,
   };
 
   if (existing >= 0) {

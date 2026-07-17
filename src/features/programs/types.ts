@@ -27,7 +27,7 @@ export type Exercise = {
   videoSource: VideoSource;
   videoUrl: string | null;
   videoStoragePath: string | null;
-  /** Demo-only playback when Supabase Storage is unavailable */
+  /** Resolved signed playback URL for uploaded videos (server-filled). */
   demoPlaybackUrl: string | null;
   defaultParam1: ExerciseParam;
   defaultParam2: ExerciseParam;

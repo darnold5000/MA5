@@ -5,7 +5,7 @@ import { ProgramsLightShell } from "@/components/programs/programs-light-shell";
 import { ProgramsSectionNav } from "@/components/programs/programs-section-nav";
 import {
   getProgramsState,
-  listClientsForPrograms,
+  listRosterClients,
 } from "@/features/programs/queries";
 
 export const metadata: Metadata = {
@@ -14,8 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminAssignPage() {
-  const state = await getProgramsState();
-  const clients = listClientsForPrograms(state);
+  const [state, clients] = await Promise.all([
+    getProgramsState(),
+    listRosterClients(),
+  ]);
 
   return (
     <ProgramsLightShell>
