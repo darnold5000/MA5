@@ -37,6 +37,7 @@ Internal comparison page: **`/platform-preview`** (not in public nav).
 
 - `supabase/migrations/001_platform_foundation.sql` — `ma5_*` tables, RLS helpers, roles
 - `supabase/migrations/010_marketing_attribution.sql` — visitor sessions, leads, member acquisition fields
+- `supabase/migrations/011_marketing_hardening.sql` — first-touch triggers, bots, retention purge, funnel `invited_at`
 - `docs/MARKETING_ATTRIBUTION.md` — UTM / Growth Marketing module (portable Signal Works pattern)
 - `supabase/seed.sql` — optional demo profiles (local/dev only)
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { inviteRedirectUrl } from "@/features/auth/members";
+import { attachLeadOnInvite } from "@/features/marketing/link-lead";
 import { getSessionUser } from "@/lib/auth/session";
 import { env, isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
 
   const role = parsed.data.role;
   const now = new Date().toISOString();
+  const leadIdOpt = parsed.data.leadId ?? null;
 
   try {
     const admin = createServiceClient();
@@ -87,6 +89,15 @@ export async function POST(request: Request) {
         { user_id: existingProfile.id, role },
         { onConflict: "user_id,role" },
       );
+
+      // Existing active member — still attach lead attribution if missing
+      await attachLeadOnInvite({
+        admin,
+        profileId: existingProfile.id,
+        email: emailNorm,
+        leadId: leadIdOpt,
+      });
+
       return NextResponse.json({
         ok: true,
         member: {
@@ -117,23 +128,31 @@ export async function POST(request: Request) {
     if (inviteError) {
       // Likely already registered — attach role and (re)send recovery/invite status.
       if (existingProfile?.id) {
-        await admin.from(MA5_TABLES.profiles).update({
-          full_name: fullName,
-          phone: parsed.data.phone?.trim() || null,
-          admin_notes: parsed.data.notes?.trim() || null,
-          invitation_status: "sent",
-          invited_at: now,
-          active: false,
-          access_revoked_at: null,
-        }).eq("id", existingProfile.id);
+        await admin
+          .from(MA5_TABLES.profiles)
+          .update({
+            full_name: fullName,
+            phone: parsed.data.phone?.trim() || null,
+            admin_notes: parsed.data.notes?.trim() || null,
+            invitation_status: "sent",
+            invited_at: now,
+            active: false,
+            access_revoked_at: null,
+          })
+          .eq("id", existingProfile.id);
 
         await admin.from(MA5_TABLES.userRoles).upsert(
           { user_id: existingProfile.id, role },
           { onConflict: "user_id,role" },
         );
 
-        // Existing Auth users cannot receive a second invite email; send a
-        // password-setup link instead so they can activate access.
+        await attachLeadOnInvite({
+          admin,
+          profileId: existingProfile.id,
+          email: emailNorm,
+          leadId: leadIdOpt,
+        });
+
         const userClient = await createClient();
         await userClient.auth.resetPasswordForEmail(emailNorm, {
           redirectTo: inviteRedirectUrl(env.siteUrl),
@@ -169,49 +188,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const profilePatch: Record<string, unknown> = {
-      id: userId,
+    await admin.from(MA5_TABLES.profiles).upsert(
+      {
+        id: userId,
+        email: emailNorm,
+        full_name: fullName,
+        phone: parsed.data.phone?.trim() || null,
+        admin_notes: parsed.data.notes?.trim() || null,
+        active: false,
+        invitation_status: "sent",
+        invited_at: now,
+        access_revoked_at: null,
+      },
+      { onConflict: "id" },
+    );
+
+    // Works for Marketing Invite and Clients invite (email match when no leadId)
+    await attachLeadOnInvite({
+      admin,
+      profileId: userId,
       email: emailNorm,
-      full_name: fullName,
-      phone: parsed.data.phone?.trim() || null,
-      admin_notes: parsed.data.notes?.trim() || null,
-      active: false,
-      invitation_status: "sent",
-      invited_at: now,
-      access_revoked_at: null,
-    };
-
-    if (parsed.data.leadId) {
-      profilePatch.lead_id = parsed.data.leadId;
-      const { data: lead } = await admin
-        .from(MA5_TABLES.leads)
-        .select(
-          "utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, created_at",
-        )
-        .eq("id", parsed.data.leadId)
-        .maybeSingle();
-
-      if (lead) {
-        profilePatch.acquisition_source = lead.utm_source;
-        profilePatch.acquisition_medium = lead.utm_medium;
-        profilePatch.acquisition_campaign = lead.utm_campaign;
-        profilePatch.acquisition_term = lead.utm_term;
-        profilePatch.acquisition_content = lead.utm_content;
-        profilePatch.acquisition_landing_page = lead.landing_page;
-        profilePatch.acquisition_referrer = lead.referrer;
-        profilePatch.acquisition_first_seen_at = lead.created_at;
-        await admin
-          .from(MA5_TABLES.leads)
-          .update({
-            status: "qualified",
-            converted_profile_id: userId,
-          })
-          .eq("id", parsed.data.leadId);
-      }
-    }
-
-    await admin.from(MA5_TABLES.profiles).upsert(profilePatch, {
-      onConflict: "id",
+      leadId: leadIdOpt,
     });
 
     await admin.from(MA5_TABLES.userRoles).upsert(

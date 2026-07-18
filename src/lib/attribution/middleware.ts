@@ -14,10 +14,14 @@ import {
   serializeTouch,
 } from "@/lib/attribution/parse";
 
+/**
+ * HttpOnly=true: AttributionTracker never reads cookies in JS — only the
+ * server (middleware + Route Handlers via cookies()) needs them.
+ */
 const COOKIE_BASE = {
   path: "/",
   sameSite: "lax" as const,
-  httpOnly: false,
+  httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   maxAge: ATTRIBUTION_COOKIE_MAX_AGE_SECONDS,
 };

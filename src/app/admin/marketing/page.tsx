@@ -33,10 +33,20 @@ export default async function AdminMarketingDashboardPage() {
       <MarketingSubnav />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard label="Visitors today" value={String(data.visitorsToday)} />
         <MetricCard
-          label="Visitors this month"
+          label="Unique visitors today"
+          value={String(data.visitorsToday)}
+          note="bots excluded"
+        />
+        <MetricCard
+          label="Unique visitors this month"
           value={String(data.visitorsThisMonth)}
+          note="by visitor_id"
+        />
+        <MetricCard
+          label="Page views this month"
+          value={String(data.pageViewsThisMonth)}
+          note="not unique visitors"
         />
         <MetricCard label="Leads" value={String(data.leads)} />
         <MetricCard
@@ -48,10 +58,48 @@ export default async function AdminMarketingDashboardPage() {
           label="Members acquired"
           value={String(data.membersAcquired)}
         />
-        <MetricCard
-          label="Top campaign"
-          value={data.topCampaign ?? "—"}
-        />
+        <MetricCard label="Top campaign" value={data.topCampaign ?? "—"} />
+      </section>
+
+      <section className="space-y-5">
+        <SectionHeader eyebrow="Funnel" title="Lead → member timing" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Lead created"
+            value={String(data.funnel.leadsCreated)}
+          />
+          <MetricCard
+            label="Invitation sent"
+            value={String(data.funnel.invitationsSent)}
+          />
+          <MetricCard
+            label="Invitation accepted"
+            value={String(data.funnel.invitationsAccepted)}
+          />
+          <MetricCard
+            label="Member activated"
+            value={String(data.funnel.membersActivated)}
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MetricCard
+            label="Avg days lead → invite"
+            value={
+              data.funnel.avgDaysLeadToInvite != null
+                ? String(data.funnel.avgDaysLeadToInvite)
+                : "—"
+            }
+          />
+          <MetricCard
+            label="Avg days lead → conversion"
+            value={
+              data.funnel.avgDaysLeadToConversion != null
+                ? String(data.funnel.avgDaysLeadToConversion)
+                : "—"
+            }
+          />
+        </div>
+        <SimpleBarChart points={data.funnel.stages} />
       </section>
 
       <section className="space-y-5">
@@ -60,12 +108,12 @@ export default async function AdminMarketingDashboardPage() {
       </section>
 
       <section className="space-y-5">
-        <SectionHeader eyebrow="Trend" title="Visitors over time" />
+        <SectionHeader eyebrow="Trend" title="Unique visitors over time" />
         <SimpleBarChart points={data.visitorsOverTime} />
       </section>
 
       <section className="space-y-5">
-        <SectionHeader eyebrow="Funnel" title="Lead funnel" />
+        <SectionHeader eyebrow="Volume" title="Traffic funnel" />
         <SimpleBarChart points={data.leadFunnel} />
       </section>
 

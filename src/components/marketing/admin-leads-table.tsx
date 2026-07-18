@@ -87,6 +87,29 @@ export function AdminLeadsTable({ leads }: { leads: MarketingLead[] }) {
     router.refresh();
   }
 
+  async function deleteLead(lead: MarketingLead) {
+    if (
+      !window.confirm(
+        `Permanently delete lead ${lead.name}? This only works for unconverted leads and will not remove member acquisition fields.`,
+      )
+    ) {
+      return;
+    }
+    setPendingId(lead.id);
+    const res = await fetch("/api/admin/marketing/privacy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete_lead", leadId: lead.id }),
+    });
+    setPendingId(null);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      window.alert(data.error ?? "Could not delete lead");
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap gap-3">
@@ -201,16 +224,25 @@ export function AdminLeadsTable({ leads }: { leads: MarketingLead[] }) {
                   </td>
                   <td className="px-4 py-3">
                     {lead.status !== "converted" &&
-                    !lead.convertedProfileId &&
                     /^[0-9a-f-]{36}$/i.test(lead.id) ? (
-                      <button
-                        type="button"
-                        disabled={pendingId === lead.id}
-                        onClick={() => void inviteLead(lead)}
-                        className="text-xs font-semibold tracking-wide text-brand uppercase hover:underline disabled:opacity-50"
-                      >
-                        Invite
-                      </button>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          disabled={pendingId === lead.id}
+                          onClick={() => void inviteLead(lead)}
+                          className="text-left text-xs font-semibold tracking-wide text-brand uppercase hover:underline disabled:opacity-50"
+                        >
+                          Invite
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pendingId === lead.id}
+                          onClick={() => void deleteLead(lead)}
+                          className="text-left text-xs font-semibold tracking-wide text-muted uppercase hover:text-brand disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-xs text-muted">—</span>
                     )}

@@ -32,9 +32,23 @@ export type CampaignRow = {
   conversionRate: number;
 };
 
+export type FunnelMetrics = {
+  leadsCreated: number;
+  invitationsSent: number;
+  invitationsAccepted: number;
+  membersActivated: number;
+  avgDaysLeadToInvite: number | null;
+  avgDaysLeadToConversion: number | null;
+  stages: { label: string; value: number }[];
+};
+
 export type MarketingDashboard = {
+  /** Unique human visitors (visitor_id rows, bots excluded) active today */
   visitorsToday: number;
+  /** Unique human visitors first seen this month */
   visitorsThisMonth: number;
+  /** Sum of page_views for human visitors this month (not unique count) */
+  pageViewsThisMonth: number;
   leads: number;
   conversionRate: number;
   membersAcquired: number;
@@ -42,6 +56,7 @@ export type MarketingDashboard = {
   trafficSources: { label: string; value: number }[];
   visitorsOverTime: { label: string; value: number }[];
   leadFunnel: { label: string; value: number }[];
+  funnel: FunnelMetrics;
   campaignPerformance: CampaignRow[];
 };
 

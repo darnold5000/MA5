@@ -121,6 +121,7 @@ export const DEMO_CAMPAIGNS: CampaignRow[] = [
 export const DEMO_MARKETING_DASHBOARD: MarketingDashboard = {
   visitorsToday: 47,
   visitorsThisMonth: 1284,
+  pageViewsThisMonth: 4120,
   leads: DEMO_LEADS.length,
   conversionRate: 25,
   membersAcquired: 13,
@@ -147,6 +148,20 @@ export const DEMO_MARKETING_DASHBOARD: MarketingDashboard = {
     { label: "Contacted", value: 32 },
     { label: "Members", value: 13 },
   ],
+  funnel: {
+    leadsCreated: 55,
+    invitationsSent: 32,
+    invitationsAccepted: 18,
+    membersActivated: 13,
+    avgDaysLeadToInvite: 2.4,
+    avgDaysLeadToConversion: 9.1,
+    stages: [
+      { label: "Lead created", value: 55 },
+      { label: "Invitation sent", value: 32 },
+      { label: "Invitation accepted", value: 18 },
+      { label: "Member activated", value: 13 },
+    ],
+  },
   campaignPerformance: DEMO_CAMPAIGNS,
 };
 

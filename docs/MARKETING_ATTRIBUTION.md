@@ -8,46 +8,58 @@ End-to-end UTM and lead attribution so facilities can see which campaigns drive 
 
 | Capability | Behavior |
 | --- | --- |
-| Automatic UTM capture | Middleware reads `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content` |
-| Anonymous visitor tracking | First-party `ma5_vid` cookie (UUID) + first/last-touch cookies (90 days) |
-| First-touch never overwritten | Cookie + `ma5_visitor_sessions` first-touch columns are write-once |
-| Optional last-touch | Updated when new campaign params appear |
+| Automatic UTM capture | Middleware reads `utm_*` params into HttpOnly first-party cookies |
+| Anonymous visitor tracking | `ma5_vid` + first/last-touch cookies (90 days) |
+| First-touch immutability | Cookies + app logic + **DB BEFORE UPDATE triggers** |
+| Optional last-touch | Remains updateable when new campaign params appear |
+| Bot filtering | User-agent heuristics; `is_bot` excluded from unique-visitor KPIs |
+| Unique vs page views | Unique visitors = distinct `visitor_id`; page views = sum(`page_views`) |
 | Lead attribution | Contact form → `ma5_leads` with visitor + UTMs |
-| Member conversion | Invite accept copies first-touch onto `ma5_profiles.acquisition_*` |
+| Invite edge cases | Attribution attaches for new invite, resend, existing member, Clients invite (email match) |
+| Member conversion | Accept-invite marks lead converted; acquisition_* retained if email later changes |
+| Funnel timing | Lead created → invited → accepted → activated + avg days |
+| Privacy cleanup | Delete unconverted leads / unlinked visitors; 90-day anonymous purge |
 | Operations → Marketing | Dashboard, Leads, Campaigns |
 | Profile attribution | Read-only Marketing Attribution on Fitness Hub profile |
 
 ---
 
-## Privacy
+## Privacy & retention
 
-- Marketing cookies identify a **browser**, not a person.
-- PII is stored only after a **voluntary form submit** (contact lead).
-- Respect cookie consent banners where your jurisdiction requires them (wire a consent gate around `AttributionTracker` / cookie writes if needed).
+- Marketing cookies identify a **browser**, not a person (`HttpOnly`, `SameSite=Lax`, `Secure` in production).
+- PII is stored only after a **voluntary form submit**.
+- **Anonymous sessions** with no linked lead are eligible for deletion after **90 days** (`last_seen`).
+- Attribution already copied onto a **lead or member** is never purged by retention.
+- Admin privacy API: `POST /api/admin/marketing/privacy`
+  - `delete_visitor` — only if no lead references the visitor
+  - `delete_lead` — only unconverted / non-active-member leads; does not clear member `acquisition_*`
+  - `purge_expired` — runs `ma5_purge_expired_anonymous_visitors(90)`
+- Opportunistic purge also runs (~2% of human visit beacons).
+- Wire a consent gate around cookie writes where required by jurisdiction.
 
 ---
 
 ## Data model (`ma5_*`)
 
+Migrations:
+
+- `010_marketing_attribution.sql` — tables + profile acquisition columns
+- `011_marketing_hardening.sql` — triggers, `is_bot`, `invited_at`, purge function, delete policies
+
 ### `ma5_visitor_sessions`
 
-Anonymous sessions: `visitor_id`, `first_seen`, `last_seen`, landing/referrer, first-touch UTMs, optional last-touch UTMs, `page_views`.
+Anonymous sessions: first-touch UTMs (immutable once set), last-touch UTMs (mutable), `page_views`, `is_bot`, `user_agent`.
 
 ### `ma5_leads`
 
-Identified prospects: `visitor_id`, name/email/phone, UTMs, `status` (`new` → `contacted` → `qualified` → `converted` / `closed`), `converted_profile_id`.
+Prospects: UTMs (immutable once set), `status`, `invited_at`, `converted_at`, `converted_profile_id`.
 
-### `ma5_profiles` (member acquisition)
+### `ma5_profiles`
 
 | Column | Purpose |
 | --- | --- |
-| `lead_id` | Link back to originating lead |
-| `acquisition_source` / `_medium` / `_campaign` / `_term` / `_content` | First-touch UTMs |
-| `acquisition_landing_page` / `_referrer` / `_first_seen_at` | Context |
-
-Never overwrite acquisition fields once set.
-
-Migration: `supabase/migrations/010_marketing_attribution.sql`.
+| `lead_id` | Originating lead (may SET NULL on privacy delete; cannot swap to another lead) |
+| `acquisition_*` | First-touch retained after conversion (DB-protected) |
 
 ---
 
@@ -55,91 +67,75 @@ Migration: `supabase/migrations/010_marketing_attribution.sql`.
 
 ```
 Marketing page (+ UTMs)
-  → middleware sets ma5_vid + ma5_ft (+ ma5_lt)
-  → AttributionTracker POSTs /api/attribution/visit
-  → ma5_visitor_sessions upsert (first-touch locked)
+  → middleware sets HttpOnly ma5_vid + ma5_ft (+ ma5_lt)
+  → AttributionTracker POSTs /api/attribution/visit (server reads cookies)
+  → upsert visitor session (bots flagged; first-touch locked in DB)
 
-Contact form submit
-  → POST /api/leads
-  → ma5_leads row with visitor_id + first-touch UTMs
+Contact form
+  → POST /api/leads → ma5_leads
 
-Admin invites → member accepts
-  → POST /api/auth/accept-invite
-  → applyAttributionToMember() links lead + copies acquisition_* 
+Invite (Marketing or Clients, new/resend/existing)
+  → attachLeadOnInvite() by leadId or email (case-insensitive)
+  → sets lead.invited_at + profile acquisition if empty
+
+Accept invite
+  → applyAttributionToMember() → status converted + converted_at
 ```
+
+Email changes after conversion do **not** clear attribution — `lead_id` + `acquisition_*` on the profile remain authoritative.
+
+---
+
+## Funnel reporting
+
+Dashboard reports:
+
+| Stage | Source |
+| --- | --- |
+| Lead created | `ma5_leads.created_at` |
+| Invitation sent | `ma5_leads.invited_at` |
+| Invitation accepted | `ma5_profiles.invitation_accepted_at` |
+| Member activated | active profile with acceptance / lead link |
+| Avg lead → invite | days between lead created and `invited_at` |
+| Avg lead → conversion | days between lead created and `converted_at` |
 
 ---
 
 ## Operations UI
 
-Top-level **Marketing** in the Operations sidebar:
-
 | Page | Path |
 | --- | --- |
 | Dashboard | `/admin/marketing` |
-| Leads | `/admin/marketing/leads` |
+| Leads | `/admin/marketing/leads` (invite / delete) |
 | Campaigns | `/admin/marketing/campaigns` |
 
-Demo data is used when Supabase / migration is unavailable (same pattern as Reports).
+Access: `/admin/*` middleware + `canAccessAdmin` on APIs + staff RLS.
 
 ---
 
-## Key files
-
-| Area | Path |
-| --- | --- |
-| Migration | `supabase/migrations/010_marketing_attribution.sql` |
-| Cookie / parse | `src/lib/attribution/*` |
-| Middleware hook | `src/lib/supabase/middleware.ts` → `applyAttributionCookies` |
-| Domain | `src/features/marketing/*` |
-| Visit / leads APIs | `src/app/api/attribution/visit`, `src/app/api/leads` |
-| Admin APIs | `src/app/api/admin/marketing/leads` |
-| UI | `src/components/marketing/*`, `src/app/admin/marketing/*` |
-
----
-
-## Portable Signal Works pattern
-
-For other tenants / the booking kit:
-
-1. Rename tables `ma5_*` → `sw_*` (or tenant prefix).
-2. Keep the same cookie contract (`*_vid`, `*_ft`, `*_lt`) or namespace per brand.
-3. Reuse middleware capture + visit beacon + lead POST + convert helper.
-4. Mount Operations → **Marketing** as a Growth module (alongside Communication, Reviews, Automations).
-
-This is the kind of capability that makes Signal Works feel like a **business platform**, not “just a website.”
-
-### Natural Marketing module expansion
-
-Documented room to grow under the same nav:
-
-- UTM / campaign attribution *(shipped)*
-- Lead pipeline *(shipped basics)*
-- Contact form submissions *(shipped)*
-- Email campaigns
-- QR code campaigns
-- Referral tracking
-- Coupon / promo codes
-- Conversion funnels (richer viz)
-- Google Ads / Meta Ads integrations
-- Cost per lead / member, ROI reporting
-
----
-
-## Apply migration
+## Tests
 
 ```bash
-# Via Supabase CLI or SQL editor
+npm test
+```
+
+Covers: direct traffic, returning visitor new campaign, first-touch immutability, last-touch updates, bots, unaccepted invites, existing-member conversion timing, revoked access, retention eligibility, safe delete rules.
+
+---
+
+## Apply migrations
+
+```bash
 supabase db push
-# or run 010_marketing_attribution.sql in the project SQL editor
+# or run 010_ then 011_ in the SQL editor
 ```
 
 ---
 
-## Test checklist
+## Manual test path
 
-1. Open `/?utm_source=instagram&utm_medium=social&utm_campaign=spring_strength` — cookies `ma5_vid` + `ma5_ft` set.
-2. Navigate without UTMs — first-touch cookie unchanged.
-3. Submit `/contact` — lead appears under Marketing → Leads with campaign.
-4. Invite that email → accept invite — profile shows Marketing Attribution; lead status `converted`.
-5. Operations → Marketing dashboard shows demo or live KPIs.
+1. Instagram UTM → contact → Marketing lead → invite → accept → profile attribution  
+2. Direct traffic (no UTMs) still creates a visitor + landing page  
+3. Return with a different campaign — first-touch stuck, last-touch updates  
+4. Lead never accepts — stays in Leads; no activated member  
+5. Invite same email from Clients (no leadId) — attribution still attaches by email  

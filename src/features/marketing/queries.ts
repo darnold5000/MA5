@@ -4,6 +4,7 @@ import {
   DEMO_MARKETING_DASHBOARD,
   DEMO_MEMBER_ATTRIBUTION,
 } from "@/features/marketing/demo-data";
+import { buildFunnelReport } from "@/features/marketing/funnel";
 import type {
   CampaignRow,
   LeadStatus,
@@ -32,6 +33,7 @@ type LeadRow = {
   status: LeadStatus;
   converted_profile_id: string | null;
   converted_at: string | null;
+  invited_at?: string | null;
   created_at: string;
 };
 
@@ -90,7 +92,7 @@ export async function listMarketingLeads(
     let query = supabase
       .from(MA5_TABLES.leads)
       .select(
-        "id, visitor_id, name, email, phone, message, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, status, converted_profile_id, converted_at, created_at",
+        "id, visitor_id, name, email, phone, message, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, status, converted_profile_id, converted_at, invited_at, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -148,19 +150,29 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
     const [
       visitorsTodayRes,
       visitorsMonthRes,
+      pageViewsRes,
       leadsRes,
       membersRes,
       visitorRowsRes,
       leadRowsRes,
+      profileRowsRes,
     ] = await Promise.all([
       supabase
         .from(MA5_TABLES.visitorSessions)
         .select("visitor_id", { count: "exact", head: true })
+        .eq("is_bot", false)
         .gte("last_seen", today),
       supabase
         .from(MA5_TABLES.visitorSessions)
         .select("visitor_id", { count: "exact", head: true })
+        .eq("is_bot", false)
         .gte("first_seen", month),
+      supabase
+        .from(MA5_TABLES.visitorSessions)
+        .select("page_views")
+        .eq("is_bot", false)
+        .gte("first_seen", month)
+        .limit(5000),
       supabase
         .from(MA5_TABLES.leads)
         .select("id", { count: "exact", head: true }),
@@ -170,14 +182,22 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
         .not("acquisition_source", "is", null),
       supabase
         .from(MA5_TABLES.visitorSessions)
-        .select("utm_source, utm_campaign, first_seen")
+        .select("utm_source, utm_campaign, first_seen, page_views")
+        .eq("is_bot", false)
         .gte("first_seen", month)
         .limit(2000),
       supabase
         .from(MA5_TABLES.leads)
         .select(
-          "status, utm_source, utm_medium, utm_campaign, created_at, converted_at",
+          "status, utm_source, utm_medium, utm_campaign, created_at, converted_at, invited_at, converted_profile_id",
         )
+        .limit(2000),
+      supabase
+        .from(MA5_TABLES.profiles)
+        .select(
+          "id, invited_at, invitation_accepted_at, created_at, active, lead_id",
+        )
+        .not("lead_id", "is", null)
         .limit(2000),
     ]);
 
@@ -197,6 +217,11 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
     const membersAcquired = membersRes.count ?? 0;
     const conversionRate =
       leads > 0 ? Math.round((membersAcquired / leads) * 1000) / 10 : 0;
+
+    const pageViewsThisMonth = (pageViewsRes.data ?? []).reduce(
+      (sum, row) => sum + (row.page_views ?? 0),
+      0,
+    );
 
     const sourceCounts = new Map<string, number>();
     const campaignCounts = new Map<string, number>();
@@ -237,11 +262,30 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
       if (status in statusCounts) statusCounts[status] += 1;
     }
 
+    const funnel = buildFunnelReport(
+      (leadRowsRes.data ?? []).map((l) => ({
+        created_at: l.created_at,
+        invited_at: l.invited_at ?? null,
+        converted_at: l.converted_at ?? null,
+        status: l.status,
+        converted_profile_id: l.converted_profile_id ?? null,
+      })),
+      (profileRowsRes.data ?? []).map((p) => ({
+        id: p.id,
+        invited_at: p.invited_at ?? null,
+        invitation_accepted_at: p.invitation_accepted_at ?? null,
+        created_at: p.created_at,
+        active: Boolean(p.active),
+        lead_id: p.lead_id ?? null,
+      })),
+    );
+
     const campaigns = await getCampaignPerformance();
 
     return {
       visitorsToday: visitorsTodayRes.count ?? 0,
       visitorsThisMonth,
+      pageViewsThisMonth,
       leads,
       conversionRate,
       membersAcquired,
@@ -265,6 +309,7 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
         },
         { label: "Members", value: membersAcquired },
       ],
+      funnel,
       campaignPerformance: campaigns,
     };
   } catch (err) {
@@ -285,6 +330,7 @@ export async function getCampaignPerformance(): Promise<CampaignRow[]> {
         supabase
           .from(MA5_TABLES.visitorSessions)
           .select("utm_source, utm_medium, utm_campaign")
+          .eq("is_bot", false)
           .limit(5000),
         supabase
           .from(MA5_TABLES.leads)
@@ -312,7 +358,11 @@ export async function getCampaignPerformance(): Promise<CampaignRow[]> {
 
     const map = new Map<string, Agg>();
 
-    function key(source: string | null, medium: string | null, campaign: string | null) {
+    function key(
+      source: string | null,
+      medium: string | null,
+      campaign: string | null,
+    ) {
       return `${source ?? "(direct)"}|${medium ?? "(none)"}|${campaign ?? "(none)"}`;
     }
 

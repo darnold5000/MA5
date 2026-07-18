@@ -1,3 +1,4 @@
+import { attachLeadOnInvite } from "@/features/marketing/link-lead";
 import type { AttributionTouch } from "@/lib/attribution/types";
 import { createServiceClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -12,79 +13,48 @@ type ConvertArgs = {
 
 /**
  * Carry first-touch attribution onto a member profile after conversion.
- * Never overwrites acquisition_* once set.
+ * Never overwrites acquisition_* once set (app + DB trigger).
+ *
+ * Email changes after conversion do not clear attribution — profile.lead_id
+ * and acquisition_* remain the source of truth.
  */
 export async function applyAttributionToMember(
   args: ConvertArgs,
 ): Promise<{ leadId: string | null }> {
   const admin = createServiceClient();
-  const emailNorm = args.email.trim().toLowerCase();
 
-  const { data: profile } = await admin
-    .from(MA5_TABLES.profiles)
-    .select(
-      "id, lead_id, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_landing_page",
-    )
-    .eq("id", args.profileId)
-    .maybeSingle();
+  // Prefer lead link paths (explicit id → email → visitor)
+  const attached = await attachLeadOnInvite({
+    admin,
+    profileId: args.profileId,
+    email: args.email,
+    leadId: args.leadId,
+    markQualified: false,
+  });
 
-  if (!profile) return { leadId: null };
+  let leadId = attached.leadId;
 
-  let leadId = args.leadId ?? profile.lead_id ?? null;
-  let lead: {
-    id: string;
-    utm_source: string | null;
-    utm_medium: string | null;
-    utm_campaign: string | null;
-    utm_term: string | null;
-    utm_content: string | null;
-    landing_page: string | null;
-    referrer: string | null;
-    created_at: string;
-    visitor_id: string | null;
-  } | null = null;
-
-  if (leadId) {
-    const { data } = await admin
+  if (!leadId && args.visitorId) {
+    const { data: byVisitor } = await admin
       .from(MA5_TABLES.leads)
-      .select(
-        "id, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, created_at, visitor_id",
-      )
-      .eq("id", leadId)
-      .maybeSingle();
-    lead = data;
-  }
-
-  if (!lead) {
-    let q = admin
-      .from(MA5_TABLES.leads)
-      .select(
-        "id, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, created_at, visitor_id",
-      )
-      .ilike("email", emailNorm)
-      .neq("status", "closed")
+      .select("id")
+      .eq("visitor_id", args.visitorId)
       .order("created_at", { ascending: false })
-      .limit(1);
-
-    const { data: byEmail } = await q.maybeSingle();
-    lead = byEmail;
-
-    if (!lead && args.visitorId) {
-      const { data: byVisitor } = await admin
-        .from(MA5_TABLES.leads)
-        .select(
-          "id, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, created_at, visitor_id",
-        )
-        .eq("visitor_id", args.visitorId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      lead = byVisitor;
+      .limit(1)
+      .maybeSingle();
+    if (byVisitor?.id) {
+      const retry = await attachLeadOnInvite({
+        admin,
+        profileId: args.profileId,
+        email: args.email,
+        leadId: byVisitor.id,
+        markQualified: false,
+      });
+      leadId = retry.leadId;
     }
   }
 
-  if (lead) {
-    leadId = lead.id;
+  if (leadId) {
     await admin
       .from(MA5_TABLES.leads)
       .update({
@@ -92,8 +62,18 @@ export async function applyAttributionToMember(
         converted_profile_id: args.profileId,
         converted_at: new Date().toISOString(),
       })
-      .eq("id", lead.id);
+      .eq("id", leadId);
   }
+
+  const { data: profile } = await admin
+    .from(MA5_TABLES.profiles)
+    .select(
+      "lead_id, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_landing_page",
+    )
+    .eq("id", args.profileId)
+    .maybeSingle();
+
+  if (!profile) return { leadId };
 
   const alreadyAttributed = Boolean(
     profile.acquisition_source ||
@@ -102,55 +82,53 @@ export async function applyAttributionToMember(
       profile.acquisition_landing_page,
   );
 
-  if (!alreadyAttributed) {
-    const touch = args.firstTouch;
-    const patch: Record<string, string | null> = {
-      lead_id: leadId,
-      acquisition_source: lead?.utm_source ?? touch?.utmSource ?? null,
-      acquisition_medium: lead?.utm_medium ?? touch?.utmMedium ?? null,
-      acquisition_campaign: lead?.utm_campaign ?? touch?.utmCampaign ?? null,
-      acquisition_term: lead?.utm_term ?? touch?.utmTerm ?? null,
-      acquisition_content: lead?.utm_content ?? touch?.utmContent ?? null,
-      acquisition_landing_page:
-        lead?.landing_page ?? touch?.landingPage ?? null,
-      acquisition_referrer: lead?.referrer ?? touch?.referrer ?? null,
-      acquisition_first_seen_at:
-        lead?.created_at ?? touch?.capturedAt ?? new Date().toISOString(),
-    };
-
-    // If we only have a visitor session, pull first-touch from there
-    if (
-      !patch.acquisition_source &&
-      !patch.acquisition_landing_page &&
-      args.visitorId
-    ) {
-      const { data: session } = await admin
-        .from(MA5_TABLES.visitorSessions)
-        .select(
-          "utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, first_seen",
-        )
-        .eq("visitor_id", args.visitorId)
-        .maybeSingle();
-
-      if (session) {
-        patch.acquisition_source = session.utm_source;
-        patch.acquisition_medium = session.utm_medium;
-        patch.acquisition_campaign = session.utm_campaign;
-        patch.acquisition_term = session.utm_term;
-        patch.acquisition_content = session.utm_content;
-        patch.acquisition_landing_page = session.landing_page;
-        patch.acquisition_referrer = session.referrer;
-        patch.acquisition_first_seen_at = session.first_seen;
-      }
-    }
-
-    await admin.from(MA5_TABLES.profiles).update(patch).eq("id", args.profileId);
-  } else if (leadId && !profile.lead_id) {
-    await admin
-      .from(MA5_TABLES.profiles)
-      .update({ lead_id: leadId })
-      .eq("id", args.profileId);
+  if (alreadyAttributed) {
+    return { leadId: leadId ?? profile.lead_id };
   }
 
-  return { leadId };
+  // Fallback: cookie / visitor session when no lead exists yet
+  const touch = args.firstTouch;
+  const patch: Record<string, string | null> = {
+    lead_id: leadId ?? profile.lead_id,
+    acquisition_source: touch?.utmSource ?? null,
+    acquisition_medium: touch?.utmMedium ?? null,
+    acquisition_campaign: touch?.utmCampaign ?? null,
+    acquisition_term: touch?.utmTerm ?? null,
+    acquisition_content: touch?.utmContent ?? null,
+    acquisition_landing_page: touch?.landingPage ?? null,
+    acquisition_referrer: touch?.referrer ?? null,
+    acquisition_first_seen_at: touch?.capturedAt ?? null,
+  };
+
+  if (
+    !patch.acquisition_source &&
+    !patch.acquisition_landing_page &&
+    args.visitorId
+  ) {
+    const { data: session } = await admin
+      .from(MA5_TABLES.visitorSessions)
+      .select(
+        "utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, first_seen",
+      )
+      .eq("visitor_id", args.visitorId)
+      .maybeSingle();
+
+    if (session) {
+      patch.acquisition_source = session.utm_source;
+      patch.acquisition_medium = session.utm_medium;
+      patch.acquisition_campaign = session.utm_campaign;
+      patch.acquisition_term = session.utm_term;
+      patch.acquisition_content = session.utm_content;
+      patch.acquisition_landing_page = session.landing_page;
+      patch.acquisition_referrer = session.referrer;
+      patch.acquisition_first_seen_at = session.first_seen;
+    }
+  }
+
+  const hasAny = Object.values(patch).some((v) => v != null && v !== "");
+  if (hasAny) {
+    await admin.from(MA5_TABLES.profiles).update(patch).eq("id", args.profileId);
+  }
+
+  return { leadId: leadId ?? profile.lead_id };
 }
