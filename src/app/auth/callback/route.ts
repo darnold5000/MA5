@@ -1,21 +1,32 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function safeNextPath(nextRaw: string | null): string {
+  if (nextRaw && nextRaw.startsWith("/") && !nextRaw.startsWith("//")) {
+    return nextRaw;
+  }
+  return "/login";
+}
+
 /**
- * Exchanges the Auth code from invite / recovery emails, then redirects
- * to the intended app page (accept-invite or reset-password).
+ * Exchanges the Auth code (or token_hash) from invite / recovery emails,
+ * then redirects to /auth/accept-invite or /auth/reset-password.
+ *
+ * Invite + reset emails must use redirectTo:
+ *   `${SITE_URL}/auth/callback?next=/auth/accept-invite`
+ *   `${SITE_URL}/auth/callback?next=/auth/reset-password`
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const nextRaw = searchParams.get("next") ?? "/login";
-  const next =
-    nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/login";
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
+  const next = safeNextPath(searchParams.get("next"));
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-  if (code && url && anonKey) {
+  if (url && anonKey && (code || tokenHash)) {
     const redirectUrl = new URL(next, origin);
     const response = NextResponse.redirect(redirectUrl);
     const supabase = createServerClient(url, anonKey, {
@@ -31,9 +42,41 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return response;
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        return response;
+      }
+      console.error("[auth/callback] exchangeCodeForSession", error.message);
+    } else if (tokenHash && type) {
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type as "invite" | "recovery" | "email" | "signup" | "magiclink",
+      });
+      if (!error) {
+        return response;
+      }
+      console.error("[auth/callback] verifyOtp", error.message);
+    }
+  }
+
+  // Already signed in (e.g. client established session, then hit callback)
+  if (url && anonKey) {
+    const supabase = createServerClient(url, anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll() {
+          // read-only probe
+        },
+      },
+    });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      return NextResponse.redirect(new URL(next, origin));
     }
   }
 

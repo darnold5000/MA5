@@ -24,16 +24,20 @@ export function ForgotPasswordForm() {
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
 
-      if (!res.ok) {
-        setError(data.error ?? "Unable to send reset link");
+      // Only surface validation errors (e.g. malformed email). Existence of an
+      // account must never change the success copy.
+      if (!res.ok && res.status === 400) {
+        setError(data.error ?? "Enter a valid email address");
         setPending(false);
         return;
       }
 
       setSent(true);
       setPending(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to send reset link");
+    } catch {
+      // Network failure: still show the generic confirmation so callers cannot
+      // distinguish "no account" from transport errors by UI copy alone.
+      setSent(true);
       setPending(false);
     }
   }

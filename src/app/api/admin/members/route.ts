@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { listDirectoryMembers } from "@/features/auth/members";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
-import { canAccessAdmin } from "@/lib/permissions/roles";
 import {
   createServiceClient,
   isSupabaseConfigured,
@@ -21,13 +20,8 @@ export async function GET() {
     return NextResponse.json({ members: [] });
   }
 
-  const session = await getSessionUser();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  }
-  if (!canAccessAdmin(session.roles)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
+  const auth = await requireAdminSessionOrResponse();
+  if (auth instanceof NextResponse) return auth;
 
   const members = await listDirectoryMembers();
   return NextResponse.json({ members });
@@ -41,13 +35,8 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const session = await getSessionUser();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  }
-  if (!canAccessAdmin(session.roles)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
+  const auth = await requireAdminSessionOrResponse();
+  if (auth instanceof NextResponse) return auth;
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
@@ -60,6 +49,17 @@ export async function PATCH(request: Request) {
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid update" }, { status: 400 });
+  }
+
+  // Admins cannot revoke their own access via this endpoint.
+  if (
+    parsed.data.action === "revoke" &&
+    parsed.data.memberId === auth.id
+  ) {
+    return NextResponse.json(
+      { error: "You cannot revoke your own access" },
+      { status: 400 },
+    );
   }
 
   const admin = createServiceClient();

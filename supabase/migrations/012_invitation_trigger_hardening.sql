@@ -1,57 +1,6 @@
--- Invitation-only auth: track invite lifecycle on ma5_profiles.
--- Extends existing profiles rather than creating a parallel identity table.
+-- Harden ma5_handle_new_user so invite-created Auth users stay inactive
+-- until they finish /auth/accept-invite. Safe to re-run if 009 already applied.
 
-alter table public.ma5_profiles
-  add column if not exists invitation_status text not null default 'none';
-
-alter table public.ma5_profiles
-  add column if not exists invited_at timestamptz;
-
-alter table public.ma5_profiles
-  add column if not exists invitation_accepted_at timestamptz;
-
-alter table public.ma5_profiles
-  add column if not exists last_login_at timestamptz;
-
-alter table public.ma5_profiles
-  add column if not exists access_revoked_at timestamptz;
-
-alter table public.ma5_profiles
-  add column if not exists admin_notes text;
-
-alter table public.ma5_profiles
-  drop constraint if exists ma5_profiles_invitation_status_check;
-
-alter table public.ma5_profiles
-  add constraint ma5_profiles_invitation_status_check
-  check (
-    invitation_status in (
-      'none',
-      'pending',
-      'sent',
-      'accepted',
-      'expired',
-      'revoked',
-      'failed'
-    )
-  );
-
-create index if not exists ma5_profiles_invitation_status_idx
-  on public.ma5_profiles (invitation_status);
-
-create index if not exists ma5_profiles_email_lower_idx
-  on public.ma5_profiles (lower(email));
-
--- Existing members are treated as already accepted.
-update public.ma5_profiles
-set
-  invitation_status = 'accepted',
-  invitation_accepted_at = coalesce(invitation_accepted_at, created_at)
-where invitation_status = 'none'
-  and active = true;
-
--- Auth hook: create profile from invite metadata; default client role.
--- Invited users start inactive until they accept and set a password.
 create or replace function public.ma5_handle_new_user()
 returns trigger
 language plpgsql
@@ -64,7 +13,6 @@ declare
     'sent'
   );
   -- Only activate when metadata explicitly sets active=true (seed scripts).
-  -- Invite emails must leave users inactive until /auth/accept-invite completes.
   meta_active boolean := (new.raw_user_meta_data ->> 'active') = 'true';
   meta_role text := coalesce(
     new.raw_user_meta_data ->> 'role',

@@ -1,37 +1,26 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { resolveAccessState, type AccessState } from "@/lib/auth/access";
 import { applyAttributionCookies } from "@/lib/attribution/middleware";
 import { canAccessAdmin, type PlatformRole } from "@/lib/permissions/roles";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
-type AccessState = "active" | "pending_invite" | "disabled";
-
-function resolveAccessState(profile: {
-  active: boolean;
-  invitation_status?: string | null;
-  access_revoked_at?: string | null;
-} | null): AccessState {
-  if (!profile) return "active";
-  if (
-    profile.invitation_status === "revoked" ||
-    Boolean(profile.access_revoked_at)
-  ) {
-    return "disabled";
-  }
-  if (
-    profile.invitation_status === "sent" ||
-    profile.invitation_status === "pending"
-  ) {
-    return "pending_invite";
-  }
-  if (profile.active === false) return "disabled";
-  return "active";
+/** Auth / public APIs that must work without an active MA5 profile. */
+function isPublicApiPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api/auth/") ||
+    pathname === "/api/stripe/webhook" ||
+    pathname === "/api/stripe/status" ||
+    pathname.startsWith("/api/leads") ||
+    pathname.startsWith("/api/attribution/")
+  );
 }
 
 /**
  * Refresh the Auth session on (almost) every navigation so clients stay signed
  * in until they explicitly sign out. Redirects apply to /app and /admin.
+ * Inactive / pending-invite sessions are also blocked on protected APIs.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -110,6 +99,26 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/forgot-password");
   const isAcceptInvite = pathname.startsWith("/auth/accept-invite");
   const isAccessDisabled = pathname.startsWith("/access-disabled");
+
+  // Server-side API guard: revoked / pending sessions cannot call protected APIs
+  // even if they still hold a valid Auth cookie.
+  if (
+    pathname.startsWith("/api/") &&
+    user &&
+    access !== "active" &&
+    !isPublicApiPath(pathname)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          access === "pending_invite"
+            ? "Complete your invitation before using the platform"
+            : "Your access has been disabled",
+        code: access === "pending_invite" ? "pending_invite" : "access_disabled",
+      },
+      { status: 403 },
+    );
+  }
 
   if ((isAppRoute || isAdminRoute) && user) {
     if (access === "pending_invite") {

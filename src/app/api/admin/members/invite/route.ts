@@ -3,9 +3,8 @@ import { z } from "zod";
 
 import { inviteRedirectUrl } from "@/features/auth/members";
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
-import { getSessionUser } from "@/lib/auth/session";
+import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { env, isSupabasePublicConfigured } from "@/lib/env";
-import { canAccessAdmin } from "@/lib/permissions/roles";
 import {
   createClient,
   createServiceClient,
@@ -30,6 +29,76 @@ function resolveFullName(data: z.infer<typeof inviteSchema>): string {
   return [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
 }
 
+async function sendActivationEmail(emailNorm: string) {
+  const userClient = await createClient();
+  const { error } = await userClient.auth.resetPasswordForEmail(emailNorm, {
+    redirectTo: inviteRedirectUrl(env.siteUrl),
+  });
+  if (error) {
+    console.error("[api/admin/members/invite] activation email", error.message);
+  }
+}
+
+/**
+ * Resolve an Auth user that already exists but may lack a ma5_profiles row.
+ * generateLink does not send email; it returns the user id for linking.
+ */
+async function findAuthUserIdByEmail(
+  admin: ReturnType<typeof createServiceClient>,
+  emailNorm: string,
+): Promise<string | null> {
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: emailNorm,
+  });
+  if (error) {
+    console.error("[api/admin/members/invite] findAuthUser", error.message);
+    return null;
+  }
+  return data.user?.id ?? null;
+}
+
+async function upsertInvitedProfile(
+  admin: ReturnType<typeof createServiceClient>,
+  args: {
+    userId: string;
+    emailNorm: string;
+    fullName: string;
+    phone?: string;
+    notes?: string;
+    role: "client" | "coach";
+    now: string;
+    leadId: string | null;
+  },
+) {
+  await admin.from(MA5_TABLES.profiles).upsert(
+    {
+      id: args.userId,
+      email: args.emailNorm,
+      full_name: args.fullName,
+      phone: args.phone?.trim() || null,
+      admin_notes: args.notes?.trim() || null,
+      active: false,
+      invitation_status: "sent",
+      invited_at: args.now,
+      access_revoked_at: null,
+    },
+    { onConflict: "id" },
+  );
+
+  await admin.from(MA5_TABLES.userRoles).upsert(
+    { user_id: args.userId, role: args.role },
+    { onConflict: "user_id,role" },
+  );
+
+  await attachLeadOnInvite({
+    admin,
+    profileId: args.userId,
+    email: args.emailNorm,
+    leadId: args.leadId,
+  });
+}
+
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);
   const parsed = inviteSchema.safeParse(json);
@@ -44,13 +113,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const session = await getSessionUser();
-  if (!session) {
-    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  }
-  if (!canAccessAdmin(session.roles)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-  }
+  const auth = await requireAdminSessionOrResponse();
+  if (auth instanceof NextResponse) return auth;
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
@@ -80,6 +144,7 @@ export async function POST(request: Request) {
       .ilike("email", emailNorm)
       .maybeSingle();
 
+    // Case A: already active member — ensure role, do not re-invite.
     if (
       existingProfile &&
       existingProfile.active &&
@@ -90,7 +155,6 @@ export async function POST(request: Request) {
         { onConflict: "user_id,role" },
       );
 
-      // Existing active member — still attach lead attribution if missing
       await attachLeadOnInvite({
         admin,
         profileId: existingProfile.id,
@@ -114,6 +178,7 @@ export async function POST(request: Request) {
       });
     }
 
+    // Case B: brand-new Auth user via invite email.
     const { data: invited, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(emailNorm, {
         data: {
@@ -125,108 +190,82 @@ export async function POST(request: Request) {
         redirectTo: inviteRedirectUrl(env.siteUrl),
       });
 
-    if (inviteError) {
-      // Likely already registered — attach role and (re)send recovery/invite status.
-      if (existingProfile?.id) {
-        await admin
-          .from(MA5_TABLES.profiles)
-          .update({
-            full_name: fullName,
-            phone: parsed.data.phone?.trim() || null,
-            admin_notes: parsed.data.notes?.trim() || null,
-            invitation_status: "sent",
-            invited_at: now,
-            active: false,
-            access_revoked_at: null,
-          })
-          .eq("id", existingProfile.id);
-
-        await admin.from(MA5_TABLES.userRoles).upsert(
-          { user_id: existingProfile.id, role },
-          { onConflict: "user_id,role" },
+    if (!inviteError) {
+      const userId = invited.user?.id;
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Invite created but no user id returned" },
+          { status: 500 },
         );
-
-        await attachLeadOnInvite({
-          admin,
-          profileId: existingProfile.id,
-          email: emailNorm,
-          leadId: leadIdOpt,
-        });
-
-        const userClient = await createClient();
-        await userClient.auth.resetPasswordForEmail(emailNorm, {
-          redirectTo: inviteRedirectUrl(env.siteUrl),
-        });
-
-        return NextResponse.json({
-          ok: true,
-          member: {
-            id: existingProfile.id,
-            fullName,
-            email: emailNorm,
-            role,
-            invitationStatus: "sent",
-            active: false,
-          },
-          message: parsed.data.resend
-            ? "Invitation resent"
-            : "Existing account updated and activation email sent",
-        });
       }
 
+      await upsertInvitedProfile(admin, {
+        userId,
+        emailNorm,
+        fullName,
+        phone: parsed.data.phone,
+        notes: parsed.data.notes,
+        role,
+        now,
+        leadId: leadIdOpt,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        member: {
+          id: userId,
+          fullName,
+          email: emailNorm,
+          role,
+          invitationStatus: "sent",
+          active: false,
+        },
+        message: "Invitation email sent",
+      });
+    }
+
+    // Case C: Auth user already exists (with or without a profile).
+    // inviteUserByEmail fails when "Enable sign ups" is off OR user exists —
+    // admin inviteUserByEmail should still work with signups disabled; the
+    // usual failure here is "already registered".
+    const existingUserId =
+      existingProfile?.id ?? (await findAuthUserIdByEmail(admin, emailNorm));
+
+    if (!existingUserId) {
       return NextResponse.json(
         { error: inviteError.message },
         { status: 400 },
       );
     }
 
-    const userId = invited.user?.id;
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Invite created but no user id returned" },
-        { status: 500 },
-      );
-    }
-
-    await admin.from(MA5_TABLES.profiles).upsert(
-      {
-        id: userId,
-        email: emailNorm,
-        full_name: fullName,
-        phone: parsed.data.phone?.trim() || null,
-        admin_notes: parsed.data.notes?.trim() || null,
-        active: false,
-        invitation_status: "sent",
-        invited_at: now,
-        access_revoked_at: null,
-      },
-      { onConflict: "id" },
-    );
-
-    // Works for Marketing Invite and Clients invite (email match when no leadId)
-    await attachLeadOnInvite({
-      admin,
-      profileId: userId,
-      email: emailNorm,
+    await upsertInvitedProfile(admin, {
+      userId: existingUserId,
+      emailNorm,
+      fullName,
+      phone: parsed.data.phone,
+      notes: parsed.data.notes,
+      role,
+      now,
       leadId: leadIdOpt,
     });
 
-    await admin.from(MA5_TABLES.userRoles).upsert(
-      { user_id: userId, role },
-      { onConflict: "user_id,role" },
-    );
+    // Existing Auth users cannot receive a second invite email; send a
+    // password-setup link that lands on /auth/callback → /auth/accept-invite.
+    await sendActivationEmail(emailNorm);
 
     return NextResponse.json({
       ok: true,
       member: {
-        id: userId,
+        id: existingUserId,
         fullName,
         email: emailNorm,
         role,
         invitationStatus: "sent",
         active: false,
       },
-      message: "Invitation email sent",
+      message: parsed.data.resend
+        ? "Invitation resent"
+        : "Existing account updated and activation email sent",
     });
   } catch (err) {
     console.error("[api/admin/members/invite]", err);
