@@ -28,7 +28,10 @@ self.addEventListener("fetch", (event) => {
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/login") ||
-    url.pathname.startsWith("/signup")
+    url.pathname.startsWith("/signup") ||
+    url.pathname.startsWith("/forgot-password") ||
+    url.pathname.startsWith("/auth/") ||
+    url.pathname.startsWith("/access-disabled")
   ) {
     return;
   }

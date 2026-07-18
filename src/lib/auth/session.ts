@@ -13,6 +13,11 @@ export type Ma5Profile = {
   phone: string | null;
   active: boolean;
   stripe_customer_id: string | null;
+  invitation_status?: string | null;
+  invited_at?: string | null;
+  invitation_accepted_at?: string | null;
+  last_login_at?: string | null;
+  access_revoked_at?: string | null;
 };
 
 export type SessionUser = {

@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { SignupForm } from "@/components/platform/signup-form";
-
-export const metadata: Metadata = {
-  title: "Create account",
-  robots: { index: false, follow: false },
-};
-
+/** Public self-registration is disabled — invitation only. */
 export default function SignupPage() {
-  return <SignupForm />;
+  redirect("/login");
 }

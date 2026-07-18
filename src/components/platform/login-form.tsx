@@ -9,9 +9,11 @@ import { AuthCard } from "@/components/platform/auth-card";
 export function LoginForm() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
+  const resetOk = searchParams.get("reset") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -59,6 +61,12 @@ export function LoginForm() {
       title="Sign in"
       description="Use your MA5 account to open the client hub or Operations."
     >
+      {resetOk ? (
+        <p className="mb-4 text-sm text-foreground" role="status">
+          Your password has been updated. You can now sign in.
+        </p>
+      ) : null}
+
       <form className="space-y-3 sm:space-y-4" onSubmit={onSubmit}>
         <label className="block space-y-1.5 text-sm sm:space-y-2">
           <span className="font-semibold tracking-wide uppercase">Email</span>
@@ -67,19 +75,38 @@ export function LoginForm() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
             className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
           />
         </label>
         <label className="block space-y-1.5 text-sm sm:space-y-2">
           <span className="font-semibold tracking-wide uppercase">Password</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none focus:border-brand sm:min-h-11"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute inset-y-0 right-0 px-3 text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
         </label>
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-brand hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         {error ? (
           <p className="text-sm text-brand" role="alert">
             {error}
@@ -94,11 +121,9 @@ export function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-muted">
-        Need an account?{" "}
-        <Link href="/signup" className="text-brand hover:underline">
-          Create one
-        </Link>
+      <p className="mt-6 text-sm leading-relaxed text-muted">
+        Need an account? Member accounts are created by MA5 staff. Please
+        contact us if you believe you should have access.
       </p>
     </AuthCard>
   );

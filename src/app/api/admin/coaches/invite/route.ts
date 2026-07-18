@@ -7,6 +7,7 @@ import {
   parseCoaches,
   serializeCoaches,
 } from "@/features/settings/demo-store";
+import { inviteRedirectUrl } from "@/features/auth/members";
 import { env } from "@/lib/env";
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
@@ -64,8 +65,13 @@ export async function POST(request: Request) {
       const admin = createServiceClient();
       const { data: invited, error: inviteError } =
         await admin.auth.admin.inviteUserByEmail(emailNorm, {
-          data: { full_name: fullName },
-          redirectTo: `${env.siteUrl}/login`,
+          data: {
+            full_name: fullName,
+            role: "coach",
+            invitation_status: "sent",
+            active: false,
+          },
+          redirectTo: inviteRedirectUrl(env.siteUrl),
         });
 
       if (inviteError) {
@@ -114,6 +120,9 @@ export async function POST(request: Request) {
             id: userId,
             email: emailNorm,
             full_name: fullName,
+            active: false,
+            invitation_status: "sent",
+            invited_at: new Date().toISOString(),
           },
           { onConflict: "id" },
         );

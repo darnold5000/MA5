@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminClientsManager } from "@/components/admin/clients-manager";
 import { CoachTrainingProgress } from "@/components/programs/coach-training-progress";
-import { readOpsState } from "@/features/admin/ops-store";
+import { listDirectoryMembers } from "@/features/auth/members";
 import { listCoachClientProgress } from "@/features/programs/queries";
 
 export const metadata: Metadata = {
@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminClientsPage() {
-  const [ops, progressRows] = await Promise.all([
-    readOpsState(),
+  const [members, progressRows] = await Promise.all([
+    listDirectoryMembers(),
     listCoachClientProgress(),
   ]);
 
@@ -26,8 +26,8 @@ export default async function AdminClientsPage() {
           Member directory
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Directory, contact notes, and how athletes are progressing in their
-          programs.
+          Invite members by email, track invitation status, and manage platform
+          access. New accounts are invitation-only.
         </p>
       </div>
 
@@ -39,10 +39,10 @@ export default async function AdminClientsPage() {
             Directory
           </p>
           <h2 className="mt-1 font-display text-2xl tracking-wide uppercase">
-            Contacts
+            Invitations & access
           </h2>
         </div>
-        <AdminClientsManager clients={ops.clients} />
+        <AdminClientsManager members={members} />
       </section>
     </div>
   );

@@ -36,7 +36,12 @@ async function main() {
       email: EMAIL,
       password: PASSWORD,
       email_confirm: true,
-      user_metadata: { full_name: FULL_NAME },
+      user_metadata: {
+        full_name: FULL_NAME,
+        role: "coach",
+        invitation_status: "accepted",
+        active: true,
+      },
     });
 
   let userId = created?.user?.id ?? null;
@@ -71,6 +76,8 @@ async function main() {
       email: EMAIL,
       full_name: FULL_NAME,
       active: true,
+      invitation_status: "accepted",
+      invitation_accepted_at: new Date().toISOString(),
     },
     { onConflict: "id" },
   );

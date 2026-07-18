@@ -74,20 +74,71 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid email or password" },
+      { status: 401 },
+    );
   }
 
   const userId = signIn.user?.id;
   let roles: PlatformRole[] = ["client"];
+  let profileActive = true;
+
   if (userId) {
     const { data: roleRows } = await supabase
       .from(MA5_TABLES.userRoles)
       .select("role")
       .eq("user_id", userId);
+
     const parsedRoles = (roleRows ?? [])
       .map((r) => r.role as string)
       .filter(isPlatformRole);
     if (parsedRoles.length > 0) roles = parsedRoles;
+
+    const { data: profile, error: profileError } = await supabase
+      .from(MA5_TABLES.profiles)
+      .select("active, invitation_status, access_revoked_at")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileError) {
+      const { data: basic } = await supabase
+        .from(MA5_TABLES.profiles)
+        .select("active")
+        .eq("id", userId)
+        .maybeSingle();
+      profileActive = basic?.active !== false;
+    } else if (profile) {
+      const revoked =
+        profile.active === false ||
+        profile.invitation_status === "revoked" ||
+        Boolean(profile.access_revoked_at);
+      const pendingInvite =
+        profile.invitation_status === "sent" ||
+        profile.invitation_status === "pending";
+      profileActive = !revoked && !pendingInvite;
+    }
+
+    if (!profileActive) {
+      await supabase.auth.signOut();
+      const response = NextResponse.json(
+        {
+          error:
+            "Your access has been disabled or your invitation is not complete. Contact MA5 staff for help.",
+        },
+        { status: 403 },
+      );
+      for (const c of pendingCookies) {
+        response.cookies.set(c.name, "", { ...c.options, maxAge: 0 });
+      }
+      return response;
+    }
+
+    // Best-effort; column may not exist until migration 009 is applied.
+    await supabase
+      .from(MA5_TABLES.profiles)
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("id", userId);
   }
 
   const next = parsed.data.next;
@@ -102,7 +153,6 @@ export async function POST(request: Request) {
   for (const c of pendingCookies) {
     response.cookies.set(c.name, c.value, c.options);
   }
-  // Clear any leftover demo persona cookie.
   response.cookies.set(DEMO_PERSONA_COOKIE, "", {
     path: "/",
     maxAge: 0,

@@ -30,7 +30,8 @@ npm run build
 ## Routes
 
 - Public marketing pages — unchanged URLs and design
-- `/login`, `/signup` — account auth (requires Supabase env)
+- `/login` — member sign-in (invitation-only; `/signup` redirects here)
+- `/forgot-password`, `/auth/reset-password`, `/auth/accept-invite` — recovery & invites
 - `/app` — Fitness Hub (client)
 - `/admin` — Operations (staff)
 - `/platform-preview` — internal demo index (not in public nav)

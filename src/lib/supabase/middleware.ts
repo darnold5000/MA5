@@ -4,9 +4,33 @@ import { NextResponse, type NextRequest } from "next/server";
 import { canAccessAdmin, type PlatformRole } from "@/lib/permissions/roles";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
+type AccessState = "active" | "pending_invite" | "disabled";
+
+function resolveAccessState(profile: {
+  active: boolean;
+  invitation_status?: string | null;
+  access_revoked_at?: string | null;
+} | null): AccessState {
+  if (!profile) return "active";
+  if (
+    profile.invitation_status === "revoked" ||
+    Boolean(profile.access_revoked_at)
+  ) {
+    return "disabled";
+  }
+  if (
+    profile.invitation_status === "sent" ||
+    profile.invitation_status === "pending"
+  ) {
+    return "pending_invite";
+  }
+  if (profile.active === false) return "disabled";
+  return "active";
+}
+
 /**
  * Refresh the Auth session on (almost) every navigation so clients stay signed
- * in until they explicitly sign out. Redirects only apply to /app and /admin.
+ * in until they explicitly sign out. Redirects apply to /app and /admin.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -16,6 +40,7 @@ export async function updateSession(request: NextRequest) {
 
   let user: { id: string } | null = null;
   let roles: PlatformRole[] = [];
+  let access: AccessState = "active";
 
   if (url && anonKey) {
     const supabase = createServerClient(url, anonKey, {
@@ -45,14 +70,33 @@ export async function updateSession(request: NextRequest) {
     user = authUser;
 
     if (user) {
-      const { data: roleRows } = await supabase
-        .from(MA5_TABLES.userRoles)
-        .select("role")
-        .eq("user_id", user.id);
+      const [{ data: roleRows }, profileResult] = await Promise.all([
+        supabase
+          .from(MA5_TABLES.userRoles)
+          .select("role")
+          .eq("user_id", user.id),
+        supabase
+          .from(MA5_TABLES.profiles)
+          .select("active, invitation_status, access_revoked_at")
+          .eq("id", user.id)
+          .maybeSingle(),
+      ]);
+
       roles = (roleRows ?? [])
         .map((r) => r.role as PlatformRole)
         .filter(Boolean);
       if (roles.length === 0) roles = ["client"];
+
+      if (profileResult.error) {
+        const { data: basic } = await supabase
+          .from(MA5_TABLES.profiles)
+          .select("active")
+          .eq("id", user.id)
+          .maybeSingle();
+        access = basic?.active === false ? "disabled" : "active";
+      } else {
+        access = resolveAccessState(profileResult.data);
+      }
     }
   }
 
@@ -60,7 +104,26 @@ export async function updateSession(request: NextRequest) {
   const isAppRoute = pathname.startsWith("/app");
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/signup");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot-password");
+  const isAcceptInvite = pathname.startsWith("/auth/accept-invite");
+  const isAccessDisabled = pathname.startsWith("/access-disabled");
+
+  if ((isAppRoute || isAdminRoute) && user) {
+    if (access === "pending_invite") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/auth/accept-invite";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+    if (access === "disabled") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/access-disabled";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
 
   if (isAppRoute && !user) {
     const redirectUrl = request.nextUrl.clone();
@@ -88,7 +151,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (isAuthRoute && user) {
+  if (isAuthRoute && user && access === "active") {
     const next = request.nextUrl.searchParams.get("next");
     const redirectUrl = request.nextUrl.clone();
     if (next && next.startsWith("/") && !next.startsWith("//")) {
@@ -102,6 +165,20 @@ export async function updateSession(request: NextRequest) {
       redirectUrl.pathname = "/app";
       redirectUrl.search = "";
     }
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (isAuthRoute && user && access === "pending_invite" && !isAcceptInvite) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth/accept-invite";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (isAuthRoute && user && access === "disabled" && !isAccessDisabled) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/access-disabled";
+    redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 
