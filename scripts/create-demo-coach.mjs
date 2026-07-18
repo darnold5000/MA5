@@ -69,7 +69,7 @@ async function main() {
     console.log(`Created auth user ${EMAIL} (${userId})`);
   }
 
-  // Trigger usually inserts profile + client role; ensure profile + coach role.
+  // Ensure profile is active; staff accounts should not keep a leftover client role.
   const { error: profileError } = await admin.from("ma5_profiles").upsert(
     {
       id: userId,
@@ -89,10 +89,23 @@ async function main() {
   );
   if (roleError) throw roleError;
 
+  // Older auth triggers defaulted every user to client. Remove it so Mike is
+  // staff-only — admin access comes from coach, not from being a member.
+  const { error: removeClientError } = await admin
+    .from("ma5_user_roles")
+    .delete()
+    .eq("user_id", userId)
+    .eq("role", "client");
+  if (removeClientError) throw removeClientError;
+
+  const { data: roles } = await admin
+    .from("ma5_user_roles")
+    .select("role")
+    .eq("user_id", userId);
   console.log("Done.");
   console.log(`  Email:    ${EMAIL}`);
   console.log(`  Password: ${PASSWORD}`);
-  console.log(`  Role:     coach (ma5_is_staff = true)`);
+  console.log(`  Roles:    ${(roles ?? []).map((r) => r.role).join(", ") || "(none)"}`);
   console.log(`  Login:    /login → then /admin`);
 }
 

@@ -49,12 +49,20 @@ export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
     return [];
   }
 
+  const ROLE_RANK: Record<MemberDirectoryRow["role"], number> = {
+    owner: 5,
+    admin: 4,
+    staff: 3,
+    coach: 2,
+    client: 1,
+  };
   const roleByUser = new Map<string, MemberDirectoryRow["role"]>();
   for (const row of roleRows ?? []) {
-    const current = roleByUser.get(row.user_id);
     const next = row.role as MemberDirectoryRow["role"];
-    // Prefer staff-facing role labels over client when multi-role.
-    if (!current || current === "client") {
+    if (!(next in ROLE_RANK)) continue;
+    const current = roleByUser.get(row.user_id);
+    // Prefer highest staff role when a user has multiple (e.g. coach + client).
+    if (!current || ROLE_RANK[next] > ROLE_RANK[current]) {
       roleByUser.set(row.user_id, next);
     }
   }
