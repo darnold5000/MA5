@@ -33,7 +33,7 @@ export function ActionNeededSection({ items }: { items: ActionNeededItem[] }) {
           Follow up
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Open items from MA5 leads and invitations — not ad platforms.
+          One click takes you to the filtered list — act, don&apos;t just watch.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -41,15 +41,20 @@ export function ActionNeededSection({ items }: { items: ActionNeededItem[] }) {
           <Link
             key={item.id}
             href={item.href}
-            className="border border-border bg-surface p-5 transition hover:border-brand"
+            className="flex flex-col justify-between border border-border bg-surface p-5 transition hover:border-brand"
           >
-            <p className="text-xs font-semibold tracking-[0.16em] text-muted uppercase">
-              {item.label}
+            <div>
+              <p className="text-xs font-semibold tracking-[0.16em] text-muted uppercase">
+                {item.label}
+              </p>
+              <p className="mt-3 font-display text-4xl tracking-wide text-foreground">
+                {item.count}
+              </p>
+              <p className="mt-2 text-xs text-muted">{item.note}</p>
+            </div>
+            <p className="mt-5 text-xs font-semibold tracking-wide text-brand uppercase">
+              {item.actionLabel} →
             </p>
-            <p className="mt-3 font-display text-4xl tracking-wide text-foreground">
-              {item.count}
-            </p>
-            <p className="mt-2 text-xs text-muted">{item.note}</p>
           </Link>
         ))}
       </div>

@@ -12,6 +12,13 @@ import {
   type GrowthSearchParams,
 } from "@/features/marketing/filters";
 import { buildFunnelReport } from "@/features/marketing/funnel";
+import {
+  computeGrowthScore,
+  computeLeadAging,
+  computeTopSource,
+  oldestOpenLeadDays,
+  toMetricTrend,
+} from "@/features/marketing/growth-score";
 import type {
   ActionNeededItem,
   CampaignRow,
@@ -166,14 +173,16 @@ function buildActionNeeded(args: {
   pendingInvites: number;
   staleInvites: number;
   awaitingActivation: number;
+  oldestOpenLeadDays: number | null;
 }): ActionNeededItem[] {
   const items: ActionNeededItem[] = [
     {
       id: "new-leads",
-      label: "New leads awaiting response",
+      label: "New leads",
       count: args.newLeads,
       href: leadsHref({ status: "new", range: "7d" }),
       note: "Created in the last 7 days, still marked new",
+      actionLabel: "View",
     },
     {
       id: "not-contacted",
@@ -181,13 +190,15 @@ function buildActionNeeded(args: {
       count: args.notContacted,
       href: leadsHref({ status: "new" }),
       note: "All leads still in new status",
+      actionLabel: "Contact",
     },
     {
       id: "invites-pending",
-      label: "Invitations pending",
+      label: "Pending invitations",
       count: args.pendingInvites,
       href: "/admin/clients",
       note: "Invite sent, not yet accepted",
+      actionLabel: "Resend",
     },
     {
       id: "invites-stale",
@@ -195,6 +206,7 @@ function buildActionNeeded(args: {
       count: args.staleInvites,
       href: "/admin/clients",
       note: "Still pending — consider resending",
+      actionLabel: "Resend",
     },
     {
       id: "awaiting-activation",
@@ -202,9 +214,50 @@ function buildActionNeeded(args: {
       count: args.awaitingActivation,
       href: "/admin/clients",
       note: "Account invited but not activated",
+      actionLabel: "View",
     },
   ];
+
+  if (args.oldestOpenLeadDays != null && args.oldestOpenLeadDays >= 3) {
+    items.push({
+      id: "aging-lead",
+      label: `Lead waiting ${args.oldestOpenLeadDays} days`,
+      count: 1,
+      href: leadsHref({ status: "new" }),
+      note: "Oldest open lead still needs a response",
+      actionLabel: "Contact",
+    });
+  }
+
   return items.filter((item) => item.count > 0);
+}
+
+function previousPeriod(fromIso: string, toIso: string): {
+  from: string;
+  to: string;
+} {
+  const from = new Date(fromIso).getTime();
+  const to = new Date(toIso).getTime();
+  const duration = Math.max(to - from, 24 * 60 * 60 * 1000);
+  const prevTo = new Date(from - 1);
+  const prevFrom = new Date(prevTo.getTime() - duration);
+  return { from: prevFrom.toISOString(), to: prevTo.toISOString() };
+}
+
+function startOfPrevMonthIso(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  d.setMonth(d.getMonth() - 1);
+  return d.toISOString();
+}
+
+function endOfPrevMonthIso(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  d.setMilliseconds(-1);
+  return d.toISOString();
 }
 
 function emptyFunnel() {
@@ -245,13 +298,32 @@ export async function getMarketingDashboard(
     const week = startOfWeekIso();
     const sevenDaysAgo = daysAgoIso(7);
 
+    const prev = previousPeriod(filters.from, filters.to);
+    const prevMonthStart = startOfPrevMonthIso();
+    const prevMonthEnd = endOfPrevMonthIso();
+    const prevWeekStart = (() => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - 13);
+      return d.toISOString();
+    })();
+    const prevWeekEnd = (() => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - 7);
+      d.setMilliseconds(-1);
+      return d.toISOString();
+    })();
+
     const [
       visitorsTodayRes,
       visitorsMonthRes,
+      visitorsPrevMonthRes,
       pageViewsRes,
       visitorsInRangeRes,
       leadsAllRes,
       leadsInRangeRes,
+      leadsPrevRangeRes,
       membersRes,
       inviteProfilesRes,
     ] = await Promise.all([
@@ -265,6 +337,12 @@ export async function getMarketingDashboard(
         .select("visitor_id", { count: "exact", head: true })
         .eq("is_bot", false)
         .gte("first_seen", month),
+      supabase
+        .from(MA5_TABLES.visitorSessions)
+        .select("visitor_id", { count: "exact", head: true })
+        .eq("is_bot", false)
+        .gte("first_seen", prevMonthStart)
+        .lte("first_seen", prevMonthEnd),
       supabase
         .from(MA5_TABLES.visitorSessions)
         .select("page_views")
@@ -294,6 +372,14 @@ export async function getMarketingDashboard(
         )
         .gte("created_at", filters.from)
         .lte("created_at", filters.to)
+        .limit(2000),
+      supabase
+        .from(MA5_TABLES.leads)
+        .select(
+          "status, utm_source, utm_medium, utm_campaign, created_at, converted_at, invited_at, converted_profile_id",
+        )
+        .gte("created_at", prev.from)
+        .lte("created_at", prev.to)
         .limit(2000),
       supabase
         .from(MA5_TABLES.profiles)
@@ -496,11 +582,103 @@ export async function getMarketingDashboard(
 
     const recentLeads = allLeads.filter(matchLeadFilters).slice(0, 8);
 
+    const openLeads = allLeads.filter(
+      (l) =>
+        l.status === "new" ||
+        l.status === "contacted" ||
+        l.status === "qualified",
+    );
+    const leadAging = computeLeadAging(openLeads);
+    const topSource = computeTopSource(leadsInRange);
+
+    const leadsThisMonth = allLeads.filter((l) => l.createdAt >= month).length;
+    const leadsLastMonth = allLeads.filter(
+      (l) => l.createdAt >= prevMonthStart && l.createdAt <= prevMonthEnd,
+    ).length;
+    const visitorsThisMonth = visitorsMonthRes.count ?? 0;
+    const visitorsLastMonth = visitorsPrevMonthRes.count ?? 0;
+
+    const prevLeads = ((leadsPrevRangeRes.data ?? []) as LeadRow[])
+      .map(mapLead)
+      .filter(matchLeadFilters);
+    const prevMembersAcquired = profiles.filter((p) => {
+      if (!p.acquisition_source && !p.lead_id) return false;
+      const when = p.invitation_accepted_at ?? p.created_at;
+      if (!when) return false;
+      return when >= prev.from && when <= prev.to;
+    }).length;
+    const prevConversionRate =
+      prevLeads.length > 0
+        ? Math.round((prevMembersAcquired / prevLeads.length) * 1000) / 10
+        : 0;
+
+    const newLeadsPrevWeek = allLeads.filter(
+      (l) =>
+        l.status === "new" &&
+        l.createdAt >= prevWeekStart &&
+        l.createdAt <= prevWeekEnd,
+    ).length;
+
+    const invitesAcceptedMonth = profiles.filter(
+      (p) =>
+        p.invitation_accepted_at &&
+        p.invitation_accepted_at >= month,
+    ).length;
+    const invitesSentMonth =
+      allLeads.filter((l) => l.invitedAt && l.invitedAt >= month).length +
+      inviteProfiles.filter((p) => p.invited_at && p.invited_at >= month)
+        .length;
+
+    const growthScore = computeGrowthScore({
+      leadsThisMonth,
+      leadsLastMonth,
+      conversionRate,
+      pendingFollowUps: leadsAwaitingFollowUp,
+      invitationsAccepted: invitesAcceptedMonth || funnel.invitationsAccepted,
+      invitationsSent: Math.max(
+        invitesSentMonth,
+        funnel.invitationsSent,
+        pendingInvitations,
+      ),
+      visitorsThisMonth,
+      visitorsLastMonth,
+    });
+
     return {
       isDemo: false,
       rangeLabel: label,
+      growthScore,
+      leadAging,
+      topSource,
+      trends: {
+        leads: toMetricTrend(
+          leadsCount,
+          prevLeads.length,
+          `vs prior ${label.toLowerCase()}`,
+        ),
+        conversionRate: toMetricTrend(
+          conversionRate,
+          prevConversionRate,
+          "vs prior period",
+        ),
+        membersAcquired: toMetricTrend(
+          membersAcquired,
+          prevMembersAcquired,
+          "vs prior period",
+        ),
+        visitorsThisMonth: toMetricTrend(
+          visitorsThisMonth,
+          visitorsLastMonth,
+          "vs last month",
+        ),
+        newLeadsThisWeek: toMetricTrend(
+          newLeadsThisWeek,
+          newLeadsPrevWeek,
+          "vs prior week",
+        ),
+      },
       visitorsToday: visitorsTodayRes.count ?? 0,
-      visitorsThisMonth: visitorsMonthRes.count ?? 0,
+      visitorsThisMonth,
       pageViewsThisMonth,
       leads: leadsCount,
       newLeadsThisWeek,
@@ -516,6 +694,9 @@ export async function getMarketingDashboard(
         pendingInvites: pendingInvitations,
         staleInvites: staleInvites,
         awaitingActivation,
+        oldestOpenLeadDays: oldestOpenLeadDays(
+          openLeads.filter((l) => l.status === "new"),
+        ),
       }),
       recentLeads,
       trafficSources: [...sourceCounts.entries()]

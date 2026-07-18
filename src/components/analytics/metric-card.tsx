@@ -14,6 +14,7 @@ export function MetricCard({
   className,
   animate = false,
   delayMs = 0,
+  trend,
 }: {
   label: string;
   value: string;
@@ -22,7 +23,28 @@ export function MetricCard({
   className?: string;
   animate?: boolean;
   delayMs?: number;
+  trend?: {
+    percent: number;
+    label: string;
+    direction: "up" | "down" | "flat";
+  } | null;
 }) {
+  const trendText =
+    trend == null
+      ? null
+      : trend.direction === "up"
+        ? `↑ ${trend.percent}% ${trend.label}`
+        : trend.direction === "down"
+          ? `↓ ${trend.percent}% ${trend.label}`
+          : `→ Flat ${trend.label}`;
+
+  const trendClass =
+    trend?.direction === "up"
+      ? "text-emerald-700"
+      : trend?.direction === "down"
+        ? "text-brand"
+        : "text-muted";
+
   const body = (
     <>
       <p className="text-xs font-semibold tracking-[0.16em] text-muted uppercase">
@@ -35,6 +57,9 @@ export function MetricCard({
           value
         )}
       </p>
+      {trendText ? (
+        <p className={cn("mt-2 text-xs font-medium", trendClass)}>{trendText}</p>
+      ) : null}
       {note ? <p className="mt-2 text-xs text-muted">{note}</p> : null}
       {href ? <div className="mt-4 h-px w-full bg-border" /> : null}
     </>

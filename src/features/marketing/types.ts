@@ -1,6 +1,13 @@
 import type { LeadStatus } from "@/lib/attribution/types";
+import type {
+  GrowthScore,
+  LeadAgingBuckets,
+  MetricTrend,
+  TopSource,
+} from "@/features/marketing/growth-score";
 
 export type { LeadStatus };
+export type { GrowthScore, LeadAgingBuckets, MetricTrend, TopSource };
 
 export type MarketingLead = {
   id: string;
@@ -49,12 +56,26 @@ export type ActionNeededItem = {
   count: number;
   href: string;
   note: string;
+  /** Short CTA shown on the card, e.g. View / Resend / Contact */
+  actionLabel: string;
 };
 
 export type MarketingDashboard = {
   /** True when showing local demo fallback (Supabase not configured). */
   isDemo: boolean;
   rangeLabel: string;
+
+  growthScore: GrowthScore;
+  leadAging: LeadAgingBuckets;
+  topSource: TopSource | null;
+
+  trends: {
+    leads: MetricTrend | null;
+    conversionRate: MetricTrend | null;
+    membersAcquired: MetricTrend | null;
+    visitorsThisMonth: MetricTrend | null;
+    newLeadsThisWeek: MetricTrend | null;
+  };
 
   /** Unique human visitors active today (calendar day; bots excluded) */
   visitorsToday: number;

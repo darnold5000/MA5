@@ -8,6 +8,8 @@ import { ActionNeededSection } from "@/components/marketing/action-needed";
 import { AdminCampaignsTable } from "@/components/marketing/admin-campaigns-table";
 import { GrowthEmptyState } from "@/components/marketing/growth-empty-state";
 import { GrowthFilters } from "@/components/marketing/growth-filters";
+import { GrowthScoreCard } from "@/components/marketing/growth-score-card";
+import { LeadAgingWidget } from "@/components/marketing/lead-aging";
 import { MarketingSubnav } from "@/components/marketing/marketing-subnav";
 import { RecentLeadsTable } from "@/components/marketing/recent-leads-table";
 import { getMarketingDashboard } from "@/features/marketing";
@@ -60,9 +62,8 @@ export default async function AdminMarketingDashboardPage({
           Overview
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Visitors, leads, invitations, and members from MA5&apos;s own site
-          data. This view does not include ad spend, ROI, or third-party ad
-          platforms.
+          Morning snapshot of MA5 visitors, leads, invitations, and members —
+          from your own site data, not ad platforms.
         </p>
       </div>
 
@@ -83,7 +84,33 @@ export default async function AdminMarketingDashboardPage({
         />
       </Suspense>
 
+      <GrowthScoreCard score={data.growthScore} />
+
       <ActionNeededSection items={data.actionNeeded} />
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <LeadAgingWidget aging={data.leadAging} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <MetricCard
+            label="Top source"
+            value={data.topSource?.name ?? "—"}
+            note={
+              data.topSource
+                ? `${data.topSource.percentOfLeads}% of leads in range`
+                : "Appears after leads include utm_source"
+            }
+          />
+          <MetricCard
+            label="Top campaign"
+            value={data.topCampaign ?? "—"}
+            note={
+              data.topCampaign
+                ? "by visitors in range"
+                : "Add UTM campaigns to links"
+            }
+          />
+        </div>
+      </section>
 
       <section className="space-y-4">
         <SectionHeader eyebrow="KPIs" title="Core metrics" />
@@ -103,6 +130,7 @@ export default async function AdminMarketingDashboardPage({
             label="Unique visitors this month"
             value={String(data.visitorsThisMonth)}
             note="by visitor_id"
+            trend={data.trends.visitorsThisMonth}
           />
           <MetricCard
             label="Page views this month"
@@ -114,12 +142,14 @@ export default async function AdminMarketingDashboardPage({
             value={String(data.leads)}
             note={data.rangeLabel}
             href={leadsListHref}
+            trend={data.trends.leads}
           />
           <MetricCard
             label="New leads this week"
             value={String(data.newLeadsThisWeek)}
             note="status = new"
             href={leadsHref({ status: "new", range: "7d" })}
+            trend={data.trends.newLeadsThisWeek}
           />
           <MetricCard
             label="Leads awaiting follow-up"
@@ -143,20 +173,13 @@ export default async function AdminMarketingDashboardPage({
             label="Lead → member conversion"
             value={`${data.conversionRate}%`}
             note={`${data.rangeLabel} · MA5 data only`}
+            trend={data.trends.conversionRate}
           />
           <MetricCard
             label="Members acquired"
             value={String(data.membersAcquired)}
             note={data.rangeLabel}
-          />
-          <MetricCard
-            label="Top campaign"
-            value={data.topCampaign ?? "—"}
-            note={
-              data.topCampaign
-                ? "by visitors in range"
-                : "Add UTM campaigns to links"
-            }
+            trend={data.trends.membersAcquired}
           />
         </div>
       </section>
