@@ -36,6 +36,8 @@ Internal comparison page: **`/platform-preview`** (not in public nav).
 ### Database
 
 - `supabase/migrations/001_platform_foundation.sql` — `ma5_*` tables, RLS helpers, roles
+- `supabase/migrations/010_marketing_attribution.sql` — visitor sessions, leads, member acquisition fields
+- `docs/MARKETING_ATTRIBUTION.md` — UTM / Growth Marketing module (portable Signal Works pattern)
 - `supabase/seed.sql` — optional demo profiles (local/dev only)
 
 ### Auth / Supabase / permissions
@@ -204,6 +206,6 @@ Shared pillars (Signal Works platform story):
 | **Client Experience** | Home, Reserve, Programs, Inbox, Profile |
 | **Operations** | Schedule, Clients, Staff, Products, Check-in |
 | **Business** | Memberships, Billing, Payments, Reports, Analytics |
-| **Growth** | Communication, AI Insights, Marketing, Reviews, Automations |
+| **Growth** | Communication, AI Insights, **Marketing** (UTM attribution — `docs/MARKETING_ATTRIBUTION.md`), Reviews, Automations |
 
 Related nav (not identical): both keep **Home · Programs · Inbox** where it makes sense; Operations currently hides Programs + Analytics until those modules ship. Middle of the nav is role-specific.

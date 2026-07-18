@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ContactLeadForm } from "@/components/marketing/contact-lead-form";
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { siteConfig } from "@/content/site-config";
@@ -17,6 +18,8 @@ export default function ContactPage() {
         title="Contact MA5 Performance"
         description="If you are ready to take the next step toward your health and fitness goals, join the MA5 community today."
       />
+
+      <ContactLeadForm />
 
       <div className="mt-10 space-y-6 border border-border bg-surface p-6 sm:p-8">
         <div>

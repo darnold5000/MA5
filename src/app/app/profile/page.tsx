@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ManageBillingButton } from "@/components/billing/manage-billing-button";
+import { MemberAttributionSection } from "@/components/marketing/member-attribution-section";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { InstallMa5Section } from "@/components/pwa/install-ma5-section";
 import { ProfileAvatarUpload } from "@/components/profile/profile-avatar-upload";
@@ -12,6 +13,7 @@ import {
   ProfilePasswordForm,
   ProfileWaiversList,
 } from "@/components/profile/profile-forms";
+import { getMemberAttribution } from "@/features/marketing";
 import { getClientProfileSettings } from "@/features/settings/queries";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
@@ -60,6 +62,7 @@ export default async function ProfilePage() {
     : null;
 
   const userId = session?.id ?? "demo-client";
+  const attribution = await getMemberAttribution(userId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -142,6 +145,8 @@ export default async function ProfilePage() {
           )}
         </div>
       </Section>
+
+      <MemberAttributionSection attribution={attribution} />
 
       <Section title="Waivers">
         <ProfileWaiversList waivers={profile.waivers} />

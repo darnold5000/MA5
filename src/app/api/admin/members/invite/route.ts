@@ -21,6 +21,7 @@ const inviteSchema = z.object({
   role: z.enum(["client", "coach"]).default("client"),
   notes: z.string().max(2000).optional(),
   resend: z.boolean().optional(),
+  leadId: z.string().uuid().optional(),
 });
 
 function resolveFullName(data: z.infer<typeof inviteSchema>): string {
@@ -168,20 +169,50 @@ export async function POST(request: Request) {
       );
     }
 
-    await admin.from(MA5_TABLES.profiles).upsert(
-      {
-        id: userId,
-        email: emailNorm,
-        full_name: fullName,
-        phone: parsed.data.phone?.trim() || null,
-        admin_notes: parsed.data.notes?.trim() || null,
-        active: false,
-        invitation_status: "sent",
-        invited_at: now,
-        access_revoked_at: null,
-      },
-      { onConflict: "id" },
-    );
+    const profilePatch: Record<string, unknown> = {
+      id: userId,
+      email: emailNorm,
+      full_name: fullName,
+      phone: parsed.data.phone?.trim() || null,
+      admin_notes: parsed.data.notes?.trim() || null,
+      active: false,
+      invitation_status: "sent",
+      invited_at: now,
+      access_revoked_at: null,
+    };
+
+    if (parsed.data.leadId) {
+      profilePatch.lead_id = parsed.data.leadId;
+      const { data: lead } = await admin
+        .from(MA5_TABLES.leads)
+        .select(
+          "utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, created_at",
+        )
+        .eq("id", parsed.data.leadId)
+        .maybeSingle();
+
+      if (lead) {
+        profilePatch.acquisition_source = lead.utm_source;
+        profilePatch.acquisition_medium = lead.utm_medium;
+        profilePatch.acquisition_campaign = lead.utm_campaign;
+        profilePatch.acquisition_term = lead.utm_term;
+        profilePatch.acquisition_content = lead.utm_content;
+        profilePatch.acquisition_landing_page = lead.landing_page;
+        profilePatch.acquisition_referrer = lead.referrer;
+        profilePatch.acquisition_first_seen_at = lead.created_at;
+        await admin
+          .from(MA5_TABLES.leads)
+          .update({
+            status: "qualified",
+            converted_profile_id: userId,
+          })
+          .eq("id", parsed.data.leadId);
+      }
+    }
+
+    await admin.from(MA5_TABLES.profiles).upsert(profilePatch, {
+      onConflict: "id",
+    });
 
     await admin.from(MA5_TABLES.userRoles).upsert(
       { user_id: userId, role },

@@ -41,12 +41,20 @@ export default async function OperationsHomePage() {
             alerts — everything actionable this morning.
           </p>
         </div>
-        <Link
-          href="/admin/reports"
-          className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase transition hover:border-brand"
-        >
-          Business reports →
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/marketing"
+            className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase transition hover:border-brand"
+          >
+            Marketing →
+          </Link>
+          <Link
+            href="/admin/reports"
+            className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase transition hover:border-brand"
+          >
+            Business reports →
+          </Link>
+        </div>
       </div>
 
       <HealthSnapshot metrics={data.health} animate />

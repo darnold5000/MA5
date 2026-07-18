@@ -26,6 +26,8 @@ export const MA5_TABLES = {
   announcements: "ma5_announcements",
   announcementRecipients: "ma5_announcement_recipients",
   pushSubscriptions: "ma5_push_subscriptions",
+  visitorSessions: "ma5_visitor_sessions",
+  leads: "ma5_leads",
 } as const;
 
 export type Ma5TableName = (typeof MA5_TABLES)[keyof typeof MA5_TABLES];

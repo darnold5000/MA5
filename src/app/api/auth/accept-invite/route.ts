@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { applyAttributionToMember } from "@/features/marketing";
+import { readAttributionFromCookies } from "@/lib/attribution/cookies";
 import {
   canAccessAdmin,
   PLATFORM_ROLES,
@@ -101,6 +103,20 @@ export async function POST(request: Request) {
     const roles = (roleRows ?? [])
       .map((r) => r.role as string)
       .filter(isPlatformRole);
+
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY && user.email) {
+      try {
+        const { visitorId, firstTouch } = await readAttributionFromCookies();
+        await applyAttributionToMember({
+          profileId: user.id,
+          email: user.email,
+          visitorId,
+          firstTouch,
+        });
+      } catch (attrErr) {
+        console.error("[api/auth/accept-invite] attribution", attrErr);
+      }
+    }
 
     const redirectTo = canAccessAdmin(roles) ? "/admin" : "/app";
     return NextResponse.json({ ok: true, redirectTo });

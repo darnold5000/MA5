@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { applyAttributionCookies } from "@/lib/attribution/middleware";
 import { canAccessAdmin, type PlatformRole } from "@/lib/permissions/roles";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
@@ -182,5 +183,5 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return supabaseResponse;
+  return applyAttributionCookies(request, supabaseResponse);
 }

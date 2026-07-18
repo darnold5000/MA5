@@ -22,6 +22,11 @@ const SIDEBAR = [
   },
   { href: "/admin/reports", label: "Reports", match: "prefix" as const },
   {
+    href: "/admin/marketing",
+    label: "Marketing",
+    match: "marketing" as const,
+  },
+  {
     href: "/admin/messages",
     label: "Communication",
     match: "communication" as const,
@@ -39,7 +44,7 @@ const MOBILE = [
 function isActive(
   pathname: string,
   href: string,
-  match: "exact" | "prefix" | "programs" | "communication",
+  match: "exact" | "prefix" | "programs" | "communication" | "marketing",
 ) {
   if (match === "exact") return pathname === href;
   if (match === "programs") {
@@ -51,6 +56,9 @@ function isActive(
       pathname.startsWith("/admin/announcements") ||
       pathname.startsWith("/admin/inbox")
     );
+  }
+  if (match === "marketing") {
+    return pathname.startsWith("/admin/marketing");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
