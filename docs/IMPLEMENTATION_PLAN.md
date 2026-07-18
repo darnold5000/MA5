@@ -209,4 +209,6 @@ Shared pillars (Signal Works platform story):
 | **Business** | Memberships, Billing, Payments, Reports, Analytics |
 | **Growth** | Communication, AI Insights, **Marketing** (UTM attribution — `docs/MARKETING_ATTRIBUTION.md`), Reviews, Automations |
 
+**Ops TODO (Marketing retention):** Schedule daily Supabase cron for `ma5_purge_expired_anonymous_visitors(90)` — see “Operational TODO” in `docs/MARKETING_ATTRIBUTION.md`. Function exists; schedule not yet configured.
+
 Related nav (not identical): both keep **Home · Programs · Inbox** where it makes sense; Operations currently hides Programs + Analytics until those modules ship. Middle of the nav is role-specific.

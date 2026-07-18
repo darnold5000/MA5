@@ -34,8 +34,36 @@ End-to-end UTM and lead attribution so facilities can see which campaigns drive 
   - `delete_visitor` — only if no lead references the visitor
   - `delete_lead` — only unconverted / non-active-member leads; does not clear member `acquisition_*`
   - `purge_expired` — runs `ma5_purge_expired_anonymous_visitors(90)`
-- Opportunistic purge also runs (~2% of human visit beacons).
+- Opportunistic purge also runs (~2% of human visit beacons) — **not a substitute for a scheduled job**.
 - Wire a consent gate around cookie writes where required by jurisdiction.
+
+### Operational TODO — schedule daily retention purge
+
+| Status | Item |
+| --- | --- |
+| **Open** | Schedule a **daily** Supabase cron (pg_cron / Dashboard scheduled function) that calls `ma5_purge_expired_anonymous_visitors(90)`. |
+
+**Why:** The purge function ships in `011_marketing_hardening.sql`, and admins can run it manually via the privacy API, but retention is incomplete until it runs on a reliable daily schedule. Opportunistic visit-beacon purges are best-effort only.
+
+**Done when:** A recurring job is configured in the MA5 Supabase project and verified once (check that expired unlinked `ma5_visitor_sessions` rows are removed; linked leads/members untouched).
+
+**Suggested schedule (pg_cron):**
+
+```sql
+-- Requires pg_cron enabled on the project (Supabase Dashboard → Database → Extensions).
+select cron.schedule(
+  'ma5-purge-anonymous-visitors-daily',
+  '0 4 * * *', -- 04:00 UTC daily
+  $$select public.ma5_purge_expired_anonymous_visitors(90);$$
+);
+```
+
+**Verify / unschedule:**
+
+```sql
+select * from cron.job where jobname = 'ma5-purge-anonymous-visitors-daily';
+-- select cron.unschedule('ma5-purge-anonymous-visitors-daily');
+```
 
 ---
 
