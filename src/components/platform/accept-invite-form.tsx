@@ -131,7 +131,7 @@ export function AcceptInviteForm() {
   return (
     <AuthCard
       title="Activate your account"
-      description="Set your password to finish joining the MA5 member platform."
+      description="Set your password to finish activating your MA5 member access. If you already had an account, this step updates your password and turns on platform access — it is not a forgotten-password notice."
     >
       <form className="space-y-3 sm:space-y-4" onSubmit={onSubmit}>
         <label className="block space-y-1.5 text-sm sm:space-y-2">

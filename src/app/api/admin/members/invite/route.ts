@@ -3,10 +3,10 @@ import { z } from "zod";
 
 import { inviteRedirectUrl } from "@/features/auth/members";
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
+import { sendExistingUserActivationEmail } from "@/lib/auth/activation-email";
 import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { env, isSupabasePublicConfigured } from "@/lib/env";
 import {
-  createClient,
   createServiceClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
@@ -29,16 +29,6 @@ function resolveFullName(data: z.infer<typeof inviteSchema>): string {
   return [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
 }
 
-async function sendActivationEmail(emailNorm: string) {
-  const userClient = await createClient();
-  const { error } = await userClient.auth.resetPasswordForEmail(emailNorm, {
-    redirectTo: inviteRedirectUrl(env.siteUrl),
-  });
-  if (error) {
-    console.error("[api/admin/members/invite] activation email", error.message);
-  }
-}
-
 /**
  * Resolve an Auth user that already exists but may lack a ma5_profiles row.
  * generateLink does not send email; it returns the user id for linking.
@@ -50,6 +40,7 @@ async function findAuthUserIdByEmail(
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: emailNorm,
+    options: { redirectTo: inviteRedirectUrl(env.siteUrl) },
   });
   if (error) {
     console.error("[api/admin/members/invite] findAuthUser", error.message);
@@ -249,9 +240,14 @@ export async function POST(request: Request) {
       leadId: leadIdOpt,
     });
 
-    // Existing Auth users cannot receive a second invite email; send a
-    // password-setup link that lands on /auth/callback → /auth/accept-invite.
-    await sendActivationEmail(emailNorm);
+    // Existing Auth users cannot receive a second Invite template email.
+    // Prefer a branded activation message (Resend); otherwise Supabase recovery
+    // with activation-aware template copy (docs/AUTH_EMAIL_TEMPLATES.md).
+    const { channel } = await sendExistingUserActivationEmail({
+      admin,
+      email: emailNorm,
+      fullName,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -264,8 +260,12 @@ export async function POST(request: Request) {
         active: false,
       },
       message: parsed.data.resend
-        ? "Invitation resent"
-        : "Existing account updated and activation email sent",
+        ? channel === "resend"
+          ? "Activation email resent"
+          : "Invitation resent"
+        : channel === "resend"
+          ? "Existing account updated — branded activation email sent"
+          : "Existing account updated and activation email sent",
     });
   } catch (err) {
     console.error("[api/admin/members/invite]", err);
