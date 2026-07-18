@@ -19,8 +19,9 @@ export function AdminCampaignsTable({ rows }: { rows: CampaignRow[] }) {
           {rows.length === 0 ? (
             <tr>
               <td colSpan={7} className="px-4 py-8 text-muted">
-                No campaign data yet. Share links with UTM parameters to start
-                reporting.
+                No campaign data yet. Share links with utm_campaign (and
+                utm_source / utm_medium) to start reporting. This table uses MA5
+                visitor and lead data only — not ad spend.
               </td>
             </tr>
           ) : (

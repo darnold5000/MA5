@@ -46,7 +46,7 @@ export default async function OperationsHomePage() {
             href="/admin/marketing"
             className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase transition hover:border-brand"
           >
-            Marketing →
+            Growth →
           </Link>
           <Link
             href="/admin/reports"

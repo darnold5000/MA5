@@ -22,11 +22,13 @@ export const DEMO_LEADS: MarketingLead[] = [
     utmCampaign: "spring_strength",
     utmTerm: null,
     utmContent: "reel_a",
-    landingPage: "/?utm_source=instagram&utm_medium=social&utm_campaign=spring_strength",
+    landingPage:
+      "/?utm_source=instagram&utm_medium=social&utm_campaign=spring_strength",
     referrer: "https://instagram.com/",
     status: "new",
     convertedProfileId: null,
     convertedAt: null,
+    invitedAt: null,
     createdAt: daysAgo(1),
   },
   {
@@ -41,11 +43,13 @@ export const DEMO_LEADS: MarketingLead[] = [
     utmCampaign: "avon_performance",
     utmTerm: "personal trainer avon",
     utmContent: "ad_1",
-    landingPage: "/training?utm_source=google&utm_medium=cpc&utm_campaign=avon_performance",
+    landingPage:
+      "/training?utm_source=google&utm_medium=cpc&utm_campaign=avon_performance",
     referrer: "https://www.google.com/",
     status: "contacted",
     convertedProfileId: null,
     convertedAt: null,
+    invitedAt: null,
     createdAt: daysAgo(4),
   },
   {
@@ -60,11 +64,13 @@ export const DEMO_LEADS: MarketingLead[] = [
     utmCampaign: "spring_strength",
     utmTerm: null,
     utmContent: "carousel",
-    landingPage: "/contact?utm_source=facebook&utm_medium=paid_social&utm_campaign=spring_strength",
+    landingPage:
+      "/contact?utm_source=facebook&utm_medium=paid_social&utm_campaign=spring_strength",
     referrer: "https://facebook.com/",
     status: "converted",
     convertedProfileId: "demo-client",
     convertedAt: daysAgo(12),
+    invitedAt: daysAgo(15),
     createdAt: daysAgo(20),
   },
   {
@@ -84,6 +90,7 @@ export const DEMO_LEADS: MarketingLead[] = [
     status: "qualified",
     convertedProfileId: null,
     convertedAt: null,
+    invitedAt: daysAgo(2),
     createdAt: daysAgo(7),
   },
 ];
@@ -119,19 +126,49 @@ export const DEMO_CAMPAIGNS: CampaignRow[] = [
 ];
 
 export const DEMO_MARKETING_DASHBOARD: MarketingDashboard = {
+  isDemo: true,
+  rangeLabel: "Last 30 days",
   visitorsToday: 47,
   visitorsThisMonth: 1284,
   pageViewsThisMonth: 4120,
   leads: DEMO_LEADS.length,
+  newLeadsThisWeek: 2,
+  leadsAwaitingFollowUp: 1,
+  pendingInvitations: 2,
+  invitationsNotAccepted: 1,
   conversionRate: 25,
   membersAcquired: 13,
   topCampaign: "spring_strength",
+  actionNeeded: [
+    {
+      id: "new-leads",
+      label: "New leads awaiting response",
+      count: 2,
+      href: "/admin/marketing/leads?status=new&range=7d",
+      note: "Created in the last 7 days, still marked new",
+    },
+    {
+      id: "not-contacted",
+      label: "Leads not contacted",
+      count: 1,
+      href: "/admin/marketing/leads?status=new",
+      note: "All leads still in new status",
+    },
+    {
+      id: "invites-pending",
+      label: "Invitations pending",
+      count: 2,
+      href: "/admin/clients",
+      note: "Invite sent, not yet accepted",
+    },
+  ],
+  recentLeads: DEMO_LEADS.slice(0, 4),
   trafficSources: [
-    { label: "Instagram", value: 38 },
-    { label: "Google", value: 29 },
-    { label: "Direct", value: 18 },
-    { label: "Facebook", value: 10 },
-    { label: "Referral", value: 5 },
+    { label: "instagram", value: 38 },
+    { label: "google", value: 29 },
+    { label: "(direct)", value: 18 },
+    { label: "facebook", value: 10 },
+    { label: "referral", value: 5 },
   ],
   visitorsOverTime: [
     { label: "Mon", value: 42 },
@@ -163,13 +200,16 @@ export const DEMO_MARKETING_DASHBOARD: MarketingDashboard = {
     ],
   },
   campaignPerformance: DEMO_CAMPAIGNS,
+  filterSources: ["facebook", "google", "instagram", "referral"],
+  filterCampaigns: ["avon_performance", "spring_strength"],
 };
 
 export const DEMO_MEMBER_ATTRIBUTION: MemberAttribution = {
   originalSource: "facebook",
   originalMedium: "paid_social",
   originalCampaign: "spring_strength",
-  landingPage: "/contact?utm_source=facebook&utm_medium=paid_social&utm_campaign=spring_strength",
+  landingPage:
+    "/contact?utm_source=facebook&utm_medium=paid_social&utm_campaign=spring_strength",
   leadDate: daysAgo(20),
   referrer: "https://facebook.com/",
 };

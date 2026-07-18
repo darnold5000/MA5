@@ -4,8 +4,16 @@ import {
   DEMO_MARKETING_DASHBOARD,
   DEMO_MEMBER_ATTRIBUTION,
 } from "@/features/marketing/demo-data";
+import {
+  leadsHref,
+  rangeLabel,
+  resolveGrowthFilters,
+  type GrowthFilters,
+  type GrowthSearchParams,
+} from "@/features/marketing/filters";
 import { buildFunnelReport } from "@/features/marketing/funnel";
 import type {
+  ActionNeededItem,
   CampaignRow,
   LeadStatus,
   MarketingDashboard,
@@ -55,6 +63,7 @@ function mapLead(row: LeadRow): MarketingLead {
     status: row.status,
     convertedProfileId: row.converted_profile_id,
     convertedAt: row.converted_at,
+    invitedAt: row.invited_at ?? null,
     createdAt: row.created_at,
   };
 }
@@ -69,6 +78,20 @@ function startOfMonthIso(): string {
   const d = new Date();
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function startOfWeekIso(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - 6);
+  return d.toISOString();
+}
+
+function daysAgoIso(days: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
   return d.toISOString();
 }
 
@@ -137,25 +160,100 @@ function filterDemoLeads(
   });
 }
 
-export async function getMarketingDashboard(): Promise<MarketingDashboard> {
+function buildActionNeeded(args: {
+  newLeads: number;
+  notContacted: number;
+  pendingInvites: number;
+  staleInvites: number;
+  awaitingActivation: number;
+}): ActionNeededItem[] {
+  const items: ActionNeededItem[] = [
+    {
+      id: "new-leads",
+      label: "New leads awaiting response",
+      count: args.newLeads,
+      href: leadsHref({ status: "new", range: "7d" }),
+      note: "Created in the last 7 days, still marked new",
+    },
+    {
+      id: "not-contacted",
+      label: "Leads not contacted",
+      count: args.notContacted,
+      href: leadsHref({ status: "new" }),
+      note: "All leads still in new status",
+    },
+    {
+      id: "invites-pending",
+      label: "Invitations pending",
+      count: args.pendingInvites,
+      href: "/admin/clients",
+      note: "Invite sent, not yet accepted",
+    },
+    {
+      id: "invites-stale",
+      label: "Invitations older than 7 days",
+      count: args.staleInvites,
+      href: "/admin/clients",
+      note: "Still pending — consider resending",
+    },
+    {
+      id: "awaiting-activation",
+      label: "Members awaiting activation",
+      count: args.awaitingActivation,
+      href: "/admin/clients",
+      note: "Account invited but not activated",
+    },
+  ];
+  return items.filter((item) => item.count > 0);
+}
+
+function emptyFunnel() {
+  return {
+    leadsCreated: 0,
+    invitationsSent: 0,
+    invitationsAccepted: 0,
+    membersActivated: 0,
+    avgDaysLeadToInvite: null as number | null,
+    avgDaysLeadToConversion: null as number | null,
+    stages: [
+      { label: "Lead created", value: 0 },
+      { label: "Invitation sent", value: 0 },
+      { label: "Invitation accepted", value: 0 },
+      { label: "Member activated", value: 0 },
+    ],
+  };
+}
+
+export async function getMarketingDashboard(
+  searchParams: GrowthSearchParams = {},
+): Promise<MarketingDashboard> {
+  const filters = resolveGrowthFilters(searchParams);
+  const label = rangeLabel(filters);
+
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
-    return DEMO_MARKETING_DASHBOARD;
+    return {
+      ...DEMO_MARKETING_DASHBOARD,
+      isDemo: true,
+      rangeLabel: label,
+    };
   }
 
   try {
     const supabase = await createClient();
     const today = startOfTodayIso();
     const month = startOfMonthIso();
+    const week = startOfWeekIso();
+    const sevenDaysAgo = daysAgoIso(7);
 
     const [
       visitorsTodayRes,
       visitorsMonthRes,
       pageViewsRes,
-      leadsRes,
+      visitorsInRangeRes,
+      leadsAllRes,
+      leadsInRangeRes,
       membersRes,
-      visitorRowsRes,
-      leadRowsRes,
-      profileRowsRes,
+      inviteProfilesRes,
     ] = await Promise.all([
       supabase
         .from(MA5_TABLES.visitorSessions)
@@ -174,69 +272,144 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
         .gte("first_seen", month)
         .limit(5000),
       supabase
-        .from(MA5_TABLES.leads)
-        .select("id", { count: "exact", head: true }),
-      supabase
-        .from(MA5_TABLES.profiles)
-        .select("id", { count: "exact", head: true })
-        .not("acquisition_source", "is", null),
-      supabase
         .from(MA5_TABLES.visitorSessions)
-        .select("utm_source, utm_campaign, first_seen, page_views")
+        .select(
+          "utm_source, utm_medium, utm_campaign, first_seen, page_views",
+        )
         .eq("is_bot", false)
-        .gte("first_seen", month)
+        .gte("first_seen", filters.from)
+        .lte("first_seen", filters.to)
+        .limit(5000),
+      supabase
+        .from(MA5_TABLES.leads)
+        .select(
+          "id, visitor_id, name, email, phone, message, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, status, converted_profile_id, converted_at, invited_at, created_at",
+        )
+        .order("created_at", { ascending: false })
         .limit(2000),
       supabase
         .from(MA5_TABLES.leads)
         .select(
           "status, utm_source, utm_medium, utm_campaign, created_at, converted_at, invited_at, converted_profile_id",
         )
+        .gte("created_at", filters.from)
+        .lte("created_at", filters.to)
         .limit(2000),
       supabase
         .from(MA5_TABLES.profiles)
         .select(
-          "id, invited_at, invitation_accepted_at, created_at, active, lead_id",
+          "id, invited_at, invitation_accepted_at, invitation_status, created_at, active, lead_id, acquisition_source, acquisition_medium, acquisition_campaign",
         )
-        .not("lead_id", "is", null)
+        .limit(3000),
+      supabase
+        .from(MA5_TABLES.profiles)
+        .select("id, invited_at, invitation_status, active")
+        .in("invitation_status", ["sent", "pending"])
         .limit(2000),
     ]);
 
     if (
       visitorsTodayRes.error ||
       visitorsMonthRes.error ||
-      leadsRes.error ||
-      membersRes.error ||
-      visitorRowsRes.error ||
-      leadRowsRes.error
+      leadsAllRes.error ||
+      visitorsInRangeRes.error
     ) {
-      return DEMO_MARKETING_DASHBOARD;
+      console.error("[marketing/dashboard]", {
+        visitorsTodayRes: visitorsTodayRes.error,
+        visitorsMonthRes: visitorsMonthRes.error,
+        leadsAllRes: leadsAllRes.error,
+        visitorsInRangeRes: visitorsInRangeRes.error,
+      });
+      return {
+        ...DEMO_MARKETING_DASHBOARD,
+        isDemo: true,
+        rangeLabel: label,
+      };
     }
 
-    const visitorsThisMonth = visitorsMonthRes.count ?? 0;
-    const leads = leadsRes.count ?? 0;
-    const membersAcquired = membersRes.count ?? 0;
-    const conversionRate =
-      leads > 0 ? Math.round((membersAcquired / leads) * 1000) / 10 : 0;
+    const allLeads = ((leadsAllRes.data ?? []) as LeadRow[]).map(mapLead);
+
+    const matchLeadFilters = (lead: MarketingLead) => {
+      if (filters.source && lead.utmSource !== filters.source) return false;
+      if (filters.campaign && lead.utmCampaign !== filters.campaign) return false;
+      return true;
+    };
+
+    const leadsInRange = ((leadsInRangeRes.data ?? []) as LeadRow[])
+      .map(mapLead)
+      .filter(matchLeadFilters);
+
+    const visitorsInRange = (visitorsInRangeRes.data ?? []).filter((row) => {
+      if (filters.source && (row.utm_source?.trim() || "(direct)") !== filters.source) {
+        return false;
+      }
+      if (
+        filters.campaign &&
+        (row.utm_campaign?.trim() || "(none)") !== filters.campaign
+      ) {
+        return false;
+      }
+      return true;
+    });
 
     const pageViewsThisMonth = (pageViewsRes.data ?? []).reduce(
       (sum, row) => sum + (row.page_views ?? 0),
       0,
     );
 
-    const sourceCounts = new Map<string, number>();
-    const campaignCounts = new Map<string, number>();
-    const dayCounts = new Map<string, number>();
+    const newLeadsThisWeek = allLeads.filter(
+      (l) => l.createdAt >= week && l.status === "new",
+    ).length;
+    const leadsAwaitingFollowUp = allLeads.filter(
+      (l) => l.status === "new",
+    ).length;
 
-    for (const row of visitorRowsRes.data ?? []) {
+    const inviteProfiles = inviteProfilesRes.data ?? [];
+    const pendingInvitations = inviteProfiles.length;
+    const invitationsNotAccepted = inviteProfiles.filter((p) => {
+      if (!p.invited_at) return true;
+      return p.invited_at < sevenDaysAgo;
+    }).length;
+    const awaitingActivation = inviteProfiles.filter(
+      (p) => p.active === false,
+    ).length;
+    const staleInvites = inviteProfiles.filter(
+      (p) => p.invited_at && p.invited_at < sevenDaysAgo,
+    ).length;
+
+    const profiles = membersRes.data ?? [];
+    const membersAcquired = profiles.filter((p) => {
+      if (!p.acquisition_source && !p.lead_id) return false;
+      if (p.invitation_accepted_at) {
+        return (
+          p.invitation_accepted_at >= filters.from &&
+          p.invitation_accepted_at <= filters.to
+        );
+      }
+      if (p.created_at) {
+        return p.created_at >= filters.from && p.created_at <= filters.to;
+      }
+      return Boolean(p.acquisition_source);
+    }).length;
+
+    const leadsCount = leadsInRange.length;
+    const conversionRate =
+      leadsCount > 0
+        ? Math.round((membersAcquired / leadsCount) * 1000) / 10
+        : 0;
+
+    const sourceCounts = new Map<string, number>();
+    const dayCounts = new Map<string, number>();
+    const campaignCounts = new Map<string, number>();
+
+    for (const row of visitorsInRange) {
       const source = row.utm_source?.trim() || "(direct)";
       sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1);
       const campaign = row.utm_campaign?.trim() || "(none)";
       campaignCounts.set(campaign, (campaignCounts.get(campaign) ?? 0) + 1);
       if (row.first_seen) {
-        const day = new Date(row.first_seen).toLocaleDateString("en-US", {
-          weekday: "short",
-        });
-        dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
+        const dayKey = row.first_seen.slice(0, 10);
+        dayCounts.set(dayKey, (dayCounts.get(dayKey) ?? 0) + 1);
       }
     }
 
@@ -257,49 +430,102 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
       converted: 0,
       closed: 0,
     };
-    for (const row of leadRowsRes.data ?? []) {
-      const status = row.status as string;
-      if (status in statusCounts) statusCounts[status] += 1;
+    for (const row of leadsInRange) {
+      if (row.status in statusCounts) statusCounts[row.status] += 1;
     }
 
     const funnel = buildFunnelReport(
-      (leadRowsRes.data ?? []).map((l) => ({
-        created_at: l.created_at,
-        invited_at: l.invited_at ?? null,
-        converted_at: l.converted_at ?? null,
+      leadsInRange.map((l) => ({
+        created_at: l.createdAt,
+        invited_at: l.invitedAt,
+        converted_at: l.convertedAt,
         status: l.status,
-        converted_profile_id: l.converted_profile_id ?? null,
+        converted_profile_id: l.convertedProfileId,
       })),
-      (profileRowsRes.data ?? []).map((p) => ({
-        id: p.id,
-        invited_at: p.invited_at ?? null,
-        invitation_accepted_at: p.invitation_accepted_at ?? null,
-        created_at: p.created_at,
-        active: Boolean(p.active),
-        lead_id: p.lead_id ?? null,
-      })),
+      profiles
+        .filter((p) => p.lead_id)
+        .map((p) => ({
+          id: p.id,
+          invited_at: p.invited_at ?? null,
+          invitation_accepted_at: p.invitation_accepted_at ?? null,
+          created_at: p.created_at,
+          active: Boolean(p.active),
+          lead_id: p.lead_id ?? null,
+        })),
     );
 
-    const campaigns = await getCampaignPerformance();
+    const campaigns = await getCampaignPerformance(filters);
+
+    // Build continuous day labels for the selected range (cap at 31 points)
+    const visitorsOverTime: { label: string; value: number }[] = [];
+    const cursor = new Date(filters.from);
+    const end = new Date(filters.to);
+    let guard = 0;
+    while (cursor <= end && guard < 62) {
+      const key = cursor.toISOString().slice(0, 10);
+      const short = cursor.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+      visitorsOverTime.push({
+        label: short,
+        value: dayCounts.get(key) ?? 0,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+      guard += 1;
+    }
+    const trendPoints =
+      visitorsOverTime.length > 31
+        ? visitorsOverTime.filter((_, i) => i % 2 === 0)
+        : visitorsOverTime;
+
+    const filterSources = [
+      ...new Set(
+        allLeads
+          .map((l) => l.utmSource)
+          .filter((s): s is string => Boolean(s)),
+      ),
+    ].sort();
+    const filterCampaigns = [
+      ...new Set(
+        allLeads
+          .map((l) => l.utmCampaign)
+          .filter((s): s is string => Boolean(s)),
+      ),
+    ].sort();
+
+    const recentLeads = allLeads.filter(matchLeadFilters).slice(0, 8);
 
     return {
+      isDemo: false,
+      rangeLabel: label,
       visitorsToday: visitorsTodayRes.count ?? 0,
-      visitorsThisMonth,
+      visitorsThisMonth: visitorsMonthRes.count ?? 0,
       pageViewsThisMonth,
-      leads,
+      leads: leadsCount,
+      newLeadsThisWeek,
+      leadsAwaitingFollowUp,
+      pendingInvitations,
+      invitationsNotAccepted,
       conversionRate,
       membersAcquired,
       topCampaign,
+      actionNeeded: buildActionNeeded({
+        newLeads: newLeadsThisWeek,
+        notContacted: leadsAwaitingFollowUp,
+        pendingInvites: pendingInvitations,
+        staleInvites: staleInvites,
+        awaitingActivation,
+      }),
+      recentLeads,
       trafficSources: [...sourceCounts.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 6)
-        .map(([label, value]) => ({ label, value })),
-      visitorsOverTime: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-        (label) => ({ label, value: dayCounts.get(label) ?? 0 }),
-      ),
+        .map(([lbl, value]) => ({ label: lbl, value })),
+      visitorsOverTime: trendPoints,
       leadFunnel: [
-        { label: "Visitors", value: visitorsThisMonth },
-        { label: "Leads", value: leads },
+        { label: "Visitors", value: visitorsInRange.length },
+        { label: "Leads", value: leadsCount },
         {
           label: "Contacted",
           value:
@@ -309,16 +535,26 @@ export async function getMarketingDashboard(): Promise<MarketingDashboard> {
         },
         { label: "Members", value: membersAcquired },
       ],
-      funnel,
+      funnel: funnel.leadsCreated > 0 ? funnel : emptyFunnel(),
       campaignPerformance: campaigns,
+      filterSources,
+      filterCampaigns,
     };
   } catch (err) {
     console.error("[marketing/dashboard]", err);
-    return DEMO_MARKETING_DASHBOARD;
+    return {
+      ...DEMO_MARKETING_DASHBOARD,
+      isDemo: true,
+      rangeLabel: label,
+    };
   }
 }
 
-export async function getCampaignPerformance(): Promise<CampaignRow[]> {
+export async function getCampaignPerformance(
+  filters?: GrowthFilters,
+): Promise<CampaignRow[]> {
+  const resolved = filters ?? resolveGrowthFilters({ range: "30d" });
+
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
     return DEMO_CAMPAIGNS;
   }
@@ -329,23 +565,29 @@ export async function getCampaignPerformance(): Promise<CampaignRow[]> {
       await Promise.all([
         supabase
           .from(MA5_TABLES.visitorSessions)
-          .select("utm_source, utm_medium, utm_campaign")
+          .select("utm_source, utm_medium, utm_campaign, first_seen")
           .eq("is_bot", false)
+          .gte("first_seen", resolved.from)
+          .lte("first_seen", resolved.to)
           .limit(5000),
         supabase
           .from(MA5_TABLES.leads)
-          .select("utm_source, utm_medium, utm_campaign, status")
+          .select(
+            "utm_source, utm_medium, utm_campaign, status, created_at",
+          )
+          .gte("created_at", resolved.from)
+          .lte("created_at", resolved.to)
           .limit(5000),
         supabase
           .from(MA5_TABLES.profiles)
           .select(
-            "acquisition_source, acquisition_medium, acquisition_campaign",
+            "acquisition_source, acquisition_medium, acquisition_campaign, invitation_accepted_at, created_at",
           )
           .not("acquisition_campaign", "is", null)
           .limit(5000),
       ]);
 
-    if (!visitors && !leads) return DEMO_CAMPAIGNS;
+    if (!visitors && !leads) return [];
 
     type Agg = {
       campaign: string;
@@ -388,12 +630,50 @@ export async function getCampaignPerformance(): Promise<CampaignRow[]> {
     }
 
     for (const v of visitors ?? []) {
+      if (
+        resolved.source &&
+        (v.utm_source?.trim() || "(direct)") !== resolved.source
+      ) {
+        continue;
+      }
+      if (
+        resolved.campaign &&
+        (v.utm_campaign?.trim() || "(none)") !== resolved.campaign
+      ) {
+        continue;
+      }
       ensure(v.utm_source, v.utm_medium, v.utm_campaign).visitors += 1;
     }
     for (const l of leads ?? []) {
+      if (
+        resolved.source &&
+        (l.utm_source?.trim() || "(direct)") !== resolved.source
+      ) {
+        continue;
+      }
+      if (
+        resolved.campaign &&
+        (l.utm_campaign?.trim() || "(none)") !== resolved.campaign
+      ) {
+        continue;
+      }
       ensure(l.utm_source, l.utm_medium, l.utm_campaign).leads += 1;
     }
     for (const m of members ?? []) {
+      const when = m.invitation_accepted_at ?? m.created_at;
+      if (when && (when < resolved.from || when > resolved.to)) continue;
+      if (
+        resolved.source &&
+        (m.acquisition_source?.trim() || "(direct)") !== resolved.source
+      ) {
+        continue;
+      }
+      if (
+        resolved.campaign &&
+        (m.acquisition_campaign?.trim() || "(none)") !== resolved.campaign
+      ) {
+        continue;
+      }
       ensure(
         m.acquisition_source,
         m.acquisition_medium,

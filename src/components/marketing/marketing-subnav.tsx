@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/admin/marketing", label: "Dashboard", exact: true },
+  { href: "/admin/marketing", label: "Overview", exact: true },
   { href: "/admin/marketing/leads", label: "Leads", exact: false },
   { href: "/admin/marketing/campaigns", label: "Campaigns", exact: false },
 ] as const;
@@ -16,7 +16,7 @@ export function MarketingSubnav() {
 
   return (
     <nav
-      aria-label="Marketing"
+      aria-label="Growth"
       className="flex flex-wrap gap-2 border-b border-border pb-4"
     >
       {LINKS.map((link) => {

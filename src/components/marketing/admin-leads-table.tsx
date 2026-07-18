@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { LeadStatus, MarketingLead } from "@/features/marketing/types";
@@ -25,32 +25,15 @@ function formatDate(value: string) {
   }
 }
 
-export function AdminLeadsTable({ leads }: { leads: MarketingLead[] }) {
+export function AdminLeadsTable({
+  leads,
+  emptyHint,
+}: {
+  leads: MarketingLead[];
+  emptyHint?: string;
+}) {
   const router = useRouter();
-  const [source, setSource] = useState("all");
-  const [campaign, setCampaign] = useState("all");
-  const [status, setStatus] = useState<LeadStatus | "all">("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
-
-  const sources = useMemo(
-    () =>
-      [...new Set(leads.map((l) => l.utmSource).filter(Boolean) as string[])].sort(),
-    [leads],
-  );
-  const campaigns = useMemo(
-    () =>
-      [
-        ...new Set(leads.map((l) => l.utmCampaign).filter(Boolean) as string[]),
-      ].sort(),
-    [leads],
-  );
-
-  const filtered = leads.filter((lead) => {
-    if (source !== "all" && lead.utmSource !== source) return false;
-    if (campaign !== "all" && lead.utmCampaign !== campaign) return false;
-    if (status !== "all" && lead.status !== status) return false;
-    return true;
-  });
 
   async function updateStatus(leadId: string, next: LeadStatus) {
     setPendingId(leadId);
@@ -112,60 +95,6 @@ export function AdminLeadsTable({ leads }: { leads: MarketingLead[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-3">
-        <label className="text-xs">
-          <span className="mb-1 block font-semibold tracking-wide text-muted uppercase">
-            Source
-          </span>
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            className="min-h-11 border border-border bg-surface px-3 text-sm"
-          >
-            <option value="all">All</option>
-            {sources.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs">
-          <span className="mb-1 block font-semibold tracking-wide text-muted uppercase">
-            Campaign
-          </span>
-          <select
-            value={campaign}
-            onChange={(e) => setCampaign(e.target.value)}
-            className="min-h-11 border border-border bg-surface px-3 text-sm"
-          >
-            <option value="all">All</option>
-            {campaigns.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs">
-          <span className="mb-1 block font-semibold tracking-wide text-muted uppercase">
-            Status
-          </span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as LeadStatus | "all")}
-            className="min-h-11 border border-border bg-surface px-3 text-sm"
-          >
-            <option value="all">All</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
       <div className="overflow-x-auto border border-border">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-border bg-surface text-xs tracking-wide text-muted uppercase">
@@ -181,14 +110,15 @@ export function AdminLeadsTable({ leads }: { leads: MarketingLead[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {leads.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-muted">
-                  No leads match these filters.
+                  {emptyHint ??
+                    "No leads match these filters yet. Contact-form submissions appear here with UTM attribution when present."}
                 </td>
               </tr>
             ) : (
-              filtered.map((lead) => (
+              leads.map((lead) => (
                 <tr key={lead.id} className="border-b border-border/70">
                   <td className="px-4 py-3 text-foreground">{lead.name}</td>
                   <td className="px-4 py-3 text-muted">{lead.email}</td>
