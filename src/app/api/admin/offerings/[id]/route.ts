@@ -32,7 +32,13 @@ export async function GET(_request: Request, context: RouteContext) {
   const auth = await requireAdminSessionOrResponse();
   if (auth instanceof NextResponse) return auth;
   if (!hasCapability(auth.roles, "manage_memberships")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          "Offerings require the manage_memberships capability (owner, admin, or coach).",
+      },
+      { status: 403 },
+    );
   }
 
   const { id } = await context.params;
@@ -51,7 +57,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireAdminSessionOrResponse();
   if (auth instanceof NextResponse) return auth;
   if (!hasCapability(auth.roles, "manage_memberships")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          "Offerings require the manage_memberships capability (owner, admin, or coach).",
+      },
+      { status: 403 },
+    );
   }
 
   if (!isSupabaseConfigured()) {

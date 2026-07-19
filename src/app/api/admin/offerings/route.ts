@@ -29,7 +29,13 @@ export async function GET(request: Request) {
   const auth = await requireAdminSessionOrResponse();
   if (auth instanceof NextResponse) return auth;
   if (!hasCapability(auth.roles, "manage_memberships")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          "Offerings require the manage_memberships capability (owner, admin, or coach).",
+      },
+      { status: 403 },
+    );
   }
 
   if (!isSupabaseConfigured()) {
@@ -66,7 +72,13 @@ export async function POST(request: Request) {
   const auth = await requireAdminSessionOrResponse();
   if (auth instanceof NextResponse) return auth;
   if (!hasCapability(auth.roles, "manage_memberships")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      {
+        error:
+          "Offerings require the manage_memberships capability (owner, admin, or coach).",
+      },
+      { status: 403 },
+    );
   }
 
   if (!isSupabaseConfigured()) {

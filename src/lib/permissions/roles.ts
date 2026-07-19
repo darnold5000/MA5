@@ -77,6 +77,7 @@ const ROLE_CAPABILITIES: Record<PlatformRole, readonly Capability[]> = {
     "assign_programs",
     "manage_programs",
     "manage_teams",
+    "manage_memberships",
     "message_clients",
     "manage_attendance",
     "book_sessions",
