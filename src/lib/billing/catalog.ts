@@ -29,6 +29,7 @@ type ProductRow = {
   stripe_product_id: string | null;
   current_stripe_price_id: string | null;
   display_order: number;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -50,13 +51,14 @@ export function mapProductRow(row: ProductRow): Offering {
     stripeProductId: row.stripe_product_id,
     currentStripePriceId: row.current_stripe_price_id,
     displayOrder: row.display_order,
+    archivedAt: row.archived_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 const SELECT_COLS =
-  "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, created_at, updated_at";
+  "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, archived_at, created_at, updated_at";
 
 export async function listOfferings(options?: {
   includeArchived?: boolean;

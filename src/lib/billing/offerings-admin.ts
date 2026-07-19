@@ -13,6 +13,9 @@ import {
 import type { Offering, OfferingInput, OfferingStatus } from "./types";
 import { slugify } from "./types";
 
+const PRODUCT_SELECT_COLS =
+  "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, archived_at, created_at, updated_at";
+
 function billingIntervalFor(input: {
   paymentType: OfferingInput["paymentType"];
   billingInterval?: OfferingInput["billingInterval"];
@@ -73,7 +76,6 @@ export async function syncOfferingToStripe(offeringId: string): Promise<Offering
     await stripe.products.update(stripeProductId, {
       name: offering.name,
       description: offering.description ?? undefined,
-      active: offering.status !== "archived",
     });
   }
 
@@ -109,9 +111,7 @@ export async function syncOfferingToStripe(offeringId: string): Promise<Offering
       current_stripe_price_id: currentStripePriceId,
     })
     .eq("id", offering.id)
-    .select(
-      "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, created_at, updated_at",
-    )
+    .select(PRODUCT_SELECT_COLS)
     .single();
 
   if (error || !data) {
@@ -150,9 +150,7 @@ export async function createOffering(input: OfferingInput): Promise<Offering> {
       active: status === "active",
       display_order: input.displayOrder ?? 0,
     })
-    .select(
-      "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, created_at, updated_at",
-    )
+    .select(PRODUCT_SELECT_COLS)
     .single();
 
   if (error || !data) {
@@ -232,9 +230,7 @@ export async function updateOffering(
     .from(MA5_TABLES.products)
     .update(updates)
     .eq("id", id)
-    .select(
-      "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, created_at, updated_at",
-    )
+    .select(PRODUCT_SELECT_COLS)
     .single();
 
   if (error || !data) {
@@ -257,7 +253,6 @@ export async function updateOffering(
     await stripe.products.update(offering.stripeProductId, {
       name: offering.name,
       description: offering.description ?? undefined,
-      active: offering.status !== "archived",
     });
   }
 
@@ -300,9 +295,7 @@ export async function updateOffering(
         current_stripe_price_id: price.id,
       })
       .eq("id", offering.id)
-      .select(
-        "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, created_at, updated_at",
-      )
+      .select(PRODUCT_SELECT_COLS)
       .single();
 
     if (priceErr || !updated) {
@@ -313,19 +306,40 @@ export async function updateOffering(
     offering = await syncOfferingToStripe(offering.id);
   }
 
-  if (
-    offering.stripeProductId &&
-    (nextStatus === "archived" || nextStatus === "inactive")
-  ) {
-    // Keep Stripe product; do not block existing subscribers.
-    await stripe.products.update(offering.stripeProductId, {
-      active: nextStatus !== "archived",
-    });
-  }
-
   return offering;
 }
 
+/**
+ * Hide from customers (status inactive). Row and Stripe objects unchanged.
+ */
+export async function hideOffering(id: string): Promise<Offering> {
+  return updateOffering(id, { status: "inactive" });
+}
+
+/** Make visible and available for purchase. */
+export async function showOffering(id: string): Promise<Offering> {
+  return updateOffering(id, { status: "active" });
+}
+
+/**
+ * Retire from normal admin use. Row preserved; subscriptions unchanged.
+ */
+export async function archiveOffering(id: string): Promise<Offering> {
+  return updateOffering(id, { status: "archived" });
+}
+
+/**
+ * Return to admin list as Hidden so the owner can review before publishing.
+ * Does not create Stripe objects — caller syncs only if IDs are missing.
+ */
+export async function restoreOffering(id: string): Promise<Offering> {
+  return updateOffering(id, { status: "inactive" });
+}
+
+/**
+ * Archive / hide / show / restore an offering in MA5 only.
+ * Rows are never deleted. Lifecycle does not cancel Stripe subscriptions.
+ */
 export async function setOfferingStatus(
   id: string,
   status: OfferingStatus,

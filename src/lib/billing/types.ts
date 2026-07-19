@@ -19,6 +19,7 @@ export type Offering = {
   stripeProductId: string | null;
   currentStripePriceId: string | null;
   displayOrder: number;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

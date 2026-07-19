@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
+  archiveOffering,
   getOfferingById,
+  hideOffering,
+  restoreOffering,
+  showOffering,
   syncOfferingToStripe,
   updateOffering,
 } from "@/lib/billing";
+import type { OfferingLifecycleAction } from "@/lib/billing/offering-lifecycle";
 import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { hasCapability } from "@/lib/permissions/roles";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
@@ -24,9 +29,31 @@ const patchSchema = z.object({
   status: z.enum(["draft", "active", "inactive", "archived"]).optional(),
   displayOrder: z.number().int().min(0).max(10_000).optional(),
   syncStripe: z.boolean().optional(),
+  lifecycleAction: z.enum(["hide", "show", "archive", "restore"]).optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+async function applyLifecycleAction(
+  id: string,
+  action: OfferingLifecycleAction,
+) {
+  switch (action) {
+    case "hide":
+      return hideOffering(id);
+    case "show":
+      return showOffering(id);
+    case "archive":
+      return archiveOffering(id);
+    case "restore": {
+      const offering = await restoreOffering(id);
+      if (!offering.stripeProductId || !offering.currentStripePriceId) {
+        return syncOfferingToStripe(id);
+      }
+      return offering;
+    }
+  }
+}
 
 export async function GET(_request: Request, context: RouteContext) {
   const auth = await requireAdminSessionOrResponse();
@@ -78,7 +105,20 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    const { syncStripe, ...fields } = parsed.data;
+    const { syncStripe, lifecycleAction, ...fields } = parsed.data;
+
+    if (lifecycleAction) {
+      let offering = await applyLifecycleAction(id, lifecycleAction);
+      const hasFieldUpdates = Object.values(fields).some((v) => v !== undefined);
+      if (hasFieldUpdates) {
+        offering = await updateOffering(id, fields);
+      }
+      if (syncStripe) {
+        offering = await syncOfferingToStripe(id);
+      }
+      return NextResponse.json({ offering });
+    }
+
     const hasFieldUpdates = Object.values(fields).some((v) => v !== undefined);
 
     let offering = hasFieldUpdates
@@ -89,7 +129,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (syncStripe || !offering.currentStripePriceId) {
+    if (syncStripe) {
+      offering = await syncOfferingToStripe(id);
+    } else if (
+      hasFieldUpdates &&
+      (!offering.stripeProductId || !offering.currentStripePriceId)
+    ) {
       offering = await syncOfferingToStripe(id);
     }
 

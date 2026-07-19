@@ -3,7 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import type { Offering, OfferingStatus, PaymentType, ProductType } from "@/lib/billing/types";
+import {
+  OFFERING_LIFECYCLE_CONFIRM,
+  offeringStatusLabel,
+  type OfferingLifecycleAction,
+} from "@/lib/billing/offering-lifecycle";
+import type { Offering, PaymentType, ProductType } from "@/lib/billing/types";
 import { cn } from "@/lib/utils";
 
 function formatMoney(cents: number) {
@@ -24,9 +29,10 @@ type FormState = {
   priceDollars: string;
   billingInterval: "month" | "one_time";
   sessionCredits: string;
-  status: OfferingStatus;
   displayOrder: string;
 };
+
+type ListTab = "active" | "archived";
 
 const emptyForm = (): FormState => ({
   name: "",
@@ -38,7 +44,6 @@ const emptyForm = (): FormState => ({
   priceDollars: "",
   billingInterval: "month",
   sessionCredits: "",
-  status: "active",
   displayOrder: "0",
 });
 
@@ -56,7 +61,6 @@ function offeringToForm(o: Offering): FormState {
       o.sessionCredits === null || o.sessionCredits === undefined
         ? ""
         : String(o.sessionCredits),
-    status: o.status,
     displayOrder: String(o.displayOrder),
   };
 }
@@ -79,9 +83,29 @@ function formToPayload(form: FormState) {
     sessionCredits: form.sessionCredits.trim()
       ? Number.parseInt(form.sessionCredits, 10)
       : null,
-    status: form.status,
     displayOrder: Number.parseInt(form.displayOrder || "0", 10) || 0,
   };
+}
+
+function StatusBadge({ offering }: { offering: Offering }) {
+  const label = offeringStatusLabel(offering.status);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-semibold tracking-wide",
+        offering.status === "active" &&
+          "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
+        offering.status === "inactive" &&
+          "border-border bg-background text-muted",
+        offering.status === "archived" &&
+          "border-red-500/30 bg-red-500/10 text-red-300",
+        offering.status === "draft" &&
+          "border-amber-500/40 bg-amber-500/10 text-amber-300",
+      )}
+    >
+      {label}
+    </span>
+  );
 }
 
 export function OfferingsManager({
@@ -92,26 +116,39 @@ export function OfferingsManager({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [offerings, setOfferings] = useState(initialOfferings);
-  const [showArchived, setShowArchived] = useState(false);
+  const [tab, setTab] = useState<ListTab>("active");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const visible = useMemo(
-    () =>
-      offerings.filter((o) => (showArchived ? true : o.status !== "archived")),
-    [offerings, showArchived],
+  const activeList = useMemo(
+    () => offerings.filter((o) => o.status !== "archived"),
+    [offerings],
   );
+  const archivedList = useMemo(
+    () => offerings.filter((o) => o.status === "archived"),
+    [offerings],
+  );
+  const visible = tab === "archived" ? archivedList : activeList;
 
-  async function loadOfferings(includeArchived = showArchived) {
-    const res = await fetch(
-      `/api/admin/offerings?includeArchived=${includeArchived ? "1" : "0"}`,
-    );
+  const readOnly = viewingId !== null;
+  const formOpen = creating || editingId !== null || viewingId !== null;
+
+  async function loadOfferings() {
+    const res = await fetch("/api/admin/offerings?includeArchived=1");
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "Failed to load offerings");
     setOfferings(data.offerings as Offering[]);
+  }
+
+  function closeForm() {
+    setCreating(false);
+    setEditingId(null);
+    setViewingId(null);
+    setForm(emptyForm());
   }
 
   async function onSyncStripe() {
@@ -119,7 +156,7 @@ export function OfferingsManager({
     setMessage(null);
     try {
       const res = await fetch(
-        `/api/admin/offerings?includeArchived=1&syncStripe=1`,
+        "/api/admin/offerings?includeArchived=1&syncStripe=1",
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Stripe sync failed");
@@ -138,6 +175,7 @@ export function OfferingsManager({
   }
 
   async function onSave() {
+    if (readOnly) return;
     setError(null);
     setMessage(null);
     try {
@@ -146,14 +184,12 @@ export function OfferingsManager({
         const res = await fetch("/api/admin/offerings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, status: "active" }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "Create failed");
-        setCreating(false);
-        setEditingId(null);
-        setForm(emptyForm());
-        await loadOfferings(true);
+        closeForm();
+        await loadOfferings();
         setMessage("Offering created and published to Stripe.");
       } else if (editingId) {
         const res = await fetch(`/api/admin/offerings/${editingId}`, {
@@ -163,9 +199,8 @@ export function OfferingsManager({
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "Update failed");
-        setEditingId(null);
-        setForm(emptyForm());
-        await loadOfferings(true);
+        closeForm();
+        await loadOfferings();
         setMessage("Offering updated.");
       }
       startTransition(() => router.refresh());
@@ -174,22 +209,36 @@ export function OfferingsManager({
     }
   }
 
-  async function setStatus(id: string, status: OfferingStatus) {
+  async function runLifecycle(id: string, action: OfferingLifecycleAction) {
+    if (action !== "show") {
+      const ok = window.confirm(OFFERING_LIFECYCLE_CONFIRM[action]);
+      if (!ok) return;
+    }
+
     setError(null);
     setMessage(null);
     try {
       const res = await fetch(`/api/admin/offerings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ lifecycleAction: action }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Status update failed");
-      await loadOfferings(true);
-      setMessage(`Marked ${status}.`);
+      if (!res.ok) throw new Error(data.error ?? "Update failed");
+
+      await loadOfferings();
+      const labels: Record<OfferingLifecycleAction, string> = {
+        hide: "Offering hidden from customers.",
+        show: "Offering is now active and visible to customers.",
+        archive: "Offering archived.",
+        restore: "Offering restored as Hidden — review before showing to customers.",
+      };
+      setMessage(labels[action]);
+      if (action === "archive") setTab("archived");
+      if (action === "restore") setTab("active");
       startTransition(() => router.refresh());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Status update failed");
+      setError(err instanceof Error ? err.message : "Update failed");
     }
   }
 
@@ -202,15 +251,127 @@ export function OfferingsManager({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Duplicate failed");
-      await loadOfferings(true);
-      setMessage("Offering duplicated as draft.");
+      await loadOfferings();
+      setTab("active");
+      setMessage("Offering duplicated as a draft.");
       startTransition(() => router.refresh());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Duplicate failed");
     }
   }
 
-  const formOpen = creating || editingId;
+  function openEdit(o: Offering) {
+    setCreating(false);
+    setViewingId(null);
+    setEditingId(o.id);
+    setForm(offeringToForm(o));
+  }
+
+  function openView(o: Offering) {
+    setCreating(false);
+    setEditingId(null);
+    setViewingId(o.id);
+    setForm(offeringToForm(o));
+  }
+
+  function renderActions(o: Offering) {
+    if (o.status === "archived") {
+      return (
+        <>
+          <button
+            type="button"
+            className="text-brand hover:underline"
+            onClick={() => openView(o)}
+          >
+            View
+          </button>
+          <button
+            type="button"
+            className="hover:underline"
+            onClick={() => void runLifecycle(o.id, "restore")}
+          >
+            Restore
+          </button>
+          <button
+            type="button"
+            className="hover:underline"
+            onClick={() => void onDuplicate(o.id)}
+          >
+            Duplicate
+          </button>
+        </>
+      );
+    }
+
+    if (o.status === "active") {
+      return (
+        <>
+          <button
+            type="button"
+            className="text-brand hover:underline"
+            onClick={() => openEdit(o)}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="hover:underline"
+            onClick={() => void runLifecycle(o.id, "hide")}
+          >
+            Hide
+          </button>
+          <button
+            type="button"
+            className="hover:underline"
+            onClick={() => void onDuplicate(o.id)}
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
+            className="hover:underline"
+            onClick={() => void runLifecycle(o.id, "archive")}
+          >
+            Archive
+          </button>
+        </>
+      );
+    }
+
+    // Hidden (inactive) or draft
+    return (
+      <>
+        <button
+          type="button"
+          className="text-brand hover:underline"
+          onClick={() => openEdit(o)}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className="hover:underline"
+          onClick={() => void runLifecycle(o.id, "show")}
+        >
+          Show
+        </button>
+        <button
+          type="button"
+          className="hover:underline"
+          onClick={() => void onDuplicate(o.id)}
+        >
+          Duplicate
+        </button>
+        <button
+          type="button"
+          className="hover:underline"
+          onClick={() => void runLifecycle(o.id, "archive")}
+        >
+          Archive
+        </button>
+      </>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -220,9 +381,9 @@ export function OfferingsManager({
             Offerings
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Create and manage payment offerings. Saving publishes Product and
-            Price objects to Stripe automatically — no Dashboard or env Price
-            IDs required.
+            Manage what customers can buy. <strong className="font-medium text-foreground">Active</strong> offerings are visible for purchase.{" "}
+            <strong className="font-medium text-foreground">Hidden</strong> offerings are temporarily off the storefront.{" "}
+            <strong className="font-medium text-foreground">Archived</strong> offerings are retired but all history is kept.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -239,8 +400,10 @@ export function OfferingsManager({
             onClick={() => {
               setCreating(true);
               setEditingId(null);
+              setViewingId(null);
               setForm(emptyForm());
               setError(null);
+              setTab("active");
             }}
             className="bg-brand px-3 py-2 text-xs font-semibold tracking-wide text-background uppercase"
           >
@@ -263,7 +426,11 @@ export function OfferingsManager({
       {formOpen ? (
         <div className="space-y-4 border border-border bg-surface p-5">
           <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            {creating ? "Create offering" : "Edit offering"}
+            {creating
+              ? "Create offering"
+              : readOnly
+                ? "View offering"
+                : "Edit offering"}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">
@@ -271,8 +438,9 @@ export function OfferingsManager({
                 Name
               </span>
               <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
                 value={form.name}
+                disabled={readOnly}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </label>
@@ -281,8 +449,9 @@ export function OfferingsManager({
                 Slug
               </span>
               <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
                 value={form.slug}
+                disabled={readOnly}
                 placeholder="auto from name"
                 onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
               />
@@ -292,8 +461,9 @@ export function OfferingsManager({
                 Description
               </span>
               <textarea
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
                 rows={2}
+                disabled={readOnly}
                 value={form.description}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
@@ -305,7 +475,8 @@ export function OfferingsManager({
                 Type
               </span>
               <select
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                disabled={readOnly}
                 value={form.productType}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -325,7 +496,8 @@ export function OfferingsManager({
                 Category
               </span>
               <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                disabled={readOnly}
                 value={form.category}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, category: e.target.value }))
@@ -337,7 +509,8 @@ export function OfferingsManager({
                 Payment
               </span>
               <select
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                disabled={readOnly}
                 value={form.paymentType}
                 onChange={(e) => {
                   const paymentType = e.target.value as PaymentType;
@@ -358,7 +531,8 @@ export function OfferingsManager({
                 Price (USD)
               </span>
               <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                disabled={readOnly}
                 inputMode="decimal"
                 value={form.priceDollars}
                 onChange={(e) =>
@@ -368,30 +542,11 @@ export function OfferingsManager({
             </label>
             <label className="block text-sm">
               <span className="text-xs tracking-wide text-muted uppercase">
-                Status
-              </span>
-              <select
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    status: e.target.value as OfferingStatus,
-                  }))
-                }
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="archived">Archived</option>
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="text-xs tracking-wide text-muted uppercase">
                 Session credits
               </span>
               <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2"
+                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                disabled={readOnly}
                 value={form.sessionCredits}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, sessionCredits: e.target.value }))
@@ -400,41 +555,52 @@ export function OfferingsManager({
             </label>
           </div>
           <div className="flex flex-wrap gap-2">
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => void onSave()}
+                className="bg-brand px-4 py-2 text-xs font-semibold tracking-wide text-background uppercase"
+              >
+                Save
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={() => void onSave()}
-              className="bg-brand px-4 py-2 text-xs font-semibold tracking-wide text-background uppercase"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCreating(false);
-                setEditingId(null);
-                setForm(emptyForm());
-              }}
+              onClick={closeForm}
               className="border border-border px-4 py-2 text-xs font-semibold tracking-wide uppercase"
             >
-              Cancel
+              {readOnly ? "Close" : "Cancel"}
             </button>
           </div>
         </div>
       ) : null}
 
-      <label className="flex items-center gap-2 text-sm text-muted">
-        <input
-          type="checkbox"
-          checked={showArchived}
-          onChange={(e) => {
-            setShowArchived(e.target.checked);
-            void loadOfferings(e.target.checked).catch((err) =>
-              setError(err instanceof Error ? err.message : "Load failed"),
-            );
-          }}
-        />
-        Show archived
-      </label>
+      <div className="flex gap-1 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setTab("active")}
+          className={cn(
+            "px-4 py-2 text-xs font-semibold tracking-wide uppercase",
+            tab === "active"
+              ? "border-b-2 border-brand text-foreground"
+              : "text-muted hover:text-foreground",
+          )}
+        >
+          Offerings ({activeList.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("archived")}
+          className={cn(
+            "px-4 py-2 text-xs font-semibold tracking-wide uppercase",
+            tab === "archived"
+              ? "border-b-2 border-brand text-foreground"
+              : "text-muted hover:text-foreground",
+          )}
+        >
+          Archived ({archivedList.length})
+        </button>
+      </div>
 
       <div className="overflow-x-auto border border-border">
         <table className="min-w-full text-left text-sm">
@@ -468,17 +634,16 @@ export function OfferingsManager({
                   ) : null}
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      "text-xs font-semibold tracking-wide uppercase",
-                      o.status === "active" && "text-emerald-400",
-                      o.status === "draft" && "text-amber-300",
-                      o.status === "inactive" && "text-muted",
-                      o.status === "archived" && "text-red-300",
-                    )}
-                  >
-                    {o.status}
-                  </span>
+                  <StatusBadge offering={o} />
+                  {o.archivedAt ? (
+                    <div className="mt-1 text-xs text-muted">
+                      {new Date(o.archivedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </div>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-xs text-muted">
                   {o.currentStripePriceId ? (
@@ -489,50 +654,7 @@ export function OfferingsManager({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2 text-xs font-semibold tracking-wide uppercase">
-                    <button
-                      type="button"
-                      className="text-brand hover:underline"
-                      onClick={() => {
-                        setCreating(false);
-                        setEditingId(o.id);
-                        setForm(offeringToForm(o));
-                      }}
-                    >
-                      Edit
-                    </button>
-                    {o.status !== "active" ? (
-                      <button
-                        type="button"
-                        className="hover:underline"
-                        onClick={() => void setStatus(o.id, "active")}
-                      >
-                        Activate
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="hover:underline"
-                        onClick={() => void setStatus(o.id, "inactive")}
-                      >
-                        Deactivate
-                      </button>
-                    )}
-                    {o.status !== "archived" ? (
-                      <button
-                        type="button"
-                        className="hover:underline"
-                        onClick={() => void setStatus(o.id, "archived")}
-                      >
-                        Archive
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="hover:underline"
-                      onClick={() => void onDuplicate(o.id)}
-                    >
-                      Duplicate
-                    </button>
+                    {renderActions(o)}
                   </div>
                 </td>
               </tr>
@@ -540,7 +662,9 @@ export function OfferingsManager({
             {visible.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-muted">
-                  No offerings yet. Create one to get started.
+                  {tab === "archived"
+                    ? "No archived offerings."
+                    : "No offerings yet. Create one to get started."}
                 </td>
               </tr>
             ) : null}
