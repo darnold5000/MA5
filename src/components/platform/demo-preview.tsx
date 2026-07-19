@@ -120,15 +120,15 @@ export function DemoPreviewChrome({
 
             <section>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
-                Client login → Fitness Hub
+                Sign in → hub or Operations
               </p>
               <p className="mt-2">
                 On the marketing site header,{" "}
-                <span className="text-foreground">Client login</span> opens
-                sign-in. After you authenticate (or if you’re already signed
-                in), it becomes{" "}
-                <span className="text-foreground">Fitness Hub</span> and takes
-                you into the member app.
+                <span className="text-foreground">Sign in</span> opens the same
+                login for members and staff. Clients land in the{" "}
+                <span className="text-foreground">Fitness Hub</span>; coaches
+                and admins land in{" "}
+                <span className="text-foreground">Operations</span>.
               </p>
               <p className="mt-2">
                 The Fitness Hub is where members live day to day — not a

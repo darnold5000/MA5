@@ -6,6 +6,24 @@ Existing Auth users who are re-invited receive a **recovery** link (not a second
 
 ---
 
+## Redirect URLs (required for invites)
+
+Invite links use `NEXT_PUBLIC_SITE_URL` as:
+
+`{SITE_URL}/auth/callback?next=/auth/accept-invite`
+
+In **Supabase → Authentication → URL Configuration**:
+
+1. Set **Site URL** to the MA5 host you want as the default (e.g. production MA5 URL), **or** keep a shared Site URL and always rely on the allowlist below.
+2. Add every MA5 host to **Redirect URLs**, including local and production, e.g.:
+   - `http://localhost:3000/auth/callback`
+   - `https://your-ma5-host.example/auth/callback`
+   - `https://your-ma5-host.example/**` (if your project allows wildcards)
+
+If MA5 shares a Supabase project with Dugout Intel and the MA5 callback is **not** allowlisted, Supabase falls back to the project **Site URL** — which is why invite emails can open the Dugout Intel dashboard instead of MA5.
+
+---
+
 ## Invite (new Auth users)
 
 **Subject**

@@ -34,9 +34,14 @@ export function AdminLeadsTable({
 }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [message, setMessage] = useState<{
+    tone: "ok" | "err";
+    text: string;
+  } | null>(null);
 
   async function updateStatus(leadId: string, next: LeadStatus) {
     setPendingId(leadId);
+    setMessage(null);
     await fetch("/api/admin/marketing/leads", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -55,7 +60,8 @@ export function AdminLeadsTable({
       return;
     }
     setPendingId(lead.id);
-    await fetch("/api/admin/members/invite", {
+    setMessage(null);
+    const res = await fetch("/api/admin/members/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -66,7 +72,22 @@ export function AdminLeadsTable({
         leadId: lead.id,
       }),
     });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      ok?: boolean;
+    };
     setPendingId(null);
+    if (!res.ok) {
+      setMessage({
+        tone: "err",
+        text: data.error ?? "Invite failed. Try again.",
+      });
+      return;
+    }
+    setMessage({
+      tone: "ok",
+      text: `Invite sent to ${lead.email}. They should receive an activation email shortly.`,
+    });
     router.refresh();
   }
 
@@ -95,6 +116,18 @@ export function AdminLeadsTable({
 
   return (
     <div className="space-y-5">
+      {message ? (
+        <p
+          role="status"
+          className={
+            message.tone === "ok"
+              ? "border border-border bg-surface px-4 py-3 text-sm text-foreground"
+              : "border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-foreground"
+          }
+        >
+          {message.text}
+        </p>
+      ) : null}
       <div className="overflow-x-auto border border-border">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-border bg-surface text-xs tracking-wide text-muted uppercase">

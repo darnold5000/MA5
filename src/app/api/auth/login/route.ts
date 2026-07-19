@@ -142,11 +142,19 @@ export async function POST(request: Request) {
   }
 
   const next = parsed.data.next;
+  const safeNext =
+    next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+
+  // Staff/coaches land in Operations by default. The marketing "Sign in" link
+  // used to pass next=/app ("Client login"), which forced Mike into the client hub.
   let redirectTo = "/app";
-  if (next && next.startsWith("/") && !next.startsWith("//")) {
-    redirectTo = next;
-  } else if (canAccessAdmin(roles)) {
-    redirectTo = "/admin";
+  if (canAccessAdmin(roles)) {
+    redirectTo =
+      safeNext && safeNext !== "/app" && !safeNext.startsWith("/app/")
+        ? safeNext
+        : "/admin";
+  } else if (safeNext) {
+    redirectTo = safeNext;
   }
 
   const response = NextResponse.json({ ok: true, redirectTo, roles });

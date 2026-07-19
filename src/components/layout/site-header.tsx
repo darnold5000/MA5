@@ -73,11 +73,11 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
             </ButtonLink>
           ) : (
             <ButtonLink
-              href="/login?next=/app"
+              href="/login"
               variant="secondary"
               className="min-h-11 px-5 text-xs"
             >
-              Client login
+              Sign in
             </ButtonLink>
           )}
           <ButtonLink
@@ -155,12 +155,12 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
             </ButtonLink>
           ) : (
             <ButtonLink
-              href="/login?next=/app"
+              href="/login"
               variant="secondary"
               onClick={closeMenu}
               className="mt-2 w-full"
             >
-              Client login
+              Sign in
             </ButtonLink>
           )}
         </nav>

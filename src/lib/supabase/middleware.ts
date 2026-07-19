@@ -163,14 +163,27 @@ export async function updateSession(request: NextRequest) {
 
   if (isAuthRoute && user && access === "active") {
     const next = request.nextUrl.searchParams.get("next");
+    const safeNext =
+      next && next.startsWith("/") && !next.startsWith("//") ? next : null;
     const redirectUrl = request.nextUrl.clone();
-    if (next && next.startsWith("/") && !next.startsWith("//")) {
-      const dest = new URL(next, request.nextUrl.origin);
+    if (canAccessAdmin(roles)) {
+      // Don't trap staff on /app when they used the public Sign in CTA.
+      if (
+        safeNext &&
+        safeNext !== "/app" &&
+        !safeNext.startsWith("/app/")
+      ) {
+        const dest = new URL(safeNext, request.nextUrl.origin);
+        redirectUrl.pathname = dest.pathname;
+        redirectUrl.search = dest.search;
+      } else {
+        redirectUrl.pathname = "/admin";
+        redirectUrl.search = "";
+      }
+    } else if (safeNext) {
+      const dest = new URL(safeNext, request.nextUrl.origin);
       redirectUrl.pathname = dest.pathname;
       redirectUrl.search = dest.search;
-    } else if (canAccessAdmin(roles)) {
-      redirectUrl.pathname = "/admin";
-      redirectUrl.search = "";
     } else {
       redirectUrl.pathname = "/app";
       redirectUrl.search = "";
