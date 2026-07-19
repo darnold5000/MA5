@@ -1,9 +1,8 @@
-import { getCatalogProducts } from "@/features/memberships/catalog";
-import { getStripe } from "@/lib/stripe";
 import {
-  getProductSlugForStripePriceId,
-  getStripePriceIdForProduct,
-} from "@/lib/stripe/prices";
+  getOfferingBySlug,
+  getOfferingByStripePriceId,
+} from "@/lib/billing/catalog";
+import { getStripe } from "@/lib/stripe";
 import {
   createServiceClient,
   isSupabaseConfigured,
@@ -17,128 +16,15 @@ export type ActiveMembership = {
   currentPeriodEnd: string | null;
 };
 
-async function ensureProductRow(slug: string) {
-  const catalog = getCatalogProducts().find((p) => p.slug === slug);
-  if (!catalog) return null;
-
-  const supabase = createServiceClient();
-  const { data: existing } = await supabase
-    .from(MA5_TABLES.products)
-    .select("id")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (existing?.id) return existing.id as string;
-
-  const { data: inserted } = await supabase
-    .from(MA5_TABLES.products)
-    .insert({
-      slug: catalog.slug,
-      name: catalog.name,
-      description: catalog.description,
-      product_type: catalog.productType,
-      price_cents: catalog.priceCents,
-      billing_interval: catalog.billingInterval,
-      session_credits: catalog.sessionCredits,
-      stripe_price_id: getStripePriceIdForProduct(slug) ?? null,
-      active: true,
-    })
-    .select("id")
-    .single();
-
-  return (inserted?.id as string | undefined) ?? null;
-}
-
-/** Sync membership after Stripe Checkout return (works without webhook). */
+/**
+ * Membership state is owned by verified Stripe webhooks.
+ * This helper only reads current membership for UI — it does not mutate from redirects.
+ */
 export async function syncMembershipFromCheckoutSession(
-  sessionId: string,
+  _sessionId: string,
   userId: string,
 ): Promise<ActiveMembership | null> {
-  if (!isSupabaseConfigured()) return null;
-
-  const stripe = getStripe();
-  if (!stripe) return null;
-
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ["line_items", "subscription"],
-  });
-
-  if (session.payment_status !== "paid" && session.status !== "complete") {
-    return null;
-  }
-
-  const metaUser = session.metadata?.user_id ?? session.client_reference_id;
-  if (metaUser && metaUser !== userId) {
-    return null;
-  }
-
-  const productSlug =
-    session.metadata?.product_slug ??
-    (() => {
-      const priceId = session.line_items?.data?.[0]?.price?.id;
-      return priceId ? getProductSlugForStripePriceId(priceId) : undefined;
-    })();
-
-  if (!productSlug) return null;
-
-  const productId = await ensureProductRow(productSlug);
-  if (!productId) return null;
-
-  const supabase = createServiceClient();
-  const customerId =
-    typeof session.customer === "string"
-      ? session.customer
-      : session.customer?.id ?? null;
-
-  if (customerId) {
-    await supabase
-      .from(MA5_TABLES.profiles)
-      .update({ stripe_customer_id: customerId })
-      .eq("id", userId);
-  }
-
-  const subscriptionId =
-    typeof session.subscription === "string"
-      ? session.subscription
-      : session.subscription?.id ?? null;
-
-  const priceId =
-    session.line_items?.data?.[0]?.price &&
-    typeof session.line_items.data[0].price !== "string"
-      ? session.line_items.data[0].price.id
-      : null;
-
-  let periodEnd: string | null = null;
-  if (subscriptionId) {
-    const sub = await stripe.subscriptions.retrieve(subscriptionId);
-    const end = (sub as { current_period_end?: number }).current_period_end;
-    if (end) periodEnd = new Date(end * 1000).toISOString();
-  }
-
-  const row = {
-    user_id: userId,
-    product_id: productId,
-    status: "active" as const,
-    stripe_subscription_id: subscriptionId,
-    stripe_price_id: priceId,
-    current_period_end: periodEnd,
-  };
-
-  if (subscriptionId) {
-    await supabase.from(MA5_TABLES.memberships).upsert(row, {
-      onConflict: "stripe_subscription_id",
-    });
-  } else {
-    await supabase.from(MA5_TABLES.memberships).insert(row);
-  }
-
-  const catalog = getCatalogProducts().find((p) => p.slug === productSlug);
-  return {
-    productSlug,
-    productName: catalog?.name ?? productSlug,
-    status: "active",
-    currentPeriodEnd: periodEnd,
-  };
+  return getActiveMembershipForUser(userId);
 }
 
 export async function getActiveMembershipForUser(
@@ -147,8 +33,6 @@ export async function getActiveMembershipForUser(
   if (!isSupabaseConfigured()) return null;
 
   try {
-    // Stripe is source of truth for “current plan” (avoids locking Plan after
-    // a cancel that still has remaining period / stale DB rows).
     const fromStripe = await hydrateMembershipFromStripeCustomer(userId);
     if (fromStripe) return fromStripe;
 
@@ -225,8 +109,6 @@ async function hydrateMembershipFromStripeCustomer(
       !s.cancel_at_period_end,
   );
   if (!active) {
-    // Subscription canceled or scheduled to end — clear local "active" rows
-    // so Plan can be chosen again for demos.
     const ending = subs.data.find(
       (s) =>
         s.status === "active" ||
@@ -243,37 +125,66 @@ async function hydrateMembershipFromStripeCustomer(
   }
 
   const priceId = active.items.data[0]?.price?.id;
-  const productSlug = priceId
-    ? getProductSlugForStripePriceId(priceId)
-    : undefined;
-  if (!productSlug) return null;
-
-  const productId = await ensureProductRow(productSlug);
-  if (!productId) return null;
-
-  const periodEndRaw = (active as unknown as { current_period_end?: number })
-    .current_period_end;
-  const periodEnd = periodEndRaw
-    ? new Date(periodEndRaw * 1000).toISOString()
+  const offering = priceId
+    ? await getOfferingByStripePriceId(priceId)
     : null;
+
+  if (!offering) {
+    const slug = active.metadata?.product_slug;
+    if (slug) {
+      const bySlug = await getOfferingBySlug(slug, { useServiceRole: true });
+      if (bySlug) {
+        return finalizeHydratedMembership({
+          userId,
+          offering: bySlug,
+          active,
+          priceId: priceId ?? null,
+        });
+      }
+    }
+    return null;
+  }
+
+  return finalizeHydratedMembership({
+    userId,
+    offering,
+    active,
+    priceId: priceId ?? null,
+  });
+}
+
+async function finalizeHydratedMembership(params: {
+  userId: string;
+  offering: { id: string; slug: string; name: string };
+  active: { id: string; status: string };
+  priceId: string | null;
+}): Promise<ActiveMembership> {
+  const supabase = createServiceClient();
+  const stripe = getStripe();
+  let periodEnd: string | null = null;
+
+  if (stripe) {
+    const sub = await stripe.subscriptions.retrieve(params.active.id);
+    const end = (sub as { current_period_end?: number }).current_period_end;
+    if (end) periodEnd = new Date(end * 1000).toISOString();
+  }
 
   await supabase.from(MA5_TABLES.memberships).upsert(
     {
-      user_id: userId,
-      product_id: productId,
-      status: active.status === "trialing" ? "trialing" : "active",
-      stripe_subscription_id: active.id,
-      stripe_price_id: priceId ?? null,
+      user_id: params.userId,
+      product_id: params.offering.id,
+      status: params.active.status === "trialing" ? "trialing" : "active",
+      stripe_subscription_id: params.active.id,
+      stripe_price_id: params.priceId,
       current_period_end: periodEnd,
     },
     { onConflict: "stripe_subscription_id" },
   );
 
-  const catalog = getCatalogProducts().find((p) => p.slug === productSlug);
   return {
-    productSlug,
-    productName: catalog?.name ?? productSlug,
-    status: active.status === "trialing" ? "trialing" : "active",
+    productSlug: params.offering.slug,
+    productName: params.offering.name,
+    status: params.active.status === "trialing" ? "trialing" : "active",
     currentPeriodEnd: periodEnd,
   };
 }

@@ -1,57 +1,66 @@
-# Stripe test setup (MA5 Mindbody-replacement demo)
+# Stripe test setup (MA5 catalog billing)
 
 Use **Stripe test mode** so no real charges happen.
 
-## 1. Stripe Dashboard
+Offerings (products + prices) are managed in **Admin → Offerings**. Saving an offering creates Stripe Product/Price objects automatically. Do **not** store Price IDs in Vercel env vars.
+
+## 1. Stripe Dashboard (account credentials only)
 
 1. Create/sign in at https://dashboard.stripe.com
-2. Toggle **Test mode** ON (switch in the Dashboard).
+2. Toggle **Test mode** ON.
 3. Developers → **API keys** → copy:
    - Publishable key (`pk_test_…`)
    - Secret key (`sk_test_…`)
-4. Products → **Add product** for each membership you want to sell (example: “Small Group 8x / month”, recurring monthly, $150).
-5. Open each product’s **Price** → copy the Price ID (`price_…`).
 
-Suggested Price env mapping (from `.env.example`):
+You do **not** need to create Products/Prices in the Dashboard for MA5 catalog offerings.
 
-| Env var | Product idea |
-| --- | --- |
-| `STRIPE_PRICE_SG_14` | Small group 14x / month |
-| `STRIPE_PRICE_SG_12` | Small group 12x / month |
-| `STRIPE_PRICE_SG_8` | Small group 8x / month |
-| `STRIPE_PRICE_SG_4` | Small group 4x / month |
-| `STRIPE_PRICE_OG_STANDARD` | Open Gym |
-| `STRIPE_PRICE_OG_HOUSEHOLD` | Open Gym household |
-| `STRIPE_PRICE_OG_SMALL_GROUP` | Open Gym small-group add-on |
-| `STRIPE_PRICE_OG_SEMI_PRIVATE` | Open Gym semi-private add-on |
-
-You can start with **one** price (e.g. only `STRIPE_PRICE_SG_8`) to test Checkout.
-
-## 2. Vercel env (this deploy)
-
-Project → Settings → Environment Variables → add for the preview/production you use:
+## 2. Environment variables
 
 ```
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_SECRET_KEY=sk_test_...
-STRIPE_PRICE_SG_8=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 NEXT_PUBLIC_SITE_URL=https://your-demo-host.example
 ```
 
-Redeploy after saving.
+Redeploy after saving account credentials. Adding or repricing an offering does **not** require a redeploy.
 
-## 3. Webhook (needed for membership status sync)
+## 3. Seed + sync catalog
+
+1. Apply Supabase migration `013_stripe_catalog.sql` (seeds Mindbody plans into `ma5_products`).
+2. Sign in as staff → **Admin → Offerings**.
+3. Click **Sync missing to Stripe** (or edit/save each offering).
+
+Checkout reads the active offering + `current_stripe_price_id` from Supabase.
+
+## 4. Webhook (source of truth for payments)
 
 1. Developers → **Webhooks** → Add endpoint
 2. Endpoint URL: `https://your-demo-host.example/api/stripe/webhook`
-3. Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+3. Events:
+   - `checkout.session.completed`
+   - `checkout.session.expired`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.paid`
+   - `invoice.payment_failed`
+   - `payment_intent.succeeded`
+   - `payment_intent.payment_failed`
+   - `charge.refunded`
 4. Copy signing secret → `STRIPE_WEBHOOK_SECRET=whsec_...`
 
-Without Supabase, Checkout can still open; membership “active” status won’t persist until Supabase + webhook are both set.
+Membership and ledger rows are written by the webhook — not by the Checkout success redirect.
 
-## 4. Auth for Checkout
+Local forwarding:
 
-Checkout requires a signed-in user (not the “Continue as client” demo cookie).
+```bash
+npx stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+## 5. Auth for Checkout
+
+Checkout requires a signed-in user.
 
 **Demo client account**
 
@@ -70,38 +79,10 @@ Checkout requires a signed-in user (not the “Continue as client” demo cookie
 | Password | `1Password` |
 | Role | `coach` (staff access to `/admin`) |
 
-Create/update coach (needs service role in `.env.local`):
+## 6. Smoke test
 
-```bash
-node --env-file=.env.local scripts/create-demo-coach.mjs
-```
-
-Or in Supabase Dashboard → Authentication → Users → Add user (`mike@ma5.com` / `1Password`, auto-confirm), then SQL:
-
-```sql
-insert into public.ma5_user_roles (user_id, role)
-select id, 'coach' from public.ma5_profiles where email ilike 'mike@ma5.com'
-on conflict (user_id, role) do nothing;
-
-update public.ma5_profiles
-set full_name = 'Mike'
-where email ilike 'mike@ma5.com';
-```
-
-Then:
-
-1. `/login` → sign in with the account above  
-2. `/app/billing` (Plan) → choose a membership  
-3. Pay with test card `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP  
-
-Same card works for **Pay online** on a session from Reserve.
-
-The in-app **Demo guide** button (bottom right) repeats these steps for visitors.
-
-## 5. Local optional
-
-```bash
-cp .env.example .env.local
-# paste keys
-npx stripe listen --forward-to localhost:3000/api/stripe/webhook
-```
+1. Admin → Offerings → create or sync an active membership.
+2. Sign in as client → `/app/billing` → Choose plan.
+3. Complete Stripe test Checkout (`4242…`).
+4. Confirm webhook marks membership active and ledger rows appear (`ma5_checkout_sessions`, `ma5_subscriptions` / `ma5_payments`).
+5. Deactivate the offering in admin — it disappears from storefront; existing subscribers remain.

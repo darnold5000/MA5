@@ -2,7 +2,7 @@ import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { mergeSessions, readOpsState } from "@/features/admin/ops-store";
 import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
-import { getCatalogProducts } from "@/features/memberships/catalog";
+import { listActiveOfferings } from "@/lib/billing/catalog";
 import type { ProductItem, MembershipItem } from "@/features/scheduling/fallback-data";
 import { durationFromRange } from "@/features/scheduling/format";
 
@@ -61,7 +61,23 @@ export async function getSessionById(id: string): Promise<SessionItem | null> {
 }
 
 export async function listProducts(): Promise<ProductItem[]> {
-  return getCatalogProducts();
+  try {
+    const offerings = await listActiveOfferings();
+    return offerings.map((o) => ({
+      id: o.id,
+      slug: o.slug,
+      name: o.name,
+      description: o.description ?? "",
+      productType: o.productType,
+      priceCents: o.priceCents,
+      billingInterval: o.billingInterval,
+      sessionCredits: o.sessionCredits,
+      stripePriceConfigured: Boolean(o.currentStripePriceId),
+      source: "database" as const,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function listUserBookings(userId: string | null): Promise<BookingItem[]> {

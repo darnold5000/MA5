@@ -80,24 +80,28 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
     ? await getActiveMembershipForUser(sessionUser.id)
     : null;
 
+  // Webhooks own membership writes. Success redirect only refreshes UI state.
   let justActivated = false;
-  if (sessionUser && checkout === "success" && sessionId) {
+  let awaitingWebhook = false;
+  if (sessionUser && checkout === "success") {
     try {
-      const synced = await syncMembershipFromCheckoutSession(
-        sessionId,
+      const refreshed = await syncMembershipFromCheckoutSession(
+        sessionId ?? "",
         sessionUser.id,
       );
-      if (synced) {
-        activeMembership = synced;
+      if (refreshed) {
+        activeMembership = refreshed;
         justActivated = true;
       } else if (activeMembership) {
         justActivated = true;
+      } else {
+        awaitingWebhook = true;
       }
     } catch {
-      if (checkout === "success") justActivated = true;
+      awaitingWebhook = true;
     }
   } else if (checkout === "success") {
-    justActivated = true;
+    awaitingWebhook = true;
   }
 
   const products = await listProducts();
@@ -143,6 +147,16 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           You&apos;re all set — your membership is active
           {activeMembership ? ` (${activeMembership.productName})` : ""}.
           Manage billing anytime below.
+        </div>
+      ) : null}
+
+      {awaitingWebhook ? (
+        <div
+          className="border border-border bg-surface px-4 py-3 text-sm text-muted"
+          role="status"
+        >
+          Payment received. Membership activates when Stripe confirms the
+          webhook — refresh in a moment if your plan is not shown yet.
         </div>
       ) : null}
 

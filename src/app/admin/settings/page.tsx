@@ -49,14 +49,15 @@ export default async function AdminSettingsPage() {
               Memberships
             </p>
             <p className="mt-2 text-sm text-muted">
-              Plans clients can buy — pricing and Stripe products.
+              Plans clients can buy — managed in Offerings (Stripe sync is
+              automatic).
             </p>
           </div>
           <Link
-            href="/admin/products"
+            href="/admin/offerings"
             className="text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
           >
-            Manage products →
+            Manage offerings →
           </Link>
         </div>
       </section>
@@ -85,7 +86,8 @@ export default async function AdminSettingsPage() {
           </span>
         </div>
         <p className="mt-4 text-xs text-muted">
-          Keys live in environment variables — never paste secrets into Settings.
+          Account keys live in environment variables. Offering Price IDs are
+          stored in Supabase and managed under Offerings.
         </p>
       </section>
 
@@ -95,6 +97,11 @@ export default async function AdminSettingsPage() {
         </p>
         <div className="mt-4 divide-y divide-border border border-border bg-background">
           {[
+            {
+              href: "/admin/offerings",
+              title: "Offerings",
+              body: "Create, price, and publish plans to Stripe.",
+            },
             {
               href: "/admin/schedule",
               title: "Schedule tools",

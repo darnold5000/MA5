@@ -1,10 +1,9 @@
 /**
- * Pricing sourced from the public Mindbody Explore location page for
- * MA5 Fitness LLC / MA5 Performance:
- * https://www.mindbodyonline.com/explore/locations/ma5fitness-llc
+ * Historical Mindbody pricing snapshot (verified 2026-07-14).
  *
- * Verified via Mindbody marketplace APIs on 2026-07-14.
- * Do not invent prices — update this file when Mindbody packages change.
+ * Runtime sellable catalog lives in Supabase (`ma5_products` / `ma5_prices`),
+ * seeded by migration `013_stripe_catalog.sql` and managed from Admin → Offerings.
+ * Do not use this file for Checkout or storefront pricing.
  */
 
 export type PricingItem = {
@@ -22,6 +21,7 @@ export type PricingGroup = {
   items: PricingItem[];
 };
 
+/** @deprecated Seed reference only — see Admin → Offerings / ma5_products. */
 export const trainingPricingGroups: PricingGroup[] = [
   {
     id: "small-group-memberships",

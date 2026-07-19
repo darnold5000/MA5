@@ -22,6 +22,11 @@ const SIDEBAR = [
   },
   { href: "/admin/reports", label: "Reports", match: "prefix" as const },
   {
+    href: "/admin/offerings",
+    label: "Offerings",
+    match: "prefix" as const,
+  },
+  {
     href: "/admin/marketing",
     label: "Growth",
     match: "marketing" as const,

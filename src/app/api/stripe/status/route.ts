@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 
+import { listActiveOfferings } from "@/lib/billing/catalog";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
-import { getStripePriceIdForProduct } from "@/lib/stripe/prices";
 
 /**
- * Safe Stripe diagnostics for the booking demo — no secret values returned.
+ * Safe Stripe diagnostics — no secret values returned.
  */
 export async function GET() {
   const secret = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
   const publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
-  const priceId = getStripePriceIdForProduct("sg-14") ?? "";
 
   const secretMode = secret.startsWith("sk_live_")
     ? "live"
@@ -27,6 +26,19 @@ export async function GET() {
         ? "unknown"
         : "missing";
 
+  let offeringsLinked = 0;
+  let samplePriceId: string | null = null;
+
+  try {
+    const offerings = await listActiveOfferings();
+    offeringsLinked = offerings.filter((o) => o.currentStripePriceId).length;
+    samplePriceId =
+      offerings.find((o) => o.currentStripePriceId)?.currentStripePriceId ??
+      null;
+  } catch {
+    // catalog unavailable
+  }
+
   let priceLookup: {
     ok: boolean;
     message?: string;
@@ -34,11 +46,11 @@ export async function GET() {
     currency?: string | null;
   } = { ok: false, message: "Stripe not configured" };
 
-  if (isStripeConfigured() && priceId) {
+  if (isStripeConfigured() && samplePriceId) {
     const stripe = getStripe();
     if (stripe) {
       try {
-        const price = await stripe.prices.retrieve(priceId);
+        const price = await stripe.prices.retrieve(samplePriceId);
         priceLookup = {
           ok: true,
           amount: price.unit_amount,
@@ -51,22 +63,27 @@ export async function GET() {
         };
       }
     }
-  } else if (!priceId) {
-    priceLookup = { ok: false, message: "STRIPE_PRICE_SG_14 is not set" };
+  } else if (!samplePriceId) {
+    priceLookup = {
+      ok: false,
+      message:
+        "No offerings with Stripe Price IDs. Open Admin → Offerings and sync.",
+    };
   }
 
   return NextResponse.json({
     secretMode,
     publishableMode,
-    priceIdSet: Boolean(priceId),
-    priceIdStartsWithPrice: priceId.startsWith("price_"),
-    priceIdSuffix: priceId ? priceId.slice(-6) : null,
+    offeringsLinked,
+    priceIdSet: Boolean(samplePriceId),
+    priceIdStartsWithPrice: samplePriceId?.startsWith("price_") ?? false,
+    priceIdSuffix: samplePriceId ? samplePriceId.slice(-6) : null,
     priceLookup,
     hint:
       secretMode === "live" && priceLookup.ok === false
-        ? "Vercel is using a LIVE secret key. Switch to sk_test_ from the same sandbox where the price was created."
+        ? "Vercel is using a LIVE secret key. Switch to sk_test_ for demos."
         : secretMode === "test" && priceLookup.ok === false
-          ? "Test key is loaded but price not found — key and price are from different Stripe accounts/sandboxes."
+          ? "Test key is loaded but catalog price not found — sync offerings from Admin → Offerings."
           : undefined,
   });
 }
