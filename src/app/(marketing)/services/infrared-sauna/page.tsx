@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
+import { SaunaVideo } from "@/components/marketing/sauna-video";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getBookingHref } from "@/content/booking";
 import { saunaCopy } from "@/content/services";
@@ -38,17 +39,10 @@ export default function SaunaPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden border border-border bg-black">
-            <div className="relative aspect-video w-full">
-              <iframe
-                src={saunaCopy.video.embedUrl}
-                title={saunaCopy.video.title}
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 h-full w-full"
-              />
-            </div>
-          </div>
+          <SaunaVideo
+            embedUrl={saunaCopy.video.embedUrl}
+            title={saunaCopy.video.title}
+          />
         </div>
       </section>
 
