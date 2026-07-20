@@ -171,7 +171,7 @@ export function AppShell({
   }, [menuOpen]);
 
   return (
-    <HubThemeProvider>
+    <HubThemeProvider scope="app">
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8">
@@ -192,7 +192,6 @@ export function AppShell({
             </span>
           </Link>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <ThemeToggle />
             <Link
               href="/app/messages"
               className="relative inline-flex size-11 items-center justify-center border border-border text-muted transition touch-manipulation hover:border-brand hover:text-foreground"
@@ -254,6 +253,7 @@ export function AppShell({
                 </svg>
               )}
             </button>
+            <ThemeToggle />
           </div>
         </div>
 
@@ -342,8 +342,7 @@ export function AppShell({
               );
             })}
           </nav>
-          <div className="mt-auto space-y-2 border-t border-border p-4">
-            <ThemeToggle showLabel className="w-full" />
+          <div className="mt-auto border-t border-border p-4">
             <SignOutButton
               showIcon
               className="flex w-full items-center gap-2 px-3 py-2 text-sm tracking-wide text-muted transition hover:text-foreground"

@@ -31,6 +31,45 @@
   color: var(--brand);
 }
 
+/* Theme-aware status colors inside Fitness Hub / Operations */
+.hub-theme {
+  --hub-success-fg: #34d399;
+  --hub-success-bg: rgb(6 78 59 / 0.3);
+  --hub-success-border: rgb(4 120 87 / 0.4);
+  --hub-warning-fg: #fbbf24;
+  --hub-positive-fg: #34d399;
+}
+
+.hub-theme[data-hub-theme="light"] {
+  --hub-success-fg: #047857;
+  --hub-success-bg: #ecfdf5;
+  --hub-success-border: #6ee7b7;
+  --hub-warning-fg: #b45309;
+  --hub-positive-fg: #047857;
+}
+
+.hub-theme .hub-badge-success {
+  border: 1px solid var(--hub-success-border);
+  background-color: var(--hub-success-bg);
+  color: var(--hub-success-fg);
+}
+
+.hub-theme .hub-text-success {
+  color: var(--hub-success-fg);
+}
+
+.hub-theme .hub-text-warning {
+  color: var(--hub-warning-fg);
+}
+
+.hub-theme .hub-dot-success {
+  background-color: var(--hub-success-fg);
+}
+
+.hub-theme .hub-dot-warning {
+  background-color: var(--hub-warning-fg);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

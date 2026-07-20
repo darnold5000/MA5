@@ -56,7 +56,7 @@ function SaveBar({
       >
         {pending ? "Saving…" : "Save"}
       </button>
-      {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
+      {message ? <p className="text-sm hub-text-success">{message}</p> : null}
       {error ? (
         <p className="text-sm text-brand" role="alert">
           {error}
@@ -354,7 +354,7 @@ export function ProfileWaiversList({ waivers }: { waivers: ClientWaiver[] }) {
               </p>
             </div>
             {w.status === "signed" ? (
-              <span className="text-xs font-semibold tracking-wide text-emerald-400 uppercase">
+              <span className="text-xs font-semibold tracking-wide hub-text-success uppercase">
                 Signed
               </span>
             ) : (
@@ -458,7 +458,7 @@ export function ProfilePasswordForm({ email }: { email: string }) {
         </div>
       )}
       {!open && message ? (
-        <p className={cn("mt-3 text-sm text-emerald-400")}>{message}</p>
+        <p className={cn("mt-3 text-sm hub-text-success")}>{message}</p>
       ) : null}
       {!open && error ? (
         <p className="mt-3 text-sm text-brand" role="alert">

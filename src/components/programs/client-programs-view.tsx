@@ -162,7 +162,7 @@ export function ClientProgramsView({ days, progress }: Props) {
                 <span>
                   {d.entry.entryDate} · {d.entry.title}
                 </span>
-                <span className="text-xs font-semibold tracking-wide text-emerald-400 uppercase">
+                <span className="text-xs font-semibold tracking-wide hub-text-success uppercase">
                   Completed ✔
                 </span>
               </Link>

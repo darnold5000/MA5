@@ -14,6 +14,7 @@ import {
   readStoredHubTheme,
   storeHubTheme,
   type HubTheme,
+  type HubThemeScope,
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -25,25 +26,34 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function HubThemeProvider({ children }: { children: React.ReactNode }) {
+export function HubThemeProvider({
+  children,
+  scope,
+}: {
+  children: React.ReactNode;
+  scope: HubThemeScope;
+}) {
   const [theme, setThemeState] = useState<HubTheme>(DEFAULT_HUB_THEME);
 
   useEffect(() => {
-    setThemeState(readStoredHubTheme());
-  }, []);
+    setThemeState(readStoredHubTheme(scope));
+  }, [scope]);
 
-  const setTheme = useCallback((next: HubTheme) => {
-    setThemeState(next);
-    storeHubTheme(next);
-  }, []);
+  const setTheme = useCallback(
+    (next: HubTheme) => {
+      setThemeState(next);
+      storeHubTheme(scope, next);
+    },
+    [scope],
+  );
 
   const toggleTheme = useCallback(() => {
     setThemeState((current) => {
       const next = current === "dark" ? "light" : "dark";
-      storeHubTheme(next);
+      storeHubTheme(scope, next);
       return next;
     });
-  }, []);
+  }, [scope]);
 
   const value = useMemo(
     () => ({ theme, setTheme, toggleTheme }),

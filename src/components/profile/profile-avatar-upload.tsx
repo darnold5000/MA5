@@ -119,7 +119,7 @@ export function ProfileAvatarUpload({
           {pending ? "Uploading…" : "Change photo"}
         </button>
         {message ? (
-          <p className="mt-2 text-xs text-emerald-400">{message}</p>
+          <p className="mt-2 text-xs hub-text-success">{message}</p>
         ) : null}
         {error ? (
           <p className="mt-2 text-xs text-brand" role="alert">

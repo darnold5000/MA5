@@ -94,7 +94,7 @@ function StatusBadge({ offering }: { offering: Offering }) {
       className={cn(
         "inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-semibold tracking-wide",
         offering.status === "active" &&
-          "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
+          "hub-badge-success",
         offering.status === "inactive" &&
           "border-border bg-background text-muted",
         offering.status === "archived" &&
@@ -647,7 +647,7 @@ export function OfferingsManager({
                 </td>
                 <td className="px-4 py-3 text-xs text-muted">
                   {o.currentStripePriceId ? (
-                    <span className="text-emerald-400">Linked</span>
+                    <span className="hub-text-success">Linked</span>
                   ) : (
                     <span className="text-amber-300">Needs sync</span>
                   )}

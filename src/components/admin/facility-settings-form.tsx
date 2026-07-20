@@ -265,7 +265,7 @@ export function FacilitySettingsForm({
                 </p>
                 <p className="mt-1 text-sm text-muted">{c.roleLabel}</p>
                 {c.status === "invited" ? (
-                  <p className="mt-0.5 text-xs text-amber-400">Invite pending</p>
+                  <p className="mt-0.5 text-xs hub-text-warning">Invite pending</p>
                 ) : null}
               </div>
               <p className="text-sm text-muted">{c.email}</p>
@@ -293,7 +293,7 @@ export function FacilitySettingsForm({
           {invitePending ? "Inviting…" : "Invite coach"}
         </button>
         {inviteMessage ? (
-          <p className="mt-2 text-sm text-emerald-400">{inviteMessage}</p>
+          <p className="mt-2 text-sm hub-text-success">{inviteMessage}</p>
         ) : null}
         {inviteError ? (
           <p className="mt-2 text-sm text-brand" role="alert">
@@ -432,7 +432,7 @@ export function FacilitySettingsForm({
         </button>
       </section>
 
-      {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
+      {message ? <p className="text-sm hub-text-success">{message}</p> : null}
       {error ? (
         <p className="text-sm text-brand" role="alert">
           {error}

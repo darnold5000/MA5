@@ -83,7 +83,7 @@ export function AdminShell({
     pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
   return (
-    <HubThemeProvider>
+    <HubThemeProvider scope="admin">
     <div
       className={cn(
         "flex min-h-full flex-1",
@@ -168,7 +168,6 @@ export function AdminShell({
             programsLight ? "border-[var(--th-border)]" : "border-border",
           )}
         >
-          <ThemeToggle showLabel className="w-full" />
           <button
             type="button"
             onClick={() => setDemoOpen(true)}
@@ -260,7 +259,6 @@ export function AdminShell({
             </div>
           </Link>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             <ClientHubPreview
               label="Preview"
               className="text-xs font-semibold tracking-wide uppercase"
@@ -273,7 +271,19 @@ export function AdminShell({
                   : "text-muted hover:text-foreground",
               )}
             />
+            <ThemeToggle />
           </div>
+        </header>
+
+        <header
+          className={cn(
+            "sticky top-0 z-40 hidden items-center justify-end border-b px-6 py-2.5 backdrop-blur lg:flex",
+            programsLight
+              ? "border-[var(--th-border)] bg-[var(--th-surface)]/95"
+              : "border-border bg-background/95",
+          )}
+        >
+          <ThemeToggle />
         </header>
 
         <main

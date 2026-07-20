@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 
 type ThemeToggleProps = {
   className?: string;
-  showLabel?: boolean;
 };
 
 function SunIcon({ className }: { className?: string }) {
@@ -43,26 +42,30 @@ function MoonIcon({ className }: { className?: string }) {
   );
 }
 
-export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) {
+export function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useHubTheme();
   const isDark = theme === "dark";
+  const label = isDark ? "Dark mode" : "Light mode";
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "inline-flex items-center justify-center gap-2 border border-border text-muted transition hover:border-brand hover:text-foreground",
-        showLabel ? "min-h-10 px-3 text-xs font-semibold tracking-wide uppercase" : "size-11",
+        "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-border px-3 text-foreground transition hover:border-brand sm:px-4",
         className,
       )}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      title={isDark ? "Light mode" : "Dark mode"}
+      aria-label={`${label}. Switch to ${isDark ? "light" : "dark"} mode.`}
+      title={label}
     >
-      {isDark ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-      {showLabel ? (
-        <span>{isDark ? "Light mode" : "Dark mode"}</span>
-      ) : null}
+      {isDark ? (
+        <MoonIcon className="h-5 w-5 shrink-0" />
+      ) : (
+        <SunIcon className="h-5 w-5 shrink-0" />
+      )}
+      <span className="text-xs font-semibold tracking-wide whitespace-nowrap uppercase">
+        {label}
+      </span>
     </button>
   );
 }

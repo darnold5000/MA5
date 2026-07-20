@@ -73,13 +73,13 @@ export default async function AdminSettingsPage() {
           <span
             className={cn(
               "inline-flex items-center gap-2 text-sm font-semibold",
-              stripeReady ? "text-emerald-400" : "text-amber-400",
+              stripeReady ? "hub-text-success" : "hub-text-warning",
             )}
           >
             <span
               className={cn(
                 "size-2 rounded-full",
-                stripeReady ? "bg-emerald-400" : "bg-amber-400",
+                stripeReady ? "hub-dot-success" : "hub-dot-warning",
               )}
             />
             {stripeReady ? "Connected" : "Not configured"}

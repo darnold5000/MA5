@@ -49,10 +49,10 @@ const PAYMENT_STATUS: Record<
   PaymentRow["status"],
   { label: string; className: string }
 > = {
-  paid: { label: "Paid", className: "text-emerald-400" },
+  paid: { label: "Paid", className: "hub-text-success" },
   failed: { label: "Failed", className: "text-brand" },
   refunded: { label: "Refunded", className: "text-muted" },
-  pending: { label: "Pending", className: "text-amber-400" },
+  pending: { label: "Pending", className: "hub-text-warning" },
 };
 
 export function TodaySchedule({ rows }: { rows: ScheduleRow[] }) {
@@ -253,7 +253,7 @@ export function TopPrograms({ programs }: { programs: ProgramPopularity[] }) {
             <p
               className={cn(
                 "mt-3 text-sm font-semibold",
-                p.changePercent >= 0 ? "text-emerald-400" : "text-brand",
+                p.changePercent >= 0 ? "hub-text-positive" : "text-brand",
               )}
             >
               {p.changePercent >= 0 ? "↑" : "↓"} {Math.abs(p.changePercent)}%
@@ -276,7 +276,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
             className="flex flex-wrap items-baseline justify-between gap-3 px-5 py-4"
           >
             <p className="text-sm text-foreground">
-              <span className="mr-2 text-emerald-400" aria-hidden>
+              <span className="mr-2 hub-text-positive" aria-hidden>
                 ✔
               </span>
               {item.text}

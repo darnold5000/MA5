@@ -37,8 +37,7 @@ function Chip({
     <span
       className={cn(
         "inline-flex items-center border px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase",
-        tone === "success" &&
-          "border-emerald-700/40 bg-emerald-950/30 text-emerald-400",
+        tone === "success" && "hub-badge-success",
         tone === "brand" && "border-brand/40 text-brand",
         tone === "default" && "border-border text-muted",
       )}

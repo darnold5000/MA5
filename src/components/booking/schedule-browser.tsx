@@ -191,8 +191,8 @@ export function ScheduleBrowser({
             className={cn(
               "inline-flex min-h-9 items-center border px-3 text-[11px] font-semibold tracking-wide uppercase",
               service === f.id
-                ? "border-brand text-foreground"
-                : "border-border text-muted hover:text-foreground",
+                ? "border-brand bg-brand text-brand-foreground"
+                : "border-border text-muted hover:border-brand hover:text-foreground",
             )}
           >
             {f.label}
@@ -232,7 +232,7 @@ export function ScheduleBrowser({
                         {session.title}
                       </h3>
                       {isEnrolled ? (
-                        <span className="inline-flex items-center gap-1.5 border border-emerald-700/40 bg-emerald-950/30 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">
+                        <span className="inline-flex items-center gap-1.5 hub-badge-success px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
                           <span aria-hidden>●</span> Enrolled
                         </span>
                       ) : null}
