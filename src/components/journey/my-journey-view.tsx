@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -280,6 +279,31 @@ export function MyJourneyView({
     void refresh();
   }
 
+  async function removePhoto(photoId: string) {
+    setPending(true);
+    setError(null);
+
+    if (demoMode) {
+      setPhotos((current) => current.filter((photo) => photo.id !== photoId));
+      setPending(false);
+      setMessage("Photo deleted");
+      return;
+    }
+
+    const res = await fetch(`/api/journey/photos?photoId=${photoId}`, {
+      method: "DELETE",
+    });
+    setPending(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Could not delete photo");
+      return;
+    }
+    setPhotos((current) => current.filter((photo) => photo.id !== photoId));
+    setMessage("Photo deleted");
+    void refresh();
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -504,20 +528,18 @@ export function MyJourneyView({
               description="Upload photos over time to see how far you've come. Before/after comparisons are coming soon."
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {photos.map((photo) => (
                 <figure
                   key={photo.id}
                   className="overflow-hidden border border-border bg-surface"
                 >
-                  <div className="relative aspect-[3/4]">
-                    <Image
+                  <div className="flex items-center justify-center bg-black/5 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={photo.imageUrl}
                       alt={photo.caption ?? "Progress photo"}
-                      fill
-                      unoptimized
-                      className="object-cover"
-                      sizes="(max-width: 640px) 100vw, 50vw"
+                      className="max-h-56 w-full max-w-[220px] object-contain"
                     />
                   </div>
                   <figcaption className="border-t border-border p-4">
@@ -529,6 +551,14 @@ export function MyJourneyView({
                         {photo.caption}
                       </p>
                     ) : null}
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(photo.id)}
+                      disabled={pending}
+                      className="mt-4 min-h-10 text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground disabled:opacity-50"
+                    >
+                      Delete photo
+                    </button>
                   </figcaption>
                 </figure>
               ))}
@@ -577,14 +607,12 @@ function TimelineItem({ entry }: { entry: JourneyTimelineEntry }) {
         <p className="mt-2 text-sm text-muted">{entry.caption}</p>
       ) : null}
       {entry.type === "photo_uploaded" && entry.imageUrl ? (
-        <div className="relative mt-3 aspect-[4/3] max-w-xs overflow-hidden border border-border">
-          <Image
+        <div className="mt-3 flex max-w-xs items-center justify-center border border-border bg-black/5 p-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={entry.imageUrl}
             alt=""
-            fill
-            unoptimized
-            className="object-cover"
-            sizes="320px"
+            className="max-h-48 w-full object-contain"
           />
         </div>
       ) : null}
