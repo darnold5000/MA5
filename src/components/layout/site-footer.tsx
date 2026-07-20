@@ -116,6 +116,14 @@ export function SiteFooter() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href="/login?next=/admin"
+                className="transition hover:text-foreground"
+              >
+                Staff login
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
@@ -125,19 +133,12 @@ export function SiteFooter() {
           <p>
             © {year} {siteConfig.name}. All rights reserved.
           </p>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <FooterCredit
-              clientName={siteConfig.name}
-              signalWorksUrl={siteConfig.signalWorks.url}
-              variant={siteConfig.signalWorks.creditVariant}
-            />
-            <Link
-              href="/login?next=/admin"
-              className="transition hover:text-foreground"
-            >
-              Staff login
-            </Link>
-          </div>
+          <FooterCredit
+            clientName={siteConfig.name}
+            signalWorksUrl={siteConfig.signalWorks.url}
+            signalWorksIconSrc={siteConfig.signalWorks.iconSrc}
+            variant={siteConfig.signalWorks.creditVariant}
+          />
         </div>
       </div>
     </footer>
