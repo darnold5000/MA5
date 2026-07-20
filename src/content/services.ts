@@ -108,8 +108,8 @@ export const coachCopy = {
     "As a NASM Certified Personal Trainer and NASM Certified Nutrition Coach, my coaching philosophy is centered around functional strength training while developing all five key components of fitness: muscular strength, muscular endurance, cardiovascular endurance, flexibility, and body composition. I believe lasting results come from consistent, individualized programming that fits your lifestyle—not one-size-fits-all workouts or quick fixes.",
     "Whether your goal is to lose weight, build muscle, improve athletic performance, or simply become the healthiest version of yourself, my mission is to help you move better, perform better, and build confidence that extends far beyond the gym.",
   ],
-  imageSrc: "/images/team/trainer.JPG",
-  imageAlt: "Mike Anderson, founder of MA5 Performance",
+  imageSrc: "/images/facility/facility-1.jpeg",
+  imageAlt: "MA5 Performance sports coaching session",
 } as const;
 
 export const communityCopy = {
@@ -195,6 +195,10 @@ export const openGymCopy = {
     {
       src: "/images/facility/open-gym-turf.png",
       alt: "Strength racks, turf lane, and functional training area at MA5",
+    },
+    {
+      src: "/images/facility/open-gym-racks.png",
+      alt: "Power racks, free weights, and strength equipment in the MA5 gym",
     },
   ],
 } as const;
