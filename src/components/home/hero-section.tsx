@@ -1,5 +1,4 @@
-import Image from "next/image";
-
+import { HeroBackgroundVideo } from "@/components/home/hero-background-video";
 import { ButtonLink } from "@/components/shared/button-link";
 import { getBookingHref } from "@/content/booking";
 
@@ -11,17 +10,17 @@ const heroServices = [
   "24/7 Gym Access",
 ] as const;
 
+const HERO_VIDEO_SRC = "/videos/ma5-hero.mov";
+const HERO_POSTER_SRC = "/images/hero/gym-hero.png";
+
 export function HeroSection() {
   return (
     <section className="relative isolate min-h-[88vh] overflow-hidden bg-background">
       <div className="absolute inset-0">
-        <Image
-          src="/images/hero/gym-hero.png"
-          alt="Training floor at MA5 Performance"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center brightness-110"
+        <HeroBackgroundVideo
+          videoSrc={HERO_VIDEO_SRC}
+          posterSrc={HERO_POSTER_SRC}
+          posterAlt="Training floor at MA5 Performance"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/35 to-black/20" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-black/15" />

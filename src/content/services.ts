@@ -151,6 +151,8 @@ export const trainingCopy = {
     video: {
       src: "/videos/small-group-training.mov",
       posterSrc: "/images/services/small-group-training-poster.png",
+      verticalPosterSrc:
+        "/images/services/small-group-training-vertical-poster.png",
       title: "MA5 Performance small group training",
     },
   },
