@@ -42,6 +42,7 @@ export default function SaunaPage() {
           <SaunaVideo
             embedUrl={saunaCopy.video.embedUrl}
             title={saunaCopy.video.title}
+            posterSrc={saunaCopy.video.posterSrc}
           />
         </div>
       </section>
