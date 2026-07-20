@@ -50,6 +50,7 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
+function EmptyState({
   title,
   description,
 }: {
