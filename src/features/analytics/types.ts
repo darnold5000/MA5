@@ -104,6 +104,7 @@ export type PaymentSnapshot = {
 };
 
 export type DailyOpsDashboard = {
+  isDemo?: boolean;
   health: HealthMetric[];
   overview: OverviewMetric[];
   schedule: ScheduleRow[];
@@ -113,6 +114,7 @@ export type DailyOpsDashboard = {
 };
 
 export type BusinessReports = {
+  isDemo?: boolean;
   revenuePeriods: PeriodMetric[];
   revenueChart: ChartPoint[];
   bookingPeriods: PeriodMetric[];

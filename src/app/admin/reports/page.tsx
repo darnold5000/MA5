@@ -9,7 +9,7 @@ import {
   TopPrograms,
 } from "@/components/analytics/ops-panels";
 import { SimpleBarChart } from "@/components/analytics/simple-bar-chart";
-import { DEMO_BUSINESS_REPORTS } from "@/features/analytics";
+import { getBusinessReports } from "@/features/analytics";
 
 export const metadata: Metadata = {
   title: "Reports · Operations",
@@ -21,8 +21,8 @@ function formatChartMoney(value: number): string {
   return `$${value}`;
 }
 
-export default function AdminReportsPage() {
-  const data = DEMO_BUSINESS_REPORTS;
+export default async function AdminReportsPage() {
+  const data = await getBusinessReports();
   const { memberships, attendance, payments } = data;
 
   return (
@@ -47,6 +47,13 @@ export default function AdminReportsPage() {
           ← Daily ops
         </Link>
       </div>
+
+      {data.isDemo ? (
+        <p className="border border-border bg-surface px-4 py-3 text-sm text-muted">
+          Showing sample data until Supabase is connected. Revenue and business
+          metrics here reflect live Stripe payments once checkout is enabled.
+        </p>
+      ) : null}
 
       <section className="space-y-5">
         <SectionHeader eyebrow="Money" title="Revenue" />

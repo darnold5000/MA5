@@ -10,7 +10,7 @@ import {
   TodaySchedule,
 } from "@/components/analytics/ops-panels";
 import { AthletesNeedingAttention } from "@/components/programs/athletes-needing-attention";
-import { DEMO_DAILY_OPS } from "@/features/analytics";
+import { getDailyOpsDashboard } from "@/features/analytics";
 import { listCoachAttentionAlerts } from "@/features/programs/queries";
 import {
   formatCalendarDate,
@@ -23,8 +23,10 @@ export const metadata: Metadata = {
 };
 
 export default async function OperationsHomePage() {
-  const data = DEMO_DAILY_OPS;
-  const attention = await listCoachAttentionAlerts();
+  const [data, attention] = await Promise.all([
+    getDailyOpsDashboard(),
+    listCoachAttentionAlerts(),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-10">
@@ -56,6 +58,13 @@ export default async function OperationsHomePage() {
           </Link>
         </div>
       </div>
+
+      {data.isDemo ? (
+        <p className="border border-border bg-surface px-4 py-3 text-sm text-muted">
+          Showing sample data until Supabase is connected. Live Stripe revenue
+          and ops metrics appear once payments and bookings are flowing.
+        </p>
+      ) : null}
 
       <HealthSnapshot metrics={data.health} animate />
 
