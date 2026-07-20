@@ -13,49 +13,68 @@ export const metadata: Metadata = {
 };
 
 export default function OpenGymPage() {
+  const featuredImage =
+    openGymCopy.images.find((image) => "featured" in image && image.featured) ??
+    openGymCopy.images[0];
+  const galleryImages = openGymCopy.images.filter(
+    (image) => image.src !== featuredImage.src,
+  );
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-        <div>
-          <SectionHeading
-            eyebrow="Open Gym"
-            title="Private 24/7 Gym Access"
-            description={openGymCopy.intro}
+      <SectionHeading
+        eyebrow="Open Gym"
+        title="Private 24/7 Gym Access"
+        description={openGymCopy.intro}
+      />
+
+      <ul className="mt-8 max-w-3xl space-y-3 text-sm leading-relaxed text-muted">
+        {openGymCopy.perks.map((perk) => (
+          <li key={perk} className="border-l-2 border-brand pl-4">
+            {perk}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <ButtonLink href={siteConfig.booking.path}>Sign up today</ButtonLink>
+        <ButtonLink
+          href={`mailto:${siteConfig.contact.email}?subject=Open%20Gym%20Sign%20up`}
+          variant="secondary"
+        >
+          Email to join
+        </ButtonLink>
+      </div>
+
+      <section className="mt-14 space-y-4">
+        <div className="relative aspect-[21/9] overflow-hidden border border-border sm:aspect-[16/7]">
+          <Image
+            src={featuredImage.src}
+            alt={featuredImage.alt}
+            fill
+            className="object-cover"
+            sizes="(max-width: 1280px) 100vw, 1280px"
+            priority
           />
-          <ul className="mt-8 space-y-3 text-sm leading-relaxed text-muted">
-            {openGymCopy.perks.map((perk) => (
-              <li key={perk} className="border-l-2 border-brand pl-4">
-                {perk}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href={siteConfig.booking.path}>Sign up today</ButtonLink>
-            <ButtonLink
-              href={`mailto:${siteConfig.contact.email}?subject=Open%20Gym%20Sign%20up`}
-              variant="secondary"
-            >
-              Email to join
-            </ButtonLink>
-          </div>
         </div>
-        <div className="grid gap-4">
-          {openGymCopy.images.map((image) => (
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {galleryImages.map((image) => (
             <div
               key={image.src}
-              className="relative aspect-[16/10] overflow-hidden border border-border"
+              className="relative aspect-[4/3] overflow-hidden border border-border"
             >
               <Image
                 src={image.src}
                 alt={image.alt}
                 fill
                 className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                sizes="(max-width: 640px) 100vw, 50vw"
               />
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

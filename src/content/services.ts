@@ -189,16 +189,17 @@ export const openGymCopy = {
   ],
   images: [
     {
+      src: "/images/facility/open-gym-racks.png",
+      alt: "Power racks, free weights, and strength equipment in the MA5 gym",
+      featured: true,
+    },
+    {
       src: "/images/facility/open-gym-machines.png",
       alt: "Selectorized machines and cardio equipment in the MA5 gym",
     },
     {
       src: "/images/facility/open-gym-turf.png",
       alt: "Strength racks, turf lane, and functional training area at MA5",
-    },
-    {
-      src: "/images/facility/open-gym-racks.png",
-      alt: "Power racks, free weights, and strength equipment in the MA5 gym",
     },
   ],
 } as const;
