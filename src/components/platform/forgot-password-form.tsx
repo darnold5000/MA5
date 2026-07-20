@@ -70,7 +70,7 @@ export function ForgotPasswordForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
+              className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
             />
           </label>
           {error ? (

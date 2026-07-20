@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import type { Transformation } from "@/content/transformations";
 import { cn } from "@/lib/utils";
 
@@ -11,21 +9,14 @@ type TransformationGalleryProps = {
 function TransformationImage({
   src,
   alt,
-  sizes,
 }: {
   src: string;
   alt: string;
-  sizes: string;
 }) {
   return (
-    <Image
-      src={src}
-      alt={alt}
-      width={0}
-      height={0}
-      sizes={sizes}
-      className="h-auto w-full"
-    />
+    // Supabase and other remote gallery URLs are not optimized through next/image.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} className="h-auto w-full" loading="lazy" />
   );
 }
 
@@ -33,8 +24,6 @@ export function TransformationGallery({
   items,
   className,
 }: TransformationGalleryProps) {
-  const imageSizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw";
-
   return (
     <div
       className={cn(
@@ -42,42 +31,18 @@ export function TransformationGallery({
         className,
       )}
     >
-      {items.map((item) => {
-        const images = [item.src, ...(item.additionalImages ?? [])];
-
-        return (
-          <figure
-            key={item.id}
-            className="border border-border bg-surface"
-          >
-            <div className="bg-background/50 p-2">
-              {images.length > 1 ? (
-                <div className="flex flex-col gap-2">
-                  {images.map((src, index) => (
-                    <TransformationImage
-                      key={src}
-                      src={src}
-                      alt={`${item.alt} (${index + 1} of ${images.length})`}
-                      sizes={imageSizes}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <TransformationImage
-                  src={item.src}
-                  alt={item.alt}
-                  sizes={imageSizes}
-                />
-              )}
-            </div>
-            {item.clientName ? (
-              <figcaption className="border-t border-border px-4 py-3 text-sm tracking-wide text-muted uppercase">
-                {item.clientName}
-              </figcaption>
-            ) : null}
-          </figure>
-        );
-      })}
+      {items.map((item) => (
+        <figure key={item.id} className="border border-border bg-surface">
+          <div className="bg-background/50 p-2">
+            <TransformationImage src={item.src} alt={item.alt} />
+          </div>
+          {item.clientName ? (
+            <figcaption className="border-t border-border px-4 py-3 text-sm tracking-wide text-muted uppercase">
+              {item.clientName}
+            </figcaption>
+          ) : null}
+        </figure>
+      ))}
     </div>
   );
 }

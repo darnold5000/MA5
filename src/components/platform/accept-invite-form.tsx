@@ -153,7 +153,7 @@ export function AcceptInviteForm() {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
-            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
+            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
           />
         </label>
         <label className="block space-y-1.5 text-sm sm:space-y-2">
@@ -166,7 +166,7 @@ export function AcceptInviteForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none focus:border-brand sm:min-h-11"
+              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none sm:min-h-11"
             />
             <button
               type="button"
@@ -188,7 +188,7 @@ export function AcceptInviteForm() {
             onChange={(e) => setConfirm(e.target.value)}
             required
             minLength={8}
-            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
+            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
           />
         </label>
         <label className="flex items-start gap-3 text-sm text-muted">

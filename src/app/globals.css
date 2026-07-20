@@ -66,6 +66,17 @@ body {
   outline-offset: 3px;
 }
 
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
 /* TrainHeroic-inspired light theme — scoped to Programs admin */
 .programs-th {
   --th-bg: #f3f4f6;

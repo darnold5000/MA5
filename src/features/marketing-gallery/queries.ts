@@ -106,7 +106,11 @@ export async function createMarketingGalleryItem(input: {
     .single();
 
   if (error) throw error;
-  return mapRow(data as GalleryRow);
+  const item = mapRow(data as GalleryRow);
+  if (!item.imageUrl && item.storagePath) {
+    item.imageUrl = publicAssetUrl(item.storagePath) ?? item.storagePath;
+  }
+  return item;
 }
 
 export async function deleteMarketingGalleryItem(id: string): Promise<{

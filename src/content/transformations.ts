@@ -17,10 +17,15 @@ export type Transformation = {
  */
 export const transformations: Transformation[] = [
   {
-    id: "kathy",
+    id: "kathy-front",
     src: "/images/transformations/kathy-front.png",
-    additionalImages: ["/images/transformations/kathy-back.png"],
-    alt: "Kathy front and back transformation at MA5 Performance",
+    alt: "Kathy front transformation at MA5 Performance",
+    clientName: "Kathy",
+  },
+  {
+    id: "kathy-back",
+    src: "/images/transformations/kathy-back.png",
+    alt: "Kathy back transformation at MA5 Performance",
     clientName: "Kathy",
   },
   {
@@ -153,9 +158,17 @@ export const transformations: Transformation[] = [
 ];
 
 export const featuredTransformations = [
-  ...transformations.filter((item) => item.id === "kathy" || item.id === "jake"),
   ...transformations.filter(
     (item) =>
-      Boolean(item.clientName) && item.id !== "kathy" && item.id !== "jake",
+      item.id === "kathy-front" ||
+      item.id === "kathy-back" ||
+      item.id === "jake",
+  ),
+  ...transformations.filter(
+    (item) =>
+      Boolean(item.clientName) &&
+      item.id !== "kathy-front" &&
+      item.id !== "kathy-back" &&
+      item.id !== "jake",
   ).slice(0, 4),
 ];

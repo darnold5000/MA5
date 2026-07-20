@@ -62,16 +62,13 @@ export function MarketingGalleryManager({
     setMessage(null);
 
     const uploaded = await uploadMarketingGalleryImageFromBrowser({ section, file });
-    if ("error" in uploaded && !uploaded.demoDataUrl) {
+    if ("error" in uploaded && !("path" in uploaded)) {
       setPending(false);
       setError(uploaded.error);
       return;
     }
 
-    const storagePath =
-      "path" in uploaded
-        ? uploaded.path
-        : `demo:${uploaded.demoDataUrl ?? ""}`;
+    const storagePath = uploaded.path;
 
     const res = await fetch("/api/admin/marketing/gallery", {
       method: "POST",

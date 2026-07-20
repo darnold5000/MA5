@@ -64,7 +64,7 @@ export function ContactLeadForm() {
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-brand"
+          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none"
           autoComplete="name"
         />
       </label>
@@ -78,7 +78,7 @@ export function ContactLeadForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-brand"
+          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none"
           autoComplete="email"
         />
       </label>
@@ -91,7 +91,7 @@ export function ContactLeadForm() {
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-brand"
+          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none"
           autoComplete="tel"
         />
       </label>
@@ -104,7 +104,7 @@ export function ContactLeadForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
-          className="mt-1.5 w-full resize-y border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-brand"
+          className="mt-1.5 w-full resize-y border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none"
         />
       </label>
 

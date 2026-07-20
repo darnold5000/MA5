@@ -76,7 +76,7 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none focus:border-brand sm:min-h-11"
+            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
           />
         </label>
         <label className="block space-y-1.5 text-sm sm:space-y-2">
@@ -88,7 +88,7 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none focus:border-brand sm:min-h-11"
+              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none sm:min-h-11"
             />
             <button
               type="button"
