@@ -30,7 +30,26 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function EmptyState({
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
   title,
   description,
 }: {
@@ -555,8 +574,10 @@ export function MyJourneyView({
                       type="button"
                       onClick={() => removePhoto(photo.id)}
                       disabled={pending}
-                      className="mt-4 min-h-10 text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground disabled:opacity-50"
+                      aria-label="Delete photo"
+                      className="mt-4 inline-flex min-h-10 items-center gap-2 text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground disabled:opacity-50"
                     >
+                      <TrashIcon className="h-4 w-4" />
                       Delete photo
                     </button>
                   </figcaption>

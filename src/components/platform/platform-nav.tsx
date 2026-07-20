@@ -11,6 +11,7 @@ const CLIENT_NAV = [
   { href: "/app/bookings", label: "My Training" },
   { href: "/app/journey", label: "My Journey" },
   { href: "/app/programs", label: "Programs" },
+  { href: "/app/profile", label: "Profile" },
   { href: "/app/messages", label: "Messages" },
 ] as const;
 

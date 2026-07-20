@@ -21,10 +21,10 @@ export function HeroSection() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          className="object-cover object-center brightness-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/45" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/35 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-black/15" />
       </div>
 
       <div className="relative mx-auto flex min-h-[88vh] max-w-7xl flex-col justify-end px-4 pb-14 pt-28 sm:px-6 sm:pb-16 lg:px-8">

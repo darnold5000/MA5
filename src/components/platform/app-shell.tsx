@@ -16,6 +16,7 @@ const SIDEBAR = [
   { href: "/app/bookings", label: "My Training", match: "prefix" as const },
   { href: "/app/journey", label: "My Journey", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
+  { href: "/app/profile", label: "Profile", match: "prefix" as const },
   { href: "/app/messages", label: "Messages", match: "messages" as const },
 ] as const;
 
@@ -43,6 +44,12 @@ const MOBILE = [
     label: "My Journey",
     match: "prefix" as const,
     icon: "journey",
+  },
+  {
+    href: "/app/profile",
+    label: "Profile",
+    match: "prefix" as const,
+    icon: "profile",
   },
   {
     href: "/app/messages",
@@ -114,6 +121,13 @@ function NavIcon({
           <path d="M10 20V4" />
           <path d="M16 20v-8" />
           <path d="M22 20V8" />
+        </svg>
+      );
+    case "profile":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20a7 7 0 0 1 14 0" />
         </svg>
       );
     case "messages":
@@ -204,20 +218,6 @@ export function AppShell({
               ) : null}
             </Link>
 
-            <Link
-              href="/app/profile"
-              className="hidden text-sm tracking-wide text-muted transition hover:text-foreground sm:inline"
-            >
-              Profile
-            </Link>
-            <Link
-              href="/"
-              className="hidden text-sm tracking-wide text-muted transition hover:text-foreground lg:inline"
-            >
-              Back to Website
-            </Link>
-            <SignOutButton className="hidden text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground sm:inline lg:hidden" />
-
             <button
               type="button"
               className="inline-flex size-11 items-center justify-center border border-border text-foreground touch-manipulation lg:hidden"
@@ -276,10 +276,8 @@ export function AppShell({
               <nav aria-label="More" className="flex flex-col p-2">
                 {(
                   [
-                    { href: "/app/profile", label: "Profile & settings" },
                     { href: "/app/bookings", label: "My Training" },
                     { href: "/app/announcements", label: "Announcements" },
-                    { href: "/", label: "Back to website" },
                   ] as const
                 ).map((item) => (
                   <Link
@@ -291,7 +289,10 @@ export function AppShell({
                     {item.label}
                   </Link>
                 ))}
-                <SignOutButton className="flex min-h-12 w-full items-center px-3 text-left text-sm tracking-wide text-muted touch-manipulation" />
+                <SignOutButton
+                  showIcon
+                  className="flex min-h-12 w-full items-center gap-2 px-3 text-left text-sm tracking-wide text-muted touch-manipulation"
+                />
               </nav>
             </div>
           </>
@@ -337,25 +338,11 @@ export function AppShell({
               );
             })}
           </nav>
-          <div className="mt-auto space-y-2 border-t border-border p-4">
-            <Link
-              href="/app/profile"
-              className={cn(
-                "block px-3 py-2 text-sm tracking-wide transition",
-                pathname.startsWith("/app/profile")
-                  ? "text-foreground"
-                  : "text-muted hover:text-foreground",
-              )}
-            >
-              Profile
-            </Link>
-            <Link
-              href="/"
-              className="block px-3 py-2 text-sm tracking-wide text-muted transition hover:text-foreground"
-            >
-              Back to Website
-            </Link>
-            <SignOutButton className="block w-full px-3 py-2 text-left text-sm tracking-wide text-muted transition hover:text-foreground" />
+          <div className="mt-auto border-t border-border p-4">
+            <SignOutButton
+              showIcon
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm tracking-wide text-muted transition hover:text-foreground"
+            />
           </div>
         </aside>
 
@@ -373,7 +360,7 @@ export function AppShell({
         aria-label="App mobile"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-5">
+        <div className="mx-auto grid max-w-lg grid-cols-6">
           {MOBILE.map((item) => {
             const active = isActive(pathname, item.href, item.match);
             return (
