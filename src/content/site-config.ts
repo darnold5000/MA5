@@ -46,8 +46,8 @@ export const siteConfig = {
   signalWorks: {
     url: "https://hiresignalworks.com",
     iconSrc: "/signal-works-icon.png",
-    // "by" | "designed-and-maintained"
-    creditVariant: "by" as const,
+    // "platform" | "by" | "designed-and-maintained"
+    creditVariant: "platform" as const,
   },
   owner: {
     name: "Mike Anderson",

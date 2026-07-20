@@ -1,12 +1,13 @@
 import Image from "next/image";
 
-type CreditVariant = "by" | "designed-and-maintained";
+type CreditVariant = "by" | "designed-and-maintained" | "platform";
 
 type FooterCreditProps = {
   clientName: string;
   signalWorksUrl?: string;
   signalWorksIconSrc?: string;
   /**
+   * "platform" → Powered by the Signal Works Platform
    * "by" → Website by Signal Works
    * "designed-and-maintained" → Website designed & maintained by Signal Works
    */
@@ -17,24 +18,37 @@ type FooterCreditProps = {
 const DEFAULT_SIGNAL_WORKS_URL = "https://hiresignalworks.com";
 const DEFAULT_SIGNAL_WORKS_ICON = "/signal-works-icon.png";
 
-const creditPrefix: Record<CreditVariant, string> = {
-  by: "Website by",
-  "designed-and-maintained": "Website designed & maintained by",
+const creditCopy: Record<
+  CreditVariant,
+  { prefix: string; brand: string }
+> = {
+  platform: {
+    prefix: "Powered by the",
+    brand: "Signal Works Platform",
+  },
+  by: {
+    prefix: "Website by",
+    brand: "Signal Works",
+  },
+  "designed-and-maintained": {
+    prefix: "Website designed & maintained by",
+    brand: "Signal Works",
+  },
 };
 
 export function FooterCredit({
   clientName,
   signalWorksUrl = DEFAULT_SIGNAL_WORKS_URL,
   signalWorksIconSrc = DEFAULT_SIGNAL_WORKS_ICON,
-  variant = "by",
+  variant = "platform",
   className,
 }: FooterCreditProps) {
+  const { prefix, brand } = creditCopy[variant];
+
   return (
     <div className={className ?? "flex flex-wrap items-center justify-end gap-2.5"}>
       <span className="sr-only">{clientName} website. </span>
-      <span className="text-sm leading-snug text-muted">
-        {creditPrefix[variant]}
-      </span>
+      <span className="text-sm leading-snug text-muted">{prefix}</span>
       <a
         href={signalWorksUrl}
         target="_blank"
@@ -49,7 +63,7 @@ export function FooterCredit({
           height={24}
           className="h-6 w-6 rounded-md"
         />
-        <span className="text-sm font-semibold text-foreground">Signal Works</span>
+        <span className="text-sm font-semibold text-foreground">{brand}</span>
       </a>
     </div>
   );
