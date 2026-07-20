@@ -4,9 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { WorkoutBlockSetLogger } from "@/components/programs/workout-block-set-logger";
 import type {
   ClientProgramDay,
   ClientTrainingProgress,
+  WorkoutSetLog,
 } from "@/features/programs/types";
 import { VideoPlayer } from "@/lib/video/player";
 
@@ -183,8 +185,27 @@ type PlayerProps = {
 export function ClientWorkoutPlayer({ day }: PlayerProps) {
   const router = useRouter();
   const [note, setNote] = useState(day.completion?.clientNote ?? "");
+  const [setLogs, setSetLogs] = useState(day.setLogs);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const dayWithLogs: ClientProgramDay = { ...day, setLogs };
+
+  function handleLogSaved(log: WorkoutSetLog) {
+    setSetLogs((prev) => {
+      const index = prev.findIndex(
+        (item) =>
+          item.workoutBlockId === log.workoutBlockId &&
+          item.setNumber === log.setNumber,
+      );
+      if (index >= 0) {
+        const next = [...prev];
+        next[index] = log;
+        return next;
+      }
+      return [...prev, log];
+    });
+  }
 
   async function markComplete() {
     setPending(true);
@@ -248,16 +269,24 @@ export function ClientWorkoutPlayer({ day }: PlayerProps) {
             <h3 className="mt-1 font-display text-2xl tracking-wide uppercase">
               {block.exercise?.title ?? "Exercise"}
             </h3>
-            <p className="mt-1 text-sm text-muted">
-              {block.sets
-                .map((s) => {
-                  const reps = s.reps != null ? `${s.reps}` : "–";
-                  return s.weightLb != null
-                    ? `${reps} @ ${s.weightLb}lb`
-                    : `${reps} reps`;
-                })
-                .join(" · ")}
-            </p>
+            {block.exercise ? (
+              <WorkoutBlockSetLogger
+                day={dayWithLogs}
+                block={block}
+                onLogSaved={handleLogSaved}
+              />
+            ) : (
+              <p className="mt-1 text-sm text-muted">
+                {block.sets
+                  .map((s) => {
+                    const reps = s.reps != null ? `${s.reps}` : "–";
+                    return s.weightLb != null
+                      ? `${reps} @ ${s.weightLb}lb`
+                      : `${reps} reps`;
+                  })
+                  .join(" · ")}
+              </p>
+            )}
             {block.exercise ? (
               <div className="mt-4 max-w-lg">
                 <VideoPlayer

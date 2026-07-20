@@ -15,6 +15,7 @@ import type {
   Workout,
   WorkoutBlock,
   WorkoutCompletion,
+  WorkoutSetLog,
 } from "@/features/programs/types";
 
 export const PROGRAMS_COOKIE = "ma5_programs";
@@ -30,6 +31,7 @@ export type ProgramsState = {
   assignments: ProgramAssignment[];
   calendarEntries: CalendarEntry[];
   completions: WorkoutCompletion[];
+  setLogs: WorkoutSetLog[];
 };
 
 function id(prefix: string) {
@@ -541,6 +543,7 @@ function seedState(): ProgramsState {
       ...sam.completions,
       ...emily.completions,
     ],
+    setLogs: [],
   };
 }
 
@@ -590,6 +593,7 @@ export function parseProgramsState(raw: string | undefined): ProgramsState {
         : Array.isArray(parsed.completions)
           ? parsed.completions
           : base.completions,
+      setLogs: Array.isArray(parsed.setLogs) ? parsed.setLogs : base.setLogs,
     };
   } catch {
     return emptyProgramsState();

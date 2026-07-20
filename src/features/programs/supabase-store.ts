@@ -20,6 +20,7 @@ import type {
   WorkoutBlock,
   WorkoutBlockSet,
   WorkoutCompletion,
+  WorkoutSetLog,
 } from "@/features/programs/types";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
@@ -130,6 +131,21 @@ export function mapCompletionRow(row: Record<string, unknown>): WorkoutCompletio
     clientUserId: String(row.client_user_id),
     completedAt: String(row.completed_at ?? new Date().toISOString()),
     clientNote: String(row.client_note ?? ""),
+  };
+}
+
+export function mapSetLogRow(row: Record<string, unknown>): WorkoutSetLog {
+  return {
+    id: String(row.id),
+    calendarEntryId: String(row.calendar_entry_id),
+    clientUserId: String(row.client_user_id),
+    workoutBlockId: String(row.workout_block_id),
+    exerciseId: String(row.exercise_id),
+    setNumber: Number(row.set_number),
+    targetReps: row.target_reps == null ? null : Number(row.target_reps),
+    reps: row.reps == null ? null : Number(row.reps),
+    weightLb: row.weight_lb == null ? null : Number(row.weight_lb),
+    loggedAt: String(row.logged_at ?? new Date().toISOString()),
   };
 }
 
@@ -258,6 +274,7 @@ export async function loadProgramsStateFromSupabase(
     completions: (completionsRes.data ?? []).map((r) =>
       mapCompletionRow(r as Record<string, unknown>),
     ),
+    setLogs: [],
   };
 }
 

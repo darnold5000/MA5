@@ -8,7 +8,11 @@ import {
   buildCoachClientProgressRow,
   resolveProgramsClientIds,
 } from "@/features/programs/progress";
-import { loadProgramsStateFromSupabase } from "@/features/programs/supabase-store";
+import { buildLastPerformanceMap } from "@/features/programs/set-logs";
+import {
+  loadProgramsStateFromSupabase,
+  mapSetLogRow,
+} from "@/features/programs/supabase-store";
 import type {
   ClientProgramDay,
   ClientTrainingProgress,
@@ -16,6 +20,7 @@ import type {
   CoachClientProgressRow,
   Exercise,
   WorkoutDetail,
+  WorkoutSetLog,
 } from "@/features/programs/types";
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -81,11 +86,16 @@ export async function resolveExercisePlayback(
 function mapClientDays(
   state: ProgramsState,
   clientIds: string[],
+  setLogs: WorkoutSetLog[],
 ): ClientProgramDay[] {
   const teamIds = new Set(
     state.teamMembers
       .filter((m) => clientIds.includes(m.userId))
       .map((m) => m.teamId),
+  );
+
+  const clientSetLogs = setLogs.filter((log) =>
+    clientIds.includes(log.clientUserId),
   );
 
   const entries = state.calendarEntries
@@ -107,6 +117,9 @@ function mapClientDays(
     const team = entry.teamId
       ? state.teams.find((t) => t.id === entry.teamId)
       : null;
+    const entrySetLogs = clientSetLogs.filter(
+      (log) => log.calendarEntryId === entry.id,
+    );
     return {
       entry,
       workout: entry.workoutId
@@ -115,8 +128,44 @@ function mapClientDays(
       completed: Boolean(completion),
       completion,
       sourceLabel: team ? `Team · ${team.name}` : "Individual",
+      setLogs: entrySetLogs,
+      lastPerformanceByKey: buildLastPerformanceMap(clientSetLogs, {
+        excludeCalendarEntryId: entry.id,
+      }),
     };
   });
+}
+
+async function loadClientSetLogs(clientIds: string[]): Promise<WorkoutSetLog[]> {
+  if (clientIds.length === 0) return [];
+
+  if (!isSupabaseConfigured()) {
+    const state = await readProgramsState();
+    return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
+  }
+
+  try {
+    const session = await getSessionUser();
+    if (!session) {
+      const state = await readProgramsState();
+      return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from(MA5_TABLES.workoutSetLogs)
+      .select("*")
+      .in("client_user_id", clientIds)
+      .order("logged_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) =>
+      mapSetLogRow(row as Record<string, unknown>),
+    );
+  } catch (err) {
+    console.error("[programs] set log load failed", err);
+    const state = await readProgramsState();
+    return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
+  }
 }
 
 export async function listClientProgramDays(
@@ -125,7 +174,8 @@ export async function listClientProgramDays(
 ): Promise<ClientProgramDay[]> {
   const state = await getProgramsState();
   const clientIds = resolveProgramsClientIds(clientUserId, email);
-  return mapClientDays(state, clientIds);
+  const setLogs = await loadClientSetLogs(clientIds);
+  return mapClientDays(state, clientIds, setLogs);
 }
 
 export async function getClientTrainingProgress(
@@ -134,7 +184,8 @@ export async function getClientTrainingProgress(
 ): Promise<ClientTrainingProgress> {
   const state = await getProgramsState();
   const clientIds = resolveProgramsClientIds(clientUserId, email);
-  const days = mapClientDays(state, clientIds);
+  const setLogs = await loadClientSetLogs(clientIds);
+  const days = mapClientDays(state, clientIds, setLogs);
   return buildClientTrainingProgress(days, state, clientIds);
 }
 
@@ -144,7 +195,10 @@ export async function listCoachClientProgress(): Promise<
   const state = await getProgramsState();
   const roster = await listRosterClients();
   const rows = roster.map((client) => {
-    const days = mapClientDays(state, [client.id]);
+    const clientSetLogs = state.setLogs.filter(
+      (log) => log.clientUserId === client.id,
+    );
+    const days = mapClientDays(state, [client.id], clientSetLogs);
     return buildCoachClientProgressRow(client.id, client.name, days, state);
   });
 
@@ -168,7 +222,11 @@ export async function listCoachAttentionAlerts(): Promise<
   const clients = roster.map((client) => ({
     clientId: client.id,
     clientName: client.name,
-    days: mapClientDays(state, [client.id]),
+    days: mapClientDays(
+      state,
+      [client.id],
+      state.setLogs.filter((log) => log.clientUserId === client.id),
+    ),
     membershipPeriodEnd: membershipEnds[client.id] ?? null,
   }));
   return buildCoachAttentionAlerts(clients, state);

@@ -118,6 +118,26 @@ export type WorkoutCompletion = {
   clientNote: string;
 };
 
+export type WorkoutSetLog = {
+  id: string;
+  calendarEntryId: string;
+  clientUserId: string;
+  workoutBlockId: string;
+  exerciseId: string;
+  setNumber: number;
+  targetReps: number | null;
+  reps: number | null;
+  weightLb: number | null;
+  loggedAt: string;
+};
+
+export type LastPerformance = {
+  exerciseId: string;
+  targetReps: number | null;
+  weightLb: number;
+  loggedAt: string;
+};
+
 export type WorkoutDetail = Workout & {
   blocks: Array<
     WorkoutBlock & {
@@ -132,6 +152,8 @@ export type ClientProgramDay = {
   completed: boolean;
   completion: WorkoutCompletion | null;
   sourceLabel: string;
+  setLogs: WorkoutSetLog[];
+  lastPerformanceByKey: Record<string, LastPerformance>;
 };
 
 export type {

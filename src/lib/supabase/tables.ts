@@ -24,6 +24,7 @@ export const MA5_TABLES = {
   programAssignments: "ma5_program_assignments",
   calendarEntries: "ma5_calendar_entries",
   workoutCompletions: "ma5_workout_completions",
+  workoutSetLogs: "ma5_workout_set_logs",
   clientWaivers: "ma5_client_waivers",
   facilitySettings: "ma5_facility_settings",
   messageThreads: "ma5_message_threads",
