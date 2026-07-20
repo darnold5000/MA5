@@ -39,7 +39,7 @@ export default function SportsPerformancePage() {
         </div>
       </div>
 
-      <div className="mt-14 grid gap-6 md:grid-cols-3">
+      <div className="mt-14 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {sportsCopy.sections.map((section) => (
           <article key={section.title} className="border border-border bg-surface p-6">
             <h2 className="font-display text-2xl tracking-wide uppercase">

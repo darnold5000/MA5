@@ -15,6 +15,19 @@ type SiteHeaderProps = {
   hubAccess?: boolean;
 };
 
+function isNavActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+const navLinkClass = (active: boolean) =>
+  cn(
+    "text-sm tracking-wide transition",
+    active
+      ? "font-semibold text-brand"
+      : "text-muted hover:text-foreground",
+  );
+
 export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -51,18 +64,22 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
         </Link>
 
         <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
-          {siteConfig.navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "text-sm tracking-wide text-muted transition hover:text-foreground",
-                pathname === item.href && "text-foreground",
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {siteConfig.navigation.map((item) => {
+            const active = isNavActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  navLinkClass(active),
+                  active && "border-b-2 border-brand pb-0.5",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
           {hubAccess ? (
             <ButtonLink
               href="/app"
@@ -134,16 +151,25 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
           aria-label="Mobile"
           className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4 sm:px-6"
         >
-          {siteConfig.navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={closeMenu}
-              className="min-h-11 px-2 py-3 text-base text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {siteConfig.navigation.map((item) => {
+            const active = isNavActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={closeMenu}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "min-h-11 border-l-2 px-3 py-3 text-base",
+                  active
+                    ? "border-brand bg-surface font-semibold text-brand"
+                    : "border-transparent text-foreground",
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
           {hubAccess ? (
             <ButtonLink
               href="/app"

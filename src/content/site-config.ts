@@ -48,9 +48,9 @@ export const siteConfig = {
     creditVariant: "by" as const,
   },
   owner: {
-    name: "Robert Anderson",
-    // Credentials referenced on the current site meta description.
-    credentials: "NASM Certified Personal Trainer & Fitness Nutrition Specialist",
+    name: "Mike Anderson",
+    credentials:
+      "NASM Certified Personal Trainer & Nutrition Coach",
     linkedin: "https://www.linkedin.com/in/robert-anderson-818997104/",
   },
   navigation: [
@@ -58,6 +58,7 @@ export const siteConfig = {
     { label: "Training", href: "/training" },
     { label: "Sports Performance", href: "/sports-performance" },
     { label: "Open Gym", href: "/open-gym" },
+    { label: "Our Community", href: "/our-community" },
     { label: "Sauna", href: "/services/infrared-sauna" },
     { label: "About", href: "/about" },
     { label: "Results", href: "/transformations" },

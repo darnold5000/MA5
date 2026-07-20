@@ -10,7 +10,7 @@ import { siteConfig } from "@/content/site-config";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Learn about MA5 Performance, Robert Anderson, and the five components of fitness behind the coaching approach in Avon, Indiana.",
+    "Learn about MA5 Performance, Mike Anderson, and the five components of fitness behind the coaching approach in Avon, Indiana.",
 };
 
 export default function AboutPage() {

@@ -10,7 +10,7 @@ export function HeroSection() {
       {/* Mobile: show the full wide gym photo, then content below */}
       <div className="relative aspect-[2/1] w-full md:hidden">
         <Image
-          src="/images/hero/fitness-room.jpg"
+          src="/images/hero/gym-hero.png"
           alt="Training floor at MA5 Performance"
           fill
           priority
@@ -23,7 +23,7 @@ export function HeroSection() {
       {/* Desktop: full-bleed background */}
       <div className="absolute inset-0 hidden md:block">
         <Image
-          src="/images/hero/fitness-room.jpg"
+          src="/images/hero/gym-hero.png"
           alt=""
           fill
           priority

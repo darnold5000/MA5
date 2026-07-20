@@ -97,6 +97,28 @@ export const fitnessPillars = [
   },
 ] as const;
 
+export const coachCopy = {
+  headline: "Meet Your Coach",
+  name: "Mike Anderson",
+  title:
+    "Founder & CEO of MA5 Performance | NASM Certified Personal Trainer & Nutrition Coach",
+  body: [
+    "I help busy adults, athletes, and individuals of all fitness levels build strength, lose body fat, improve performance, and create healthier lifestyles—without spending hours in the gym or following restrictive diets.",
+    "A Sports Management graduate from Saint Joseph's College, I founded MA5 Performance with a mission to provide expert coaching, accountability, and a supportive community that helps people achieve lasting results.",
+    "As a NASM Certified Personal Trainer and NASM Certified Nutrition Coach, my coaching philosophy is centered around functional strength training while developing all five key components of fitness: muscular strength, muscular endurance, cardiovascular endurance, flexibility, and body composition. I believe lasting results come from consistent, individualized programming that fits your lifestyle—not one-size-fits-all workouts or quick fixes.",
+    "Whether your goal is to lose weight, build muscle, improve athletic performance, or simply become the healthiest version of yourself, my mission is to help you move better, perform better, and build confidence that extends far beyond the gym.",
+  ],
+  imageSrc: "/images/team/trainer.JPG",
+  imageAlt: "Mike Anderson, founder of MA5 Performance",
+} as const;
+
+export const communityCopy = {
+  headline: "More Than a Gym. A Community.",
+  body: "At MA5 Performance, we believe lasting results are built through more than great training—they're built through meaningful relationships. From workouts and competitions to social events and member appreciation gatherings, we're committed to creating an environment where everyone feels welcomed, supported, and challenged to become their best.",
+  imageSrc: "/images/facility/community.png",
+  imageAlt: "MA5 Performance members celebrating together at the gym",
+} as const;
+
 export const aboutCopy = {
   headline: "Knowledgeable Training Expertise",
   body: [
@@ -135,8 +157,12 @@ export const trainingCopy = {
 
 export const sportsCopy = {
   intro:
-    "Our trainers apply sport-specific workouts and programs that fit each athlete's needs. The focus is improving speed, agility, movement patterns, and athleticism while building a stronger foundation, maximizing potential, and reducing injury risk.",
+    "Our Sports Performance program starts with a comprehensive movement analysis to identify mobility limitations, flexibility deficits, muscle imbalances, and faulty movement patterns that can hinder athletic development. Using those findings, we create individualized, sport-specific training programs focused on improving mobility, flexibility, strength, speed, agility, power, and overall athletic performance. By building a solid movement foundation first, athletes can maximize performance, reduce injury risk, and gain a competitive edge both on and off the field.",
   sections: [
+    {
+      title: "Mobility / Flexibility",
+      body: "Mobility and flexibility are essential because they maximize athletic potential and prevent injury. Flexibility (muscle length) allows joints to achieve a full range of motion while mobility (strength and control) enables athletes to use that range dynamically under external load. Together, they improve movement efficiency, prevent compensatory injuries, and promote faster recovery.",
+    },
     {
       title: "Speed and Agility",
       body: "Speed and agility work improves acceleration, deceleration, foot speed, quickness, and change of direction so athletes can move faster and raise their game.",
@@ -160,6 +186,16 @@ export const openGymCopy = {
     "Private open-gym time around scheduled training",
     "Access to the MA5 app with programmed open-gym workouts, progress tracking, and member chat",
     "Essential equipment including free weights, full-body machines, and cardio machines",
+  ],
+  images: [
+    {
+      src: "/images/facility/open-gym-machines.png",
+      alt: "Selectorized machines and cardio equipment in the MA5 gym",
+    },
+    {
+      src: "/images/facility/open-gym-turf.png",
+      alt: "Strength racks, turf lane, and functional training area at MA5",
+    },
   ],
 } as const;
 

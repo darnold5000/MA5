@@ -20,9 +20,9 @@ export async function TrainingPricingSection() {
   return (
     <section className="mt-16">
       <SectionHeading
-        eyebrow="Pricing"
-        title="Training Options & Pricing"
-        description="Current packages from the MA5 catalog. Prices can change — confirm the latest options when you book."
+        eyebrow="Programs"
+        title="Find the Right Fit for Your Goals"
+        description="Every client begins with a complimentary consultation and assessment. From there, we'll recommend the training program that's the best fit for your goals, schedule, and budget. Pricing varies by program."
       />
 
       <div className="mt-10 space-y-10">

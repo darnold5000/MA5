@@ -39,14 +39,21 @@ export default function OpenGymPage() {
             </ButtonLink>
           </div>
         </div>
-        <div className="relative aspect-[4/3] overflow-hidden border border-border">
-          <Image
-            src="/images/facility/open-gym.jpg"
-            alt="MA5 private open gym"
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
+        <div className="grid gap-4">
+          {openGymCopy.images.map((image) => (
+            <div
+              key={image.src}
+              className="relative aspect-[16/10] overflow-hidden border border-border"
+            >
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
