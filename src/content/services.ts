@@ -148,6 +148,11 @@ export const trainingCopy = {
       "Accountability and fun",
       "Classes capped at 10 people for more personal coaching",
     ],
+    video: {
+      src: "/videos/small-group-training.mov",
+      posterSrc: "/images/services/small-group-training-poster.png",
+      title: "MA5 Performance small group training",
+    },
   },
   assessment: {
     title: "Start with an Assessment",

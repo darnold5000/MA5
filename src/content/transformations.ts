@@ -4,6 +4,8 @@ export type Transformation = {
   alt: string;
   /** First name derived from the published gallery filename when available. */
   clientName?: string;
+  /** Optional extra images shown in the same card (e.g. front + back). */
+  additionalImages?: string[];
 };
 
 /**
@@ -14,6 +16,19 @@ export type Transformation = {
  * Client names below come from the published asset filenames only.
  */
 export const transformations: Transformation[] = [
+  {
+    id: "kathy",
+    src: "/images/transformations/kathy-front.png",
+    additionalImages: ["/images/transformations/kathy-back.png"],
+    alt: "Kathy front and back transformation at MA5 Performance",
+    clientName: "Kathy",
+  },
+  {
+    id: "jake",
+    src: "/images/transformations/jake.png",
+    alt: "Jake transformation at MA5 Performance",
+    clientName: "Jake",
+  },
   {
     id: "erin",
     src: "/images/transformations/Erin.JPG",
@@ -137,6 +152,10 @@ export const transformations: Transformation[] = [
   },
 ];
 
-export const featuredTransformations = transformations.filter((item) =>
-  Boolean(item.clientName),
-).slice(0, 6);
+export const featuredTransformations = [
+  ...transformations.filter((item) => item.id === "kathy" || item.id === "jake"),
+  ...transformations.filter(
+    (item) =>
+      Boolean(item.clientName) && item.id !== "kathy" && item.id !== "jake",
+  ).slice(0, 4),
+];

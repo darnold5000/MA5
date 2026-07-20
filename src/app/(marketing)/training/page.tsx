@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
+import { PosterVideo } from "@/components/marketing/poster-video";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { TrainingPricingSection } from "@/components/training/training-pricing-section";
 import { siteConfig } from "@/content/site-config";
@@ -47,13 +48,11 @@ export default function TrainingPage() {
         </article>
 
         <article className="border border-border bg-surface p-6">
-          <div className="relative mb-6 aspect-[16/9] overflow-hidden">
-            <Image
-              src="/images/services/training.jpg"
-              alt="MA5 small group training"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
+          <div className="relative mb-6 overflow-hidden">
+            <PosterVideo
+              videoSrc={trainingCopy.smallGroup.video.src}
+              posterSrc={trainingCopy.smallGroup.video.posterSrc}
+              title={trainingCopy.smallGroup.video.title}
             />
           </div>
           <h2 className="font-display text-3xl tracking-wide uppercase">

@@ -2,13 +2,19 @@ import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { getBookingHref } from "@/content/booking";
-import { siteConfig } from "@/content/site-config";
+
+const heroServices = [
+  "Personal Training",
+  "Sports Performance",
+  "Nutrition Coaching",
+  "Infrared Sauna",
+  "24/7 Gym Access",
+] as const;
 
 export function HeroSection() {
   return (
-    <section className="relative isolate overflow-hidden bg-background">
-      {/* Mobile: show the full wide gym photo, then content below */}
-      <div className="relative aspect-[2/1] w-full md:hidden">
+    <section className="relative isolate min-h-[88vh] overflow-hidden bg-background">
+      <div className="absolute inset-0">
         <Image
           src="/images/hero/gym-hero.png"
           alt="Training floor at MA5 Performance"
@@ -17,54 +23,48 @@ export function HeroSection() {
           sizes="100vw"
           className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/35" />
       </div>
 
-      {/* Desktop: full-bleed background */}
-      <div className="absolute inset-0 hidden md:block">
-        <Image
-          src="/images/hero/gym-hero.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-black/35" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/30" />
-      </div>
-
-      <div className="relative mx-auto flex max-w-7xl flex-col justify-end px-4 pt-8 pb-16 sm:px-6 md:min-h-[88vh] md:pt-28 md:pb-20 lg:px-8">
-        <div className="mb-6 flex items-center gap-4">
-          <Image
-            src="/images/brand/ma5-logo.jpeg"
-            alt="MA5 Performance logo"
-            width={72}
-            height={72}
-            className="h-16 w-16 rounded-full object-cover sm:h-[72px] sm:w-[72px]"
-          />
-          <p className="text-xs font-semibold tracking-[0.24em] text-brand uppercase">
-            {siteConfig.location.city}, {siteConfig.location.state}
-          </p>
-        </div>
-        <h1 className="max-w-4xl font-display text-5xl leading-[0.92] tracking-wide uppercase sm:text-6xl lg:text-7xl">
-          Train With Purpose.
+      <div className="relative mx-auto flex min-h-[88vh] max-w-7xl flex-col justify-end px-4 pb-14 pt-28 sm:px-6 sm:pb-16 lg:px-8">
+        <h1 className="max-w-3xl font-display text-[2.35rem] leading-[0.95] tracking-wide uppercase sm:text-5xl lg:text-6xl">
+          <span className="text-brand">Real</span>{" "}
+          <span className="text-white">Coaching.</span>
           <br />
-          Perform With Confidence.
+          <span className="text-brand">Proven</span>{" "}
+          <span className="text-white">Results.</span>
+          <br />
+          <span className="text-white">A</span>{" "}
+          <span className="text-brand">Community</span>
+          <br />
+          <span className="text-white">That Pushes</span>
+          <br />
+          <span className="text-white">You</span>{" "}
+          <span className="text-brand">Further.</span>
         </h1>
-        <p className="mt-4 max-w-xl text-sm font-medium tracking-wide text-brand uppercase">
-          {siteConfig.tagline}
+
+        <div className="mt-6 h-0.5 w-12 bg-brand" aria-hidden />
+
+        <p className="mt-6 max-w-2xl text-[0.7rem] font-semibold tracking-[0.16em] text-white uppercase sm:text-xs sm:tracking-[0.2em]">
+          {heroServices.map((service, index) => (
+            <span key={service}>
+              {index > 0 ? (
+                <span className="px-2 text-brand" aria-hidden>
+                  •
+                </span>
+              ) : null}
+              {service}
+            </span>
+          ))}
         </p>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-          {siteConfig.description}
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href={getBookingHref("assessment")}>
-            Book an Assessment
-          </ButtonLink>
-          <ButtonLink href="/training" variant="secondary">
-            Explore Training
+
+        <div className="mt-8 max-w-xl">
+          <ButtonLink
+            href={getBookingHref("assessment")}
+            className="w-full px-8 py-4 text-sm sm:w-auto"
+          >
+            Book Your Free Consultation →
           </ButtonLink>
         </div>
       </div>
