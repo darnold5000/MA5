@@ -18,6 +18,7 @@ import type {
   ClientTrainingProgress,
   CoachAttentionAlert,
   CoachClientProgressRow,
+  CoachTeamWorkoutReview,
   CoachWorkoutReview,
   Exercise,
   WorkoutDetail,
@@ -169,6 +170,39 @@ async function loadClientSetLogs(clientIds: string[]): Promise<WorkoutSetLog[]> 
   }
 }
 
+async function loadSetLogsForCalendarEntry(
+  calendarEntryId: string,
+): Promise<WorkoutSetLog[]> {
+  if (!isSupabaseConfigured()) {
+    const state = await readProgramsState();
+    return state.setLogs.filter(
+      (log) => log.calendarEntryId === calendarEntryId,
+    );
+  }
+
+  try {
+    const session = await getSessionUser();
+    if (!session) return [];
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from(MA5_TABLES.workoutSetLogs)
+      .select("*")
+      .eq("calendar_entry_id", calendarEntryId)
+      .order("logged_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) =>
+      mapSetLogRow(row as Record<string, unknown>),
+    );
+  } catch (err) {
+    console.error("[programs] entry set log load failed", err);
+    const state = await readProgramsState();
+    return state.setLogs.filter(
+      (log) => log.calendarEntryId === calendarEntryId,
+    );
+  }
+}
+
 export async function getCoachWorkoutReview(
   clientUserId: string,
   calendarEntryId: string,
@@ -203,6 +237,38 @@ export async function getCoachWorkoutReview(
     completion,
     setLogs,
     clientName: resolvedName,
+  };
+}
+
+export async function getCoachTeamWorkoutReview(
+  teamId: string,
+  calendarEntryId: string,
+): Promise<CoachTeamWorkoutReview | null> {
+  const state = await getProgramsState();
+  const team = state.teams.find((item) => item.id === teamId);
+  const entry = state.calendarEntries.find(
+    (item) => item.id === calendarEntryId && item.teamId === teamId,
+  );
+  if (!team || !entry) return null;
+
+  const members = state.teamMembers.filter((member) => member.teamId === teamId);
+  const setLogs = await loadSetLogsForCalendarEntry(calendarEntryId);
+  const completions = state.completions.filter(
+    (item) => item.calendarEntryId === calendarEntryId,
+  );
+
+  return {
+    entry,
+    team,
+    workout: entry.workoutId ? getWorkoutDetail(state, entry.workoutId) : null,
+    members: members.map((member) => ({
+      clientUserId: member.userId,
+      clientName: member.userName,
+      completion:
+        completions.find((item) => item.clientUserId === member.userId) ??
+        null,
+      setLogs: setLogs.filter((log) => log.clientUserId === member.userId),
+    })),
   };
 }
 

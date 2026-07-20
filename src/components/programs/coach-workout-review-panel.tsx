@@ -3,15 +3,30 @@
 import { useEffect, useState } from "react";
 
 import { getSetLogForBlock } from "@/features/programs/set-logs";
-import type { CoachWorkoutReview } from "@/features/programs/types";
+import type {
+  CoachTeamWorkoutReview,
+  CoachWorkoutReview,
+  WorkoutDetail,
+  WorkoutSetLog,
+} from "@/features/programs/types";
 import { cn } from "@/lib/utils";
 
-type Props = {
+type ClientProps = {
+  mode: "client";
   clientUserId: string;
   clientName: string;
   calendarEntryId: string;
   onClose: () => void;
 };
+
+type TeamProps = {
+  mode: "team";
+  teamId: string;
+  calendarEntryId: string;
+  onClose: () => void;
+};
+
+type Props = ClientProps | TeamProps;
 
 function formatWeight(value: number | null | undefined): string {
   if (value == null) return "—";
@@ -26,13 +41,108 @@ function weightDelta(
   return actual - prescribed;
 }
 
-export function CoachWorkoutReviewPanel({
-  clientUserId,
-  clientName,
-  calendarEntryId,
-  onClose,
-}: Props) {
-  const [review, setReview] = useState<CoachWorkoutReview | null>(null);
+function WorkoutBlocksReview({
+  workout,
+  setLogs,
+}: {
+  workout: WorkoutDetail;
+  setLogs: WorkoutSetLog[];
+}) {
+  return (
+    <div className="space-y-4">
+      {workout.blocks.map((block) => (
+        <article
+          key={block.id}
+          className="border border-[var(--th-border)] bg-white p-4"
+        >
+          <p className="text-xs font-semibold tracking-wide uppercase text-[var(--th-blue)]">
+            {block.label}
+            {block.sectionTitle ? ` · ${block.sectionTitle}` : ""}
+          </p>
+          <h3 className="mt-1 font-bold">
+            {block.exercise?.title ?? "Exercise"}
+          </h3>
+
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead>
+                <tr className="border-b border-[var(--th-border)] text-left text-xs tracking-wide th-muted uppercase">
+                  <th className="py-2 pr-3 font-semibold">Set</th>
+                  <th className="py-2 pr-3 font-semibold">Reps</th>
+                  <th className="py-2 pr-3 font-semibold">Prescribed</th>
+                  <th className="py-2 pr-3 font-semibold">Athlete</th>
+                  <th className="py-2 font-semibold">Δ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {block.sets.map((set) => {
+                  const log = getSetLogForBlock(
+                    setLogs,
+                    block.id,
+                    set.setNumber,
+                  );
+                  const athleteWeight = log?.weightLb ?? null;
+                  const delta = weightDelta(set.weightLb, athleteWeight);
+                  return (
+                    <tr
+                      key={set.setNumber}
+                      className="border-b border-[var(--th-border)]/60"
+                    >
+                      <td className="py-2 pr-3 font-medium">{set.setNumber}</td>
+                      <td className="py-2 pr-3">{set.reps ?? "—"}</td>
+                      <td className="py-2 pr-3 text-muted">
+                        {formatWeight(set.weightLb)}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-2 pr-3 font-medium",
+                          athleteWeight != null
+                            ? "text-[var(--th-text)]"
+                            : "text-muted",
+                        )}
+                      >
+                        {formatWeight(athleteWeight)}
+                      </td>
+                      <td className="py-2">
+                        {delta == null ? (
+                          <span className="text-muted">—</span>
+                        ) : delta === 0 ? (
+                          <span className="text-muted">0</span>
+                        ) : (
+                          <span
+                            className={cn(
+                              "font-medium",
+                              delta > 0 ? "text-emerald-600" : "text-amber-700",
+                            )}
+                          >
+                            {delta > 0 ? `+${delta}` : delta}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {block.sessionCues ? (
+            <p className="mt-3 text-sm th-muted">{block.sessionCues}</p>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function CoachWorkoutReviewPanel(props: Props) {
+  const { calendarEntryId, onClose } = props;
+  const [clientReview, setClientReview] = useState<CoachWorkoutReview | null>(
+    null,
+  );
+  const [teamReview, setTeamReview] = useState<CoachTeamWorkoutReview | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,11 +151,14 @@ export function CoachWorkoutReviewPanel({
     async function load() {
       setLoading(true);
       setError(null);
-      const params = new URLSearchParams({
-        clientUserId,
-        calendarEntryId,
-        clientName,
-      });
+      const params = new URLSearchParams({ calendarEntryId });
+      if (props.mode === "team") {
+        params.set("teamId", props.teamId);
+      } else {
+        params.set("clientUserId", props.clientUserId);
+        params.set("clientName", props.clientName);
+      }
+
       const res = await fetch(
         `/api/admin/programs/workout-review?${params.toString()}`,
       );
@@ -56,15 +169,40 @@ export function CoachWorkoutReviewPanel({
         setError(data.error ?? "Could not load workout");
         return;
       }
-      setReview(data.review as CoachWorkoutReview);
+      if (data.mode === "team") {
+        setTeamReview(data.review as CoachTeamWorkoutReview);
+        setClientReview(null);
+      } else {
+        setClientReview(data.review as CoachWorkoutReview);
+        setTeamReview(null);
+      }
     }
     void load();
     return () => {
       cancelled = true;
     };
-  }, [calendarEntryId, clientName, clientUserId]);
+  }, [calendarEntryId, props]);
 
-  const loggedSetCount = review?.setLogs.filter((log) => log.weightLb != null).length ?? 0;
+  const title =
+    clientReview?.entry.title ?? teamReview?.entry.title ?? "Loading…";
+  const entryDate = clientReview?.entry.entryDate ?? teamReview?.entry.entryDate;
+  const subtitle =
+    props.mode === "team"
+      ? teamReview
+        ? `${teamReview.team.name} · ${teamReview.members.length} athletes`
+        : "Small group"
+      : props.clientName;
+
+  const loggedSetCount =
+    clientReview?.setLogs.filter((log) => log.weightLb != null).length ??
+    teamReview?.members.reduce(
+      (sum, member) =>
+        sum + member.setLogs.filter((log) => log.weightLb != null).length,
+      0,
+    ) ??
+    0;
+
+  const workout = clientReview?.workout ?? teamReview?.workout ?? null;
 
   return (
     <section className="th-card p-5">
@@ -73,13 +211,10 @@ export function CoachWorkoutReviewPanel({
           <p className="text-xs font-semibold tracking-wide uppercase th-muted">
             Workout review
           </p>
-          <h2 className="mt-1 text-lg font-bold">
-            {review?.entry.title ?? "Loading…"}
-          </h2>
+          <h2 className="mt-1 text-lg font-bold">{title}</h2>
           <p className="mt-1 text-sm th-muted">
-            {clientName}
-            {review ? ` · ${review.entry.entryDate}` : ""}
-            {review?.completion ? " · Completed" : ""}
+            {subtitle}
+            {entryDate ? ` · ${entryDate}` : ""}
           </p>
         </div>
         <button
@@ -101,153 +236,114 @@ export function CoachWorkoutReviewPanel({
         </p>
       ) : null}
 
-      {!loading && !error && review ? (
+      {!loading && !error && (clientReview || teamReview) ? (
         <div className="mt-6 space-y-6">
           <div className="flex flex-wrap gap-4 text-sm">
-            <div>
-              <p className="text-xs font-semibold tracking-wide uppercase th-muted">
-                Status
-              </p>
-              <p className="mt-1 font-medium">
-                {review.completion ? "Completed" : "Not completed"}
-              </p>
-            </div>
+            {props.mode === "client" && clientReview ? (
+              <div>
+                <p className="text-xs font-semibold tracking-wide uppercase th-muted">
+                  Status
+                </p>
+                <p className="mt-1 font-medium">
+                  {clientReview.completion ? "Completed" : "Not completed"}
+                </p>
+              </div>
+            ) : null}
             <div>
               <p className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Sets logged
               </p>
               <p className="mt-1 font-medium">{loggedSetCount}</p>
             </div>
-            {review.completion ? (
+            {props.mode === "team" && teamReview ? (
               <div>
                 <p className="text-xs font-semibold tracking-wide uppercase th-muted">
-                  Completed at
+                  Completed
                 </p>
                 <p className="mt-1 font-medium">
-                  {new Date(review.completion.completedAt).toLocaleString()}
+                  {
+                    teamReview.members.filter((member) => member.completion)
+                      .length
+                  }{" "}
+                  / {teamReview.members.length}
                 </p>
               </div>
             ) : null}
           </div>
 
-          {review.completion?.clientNote ? (
+          {clientReview?.completion?.clientNote ? (
             <div className="border border-[var(--th-border)] bg-white px-4 py-3 text-sm">
               <p className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Athlete note
               </p>
               <p className="mt-2 whitespace-pre-wrap">
-                {review.completion.clientNote}
+                {clientReview.completion.clientNote}
               </p>
             </div>
           ) : null}
 
-          {review.workout?.coachInstructions ? (
+          {workout?.coachInstructions ? (
             <div className="border border-[var(--th-border)] bg-white px-4 py-3 text-sm">
               <p className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Coach instructions
               </p>
-              <p className="mt-2">{review.workout.coachInstructions}</p>
+              <p className="mt-2">{workout.coachInstructions}</p>
             </div>
           ) : null}
 
-          {review.workout?.blocks.length ? (
+          {props.mode === "client" && clientReview && workout ? (
+            <WorkoutBlocksReview workout={workout} setLogs={clientReview.setLogs} />
+          ) : null}
+
+          {props.mode === "team" && teamReview && workout ? (
             <div className="space-y-4">
-              {review.workout.blocks.map((block) => (
-                <article
-                  key={block.id}
-                  className="border border-[var(--th-border)] bg-white p-4"
-                >
-                  <p className="text-xs font-semibold tracking-wide uppercase text-[var(--th-blue)]">
-                    {block.label}
-                    {block.sectionTitle ? ` · ${block.sectionTitle}` : ""}
-                  </p>
-                  <h3 className="mt-1 font-bold">
-                    {block.exercise?.title ?? "Exercise"}
-                  </h3>
-
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[420px] text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--th-border)] text-left text-xs tracking-wide th-muted uppercase">
-                          <th className="py-2 pr-3 font-semibold">Set</th>
-                          <th className="py-2 pr-3 font-semibold">Reps</th>
-                          <th className="py-2 pr-3 font-semibold">Prescribed</th>
-                          <th className="py-2 pr-3 font-semibold">Athlete</th>
-                          <th className="py-2 font-semibold">Δ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {block.sets.map((set) => {
-                          const log = getSetLogForBlock(
-                            review.setLogs,
-                            block.id,
-                            set.setNumber,
-                          );
-                          const athleteWeight = log?.weightLb ?? null;
-                          const delta = weightDelta(set.weightLb, athleteWeight);
-                          return (
-                            <tr
-                              key={set.setNumber}
-                              className="border-b border-[var(--th-border)]/60"
-                            >
-                              <td className="py-2 pr-3 font-medium">
-                                {set.setNumber}
-                              </td>
-                              <td className="py-2 pr-3">{set.reps ?? "—"}</td>
-                              <td className="py-2 pr-3 text-muted">
-                                {formatWeight(set.weightLb)}
-                              </td>
-                              <td
-                                className={cn(
-                                  "py-2 pr-3 font-medium",
-                                  athleteWeight != null
-                                    ? "text-[var(--th-text)]"
-                                    : "text-muted",
-                                )}
-                              >
-                                {formatWeight(athleteWeight)}
-                              </td>
-                              <td className="py-2">
-                                {delta == null ? (
-                                  <span className="text-muted">—</span>
-                                ) : delta === 0 ? (
-                                  <span className="text-muted">0</span>
-                                ) : (
-                                  <span
-                                    className={cn(
-                                      "font-medium",
-                                      delta > 0
-                                        ? "text-emerald-600"
-                                        : "text-amber-700",
-                                    )}
-                                  >
-                                    {delta > 0 ? `+${delta}` : delta}
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {block.sessionCues ? (
-                    <p className="mt-3 text-sm th-muted">{block.sessionCues}</p>
-                  ) : null}
-                </article>
-              ))}
+              <p className="text-xs font-semibold tracking-wide uppercase th-muted">
+                Athlete performance
+              </p>
+              {teamReview.members.map((member) => {
+                const memberLogged = member.setLogs.filter(
+                  (log) => log.weightLb != null,
+                ).length;
+                return (
+                  <details
+                    key={member.clientUserId}
+                    className="border border-[var(--th-border)] bg-white"
+                    open={memberLogged > 0}
+                  >
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+                      {member.clientName}
+                      <span className="ml-2 text-xs font-normal th-muted">
+                        {member.completion ? "Completed" : "In progress"} ·{" "}
+                        {memberLogged} sets logged
+                      </span>
+                    </summary>
+                    <div className="border-t border-[var(--th-border)] p-4">
+                      {member.completion?.clientNote ? (
+                        <p className="mb-4 text-sm th-muted">
+                          Note: {member.completion.clientNote}
+                        </p>
+                      ) : null}
+                      <WorkoutBlocksReview
+                        workout={workout}
+                        setLogs={member.setLogs}
+                      />
+                    </div>
+                  </details>
+                );
+              })}
             </div>
-          ) : (
+          ) : null}
+
+          {!workout ? (
             <p className="text-sm th-muted">
               No workout content is attached to this calendar entry.
             </p>
-          )}
+          ) : null}
 
           {loggedSetCount === 0 ? (
             <p className="text-sm th-muted">
-              No weights logged yet. The athlete will record sets in their
-              workout player.
+              No weights logged yet. Athletes record sets in their workout
+              player during class.
             </p>
           ) : null}
         </div>

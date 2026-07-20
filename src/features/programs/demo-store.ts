@@ -229,7 +229,7 @@ function seedState(): ProgramsState {
   const teamId = "team_performance";
   const team: Team = {
     id: teamId,
-    name: "Performance Group",
+    name: "Small Group AM",
     difficulty: "Intermediate",
     createdAt: now,
   };

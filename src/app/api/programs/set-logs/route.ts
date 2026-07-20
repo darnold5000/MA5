@@ -8,6 +8,10 @@ import {
   serializeProgramsState,
 } from "@/features/programs/demo-store";
 import { mapSetLogRow } from "@/features/programs/supabase-store";
+import {
+  clientCanAccessCalendarEntry,
+  clientCanAccessCalendarEntryInState,
+} from "@/features/programs/calendar-access";
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -45,13 +49,16 @@ export async function POST(request: Request) {
       const supabase = await createClient();
       const { data: entry, error: entryError } = await supabase
         .from(MA5_TABLES.calendarEntries)
-        .select("id, publish_status")
+        .select("id, publish_status, client_user_id, team_id")
         .eq("id", data.calendarEntryId)
         .maybeSingle();
       if (entryError) {
         return NextResponse.json({ error: entryError.message }, { status: 500 });
       }
-      if (!entry || entry.publish_status !== "published") {
+      if (
+        !entry ||
+        !(await clientCanAccessCalendarEntry(supabase, clientUserId, entry))
+      ) {
         return NextResponse.json({ error: "Workout not found" }, { status: 404 });
       }
 
@@ -114,7 +121,10 @@ export async function POST(request: Request) {
 
   const state = await readProgramsState();
   const entry = state.calendarEntries.find((e) => e.id === data.calendarEntryId);
-  if (!entry || entry.publishStatus !== "published") {
+  if (
+    !entry ||
+    !clientCanAccessCalendarEntryInState(state, clientUserId, entry)
+  ) {
     return NextResponse.json({ error: "Workout not found" }, { status: 404 });
   }
 

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { id: "overview", href: "/admin/programs", label: "Overview" },
-  { id: "teams", href: "/admin/programs/teams", label: "Teams" },
+  { id: "teams", href: "/admin/programs/teams", label: "Small groups" },
   { id: "assign", href: "/admin/programs/assign", label: "Assign" },
   { id: "library", href: "/admin/programs/library", label: "Library" },
 ] as const;

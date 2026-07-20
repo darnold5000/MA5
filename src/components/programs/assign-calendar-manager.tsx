@@ -270,6 +270,7 @@ export function AssignCalendarManager({
 
       {selectedEntryId ? (
         <CoachWorkoutReviewPanel
+          mode="client"
           clientUserId={clientId}
           clientName={selectedClientName}
           calendarEntryId={selectedEntryId}

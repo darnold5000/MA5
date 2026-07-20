@@ -21,6 +21,7 @@ import {
   materializeProgramDaysToDb,
   replaceBlockSets,
 } from "@/features/programs/supabase-store";
+import { upsertTeamDayWorkout } from "@/features/programs/calendar-access";
 import type { Exercise, WorkoutBlock, WorkoutBlockSet } from "@/features/programs/types";
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
@@ -687,6 +688,31 @@ async function postSupabase(request: Request) {
         return jsonOk({ ok: true });
       }
 
+      case "postTodayWorkout": {
+        const data = z
+          .object({
+            teamId: uuid,
+            workoutId: uuid,
+            entryDate: z.string().min(8).optional(),
+          })
+          .parse(json);
+        const entryDate =
+          data.entryDate ?? new Date().toISOString().slice(0, 10);
+        const { data: workout } = await supabase
+          .from(MA5_TABLES.workouts)
+          .select("title")
+          .eq("id", data.workoutId)
+          .maybeSingle();
+        const entry = await upsertTeamDayWorkout({
+          supabase,
+          teamId: data.teamId,
+          workoutId: data.workoutId,
+          entryDate,
+          title: workout?.title ?? "Workout",
+        });
+        return jsonOk({ ok: true, entry });
+      }
+
       case "addCalendarEntry": {
         const data = z
           .object({
@@ -1218,6 +1244,42 @@ async function postCookie(request: Request) {
       const data = z.object({ id: z.string() }).parse(json);
       state.teamMembers = state.teamMembers.filter((m) => m.id !== data.id);
       return withCookie(state, { ok: true });
+    }
+
+    case "postTodayWorkout": {
+      const data = z
+        .object({
+          teamId: z.string(),
+          workoutId: z.string(),
+          entryDate: z.string().min(8).optional(),
+        })
+        .parse(json);
+      const entryDate = data.entryDate ?? new Date().toISOString().slice(0, 10);
+      const workout = state.workouts.find((w) => w.id === data.workoutId);
+      const existingIndex = state.calendarEntries.findIndex(
+        (entry) =>
+          entry.teamId === data.teamId && entry.entryDate === entryDate,
+      );
+      const entry = {
+        id:
+          existingIndex >= 0
+            ? state.calendarEntries[existingIndex].id
+            : newId("cal"),
+        entryDate,
+        workoutId: data.workoutId,
+        title: workout?.title ?? "Workout",
+        publishStatus: "published" as const,
+        source: "library" as const,
+        clientUserId: null,
+        teamId: data.teamId,
+        programAssignmentId: null,
+      };
+      if (existingIndex >= 0) {
+        state.calendarEntries[existingIndex] = entry;
+      } else {
+        state.calendarEntries = [...state.calendarEntries, entry];
+      }
+      return withCookie(state, { ok: true, entry });
     }
 
     case "addCalendarEntry": {

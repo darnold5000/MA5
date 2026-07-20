@@ -146,6 +146,20 @@ export type CoachWorkoutReview = {
   clientName: string;
 };
 
+export type CoachTeamMemberWorkoutPerformance = {
+  clientUserId: string;
+  clientName: string;
+  completion: WorkoutCompletion | null;
+  setLogs: WorkoutSetLog[];
+};
+
+export type CoachTeamWorkoutReview = {
+  entry: CalendarEntry;
+  team: Team;
+  workout: WorkoutDetail | null;
+  members: CoachTeamMemberWorkoutPerformance[];
+};
+
 export type WorkoutDetail = Workout & {
   blocks: Array<
     WorkoutBlock & {

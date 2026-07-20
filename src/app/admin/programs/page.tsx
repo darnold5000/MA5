@@ -21,8 +21,8 @@ export default async function AdminProgramsPage() {
     },
     {
       href: "/admin/programs/teams",
-      title: "Teams",
-      detail: `${state.teams.length} teams`,
+      title: "Small groups",
+      detail: `${state.teams.length} groups · post today's class workout`,
     },
     {
       href: "/admin/programs/assign",
@@ -40,7 +40,8 @@ export default async function AdminProgramsPage() {
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Programs</h1>
           <p className="mt-2 max-w-2xl text-sm th-muted">
-            Build content in Library, deliver via Teams or Assign.
+            Build content in Library, post class workouts via Small groups, or
+            assign 1-on-1 programs.
           </p>
         </div>
 

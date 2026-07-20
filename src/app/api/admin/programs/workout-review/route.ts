@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { getCoachWorkoutReview } from "@/features/programs/queries";
+import {
+  getCoachTeamWorkoutReview,
+  getCoachWorkoutReview,
+} from "@/features/programs/queries";
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 
@@ -12,17 +15,26 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const clientUserId = url.searchParams.get("clientUserId")?.trim() ?? "";
+  const teamId = url.searchParams.get("teamId")?.trim() ?? "";
   const calendarEntryId = url.searchParams.get("calendarEntryId")?.trim() ?? "";
   const clientName = url.searchParams.get("clientName")?.trim();
 
-  if (!clientUserId || !calendarEntryId) {
+  if (!calendarEntryId || (!clientUserId && !teamId)) {
     return NextResponse.json(
-      { error: "clientUserId and calendarEntryId are required" },
+      { error: "calendarEntryId and clientUserId or teamId are required" },
       { status: 400 },
     );
   }
 
   try {
+    if (teamId) {
+      const review = await getCoachTeamWorkoutReview(teamId, calendarEntryId);
+      if (!review) {
+        return NextResponse.json({ error: "Workout not found" }, { status: 404 });
+      }
+      return NextResponse.json({ review, mode: "team" });
+    }
+
     const review = await getCoachWorkoutReview(
       clientUserId,
       calendarEntryId,
@@ -31,7 +43,7 @@ export async function GET(request: Request) {
     if (!review) {
       return NextResponse.json({ error: "Workout not found" }, { status: 404 });
     }
-    return NextResponse.json({ review });
+    return NextResponse.json({ review, mode: "client" });
   } catch (err) {
     return NextResponse.json(
       {
