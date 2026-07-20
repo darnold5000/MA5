@@ -36,9 +36,10 @@ export const siteConfig = {
     linkedin: "https://www.linkedin.com/in/robert-anderson-818997104/",
   },
   booking: {
-    // Native Fitness Hub schedule (auth required — middleware sends to login).
-    // Mindbody Explore stays available as fallbackUrl.
-    path: "/app/schedule",
+    // Public intake — assessments, InBody, consultations (emailed to staff).
+    path: "/book",
+    // Signed-in members book sessions in the Fitness Hub.
+    memberPath: "/app/schedule",
     fallbackUrl:
       "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",
   },

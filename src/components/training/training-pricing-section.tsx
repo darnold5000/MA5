@@ -1,6 +1,6 @@
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { siteConfig } from "@/content/site-config";
+import { getBookingHref } from "@/content/booking";
 import { listActiveOfferings } from "@/lib/billing/catalog";
 import { formatMoney } from "@/features/scheduling/format";
 
@@ -70,7 +70,7 @@ export async function TrainingPricingSection() {
       </div>
 
       <div className="mt-8">
-        <ButtonLink href={siteConfig.booking.path}>Book Now</ButtonLink>
+        <ButtonLink href={getBookingHref("consultation")}>Book Now</ButtonLink>
       </div>
     </section>
   );

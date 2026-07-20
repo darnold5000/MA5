@@ -5,7 +5,7 @@ import { ButtonLink } from "@/components/shared/button-link";
 import { VerticalPosterVideo } from "@/components/marketing/vertical-poster-video";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { TrainingPricingSection } from "@/components/training/training-pricing-section";
-import { siteConfig } from "@/content/site-config";
+import { getBookingHref } from "@/content/booking";
 import { trainingCopy } from "@/content/services";
 
 export const metadata: Metadata = {
@@ -43,7 +43,7 @@ export default function TrainingPage() {
             ))}
           </ul>
           <div className="mt-6">
-            <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
+            <ButtonLink href={getBookingHref("consultation")}>Book NOW</ButtonLink>
           </div>
         </article>
 
@@ -69,7 +69,7 @@ export default function TrainingPage() {
             ))}
           </ul>
           <div className="mt-6">
-            <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
+            <ButtonLink href={getBookingHref("consultation")}>Book NOW</ButtonLink>
           </div>
         </article>
 
@@ -100,7 +100,7 @@ export default function TrainingPage() {
             ))}
           </ul>
           <div className="mt-6">
-            <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
+            <ButtonLink href={getBookingHref("consultation")}>Book NOW</ButtonLink>
           </div>
         </article>
         */}
@@ -126,7 +126,7 @@ export default function TrainingPage() {
             {trainingCopy.assessment.body}
           </p>
           <div className="mt-6">
-            <ButtonLink href={siteConfig.booking.path}>Schedule Now</ButtonLink>
+            <ButtonLink href={getBookingHref("assessment")}>Schedule Now</ButtonLink>
           </div>
         </div>
       </section>

@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import {
+  bookingRequestServiceLabel,
+  isBookingRequestService,
+} from "@/content/booking-request";
 import { readAttributionFromCookies } from "@/lib/attribution/cookies";
+import {
+  formatStaffBookingRequestEmail,
+  formatStaffLeadEmail,
+  notifyStaffEmail,
+} from "@/lib/email/notify-staff";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import {
   createServiceClient,
@@ -15,7 +24,68 @@ const leadSchema = z.object({
   phone: z.string().max(40).optional(),
   message: z.string().max(4000).optional(),
   sourcePath: z.string().max(500).optional(),
+  service: z.string().max(80).optional(),
+  intent: z.enum(["contact", "booking"]).optional(),
 });
+
+function buildStoredMessage(data: {
+  message?: string;
+  service?: string;
+  intent?: "contact" | "booking";
+}): string | null {
+  const body = data.message?.trim() || "";
+  if (data.intent === "booking" && data.service) {
+    const label = bookingRequestServiceLabel(data.service);
+    const prefix = `Booking request: ${label}`;
+    return body ? `${prefix}\n\n${body}` : prefix;
+  }
+  return body || null;
+}
+
+async function sendStaffNotification(args: {
+  name: string;
+  email: string;
+  phone?: string;
+  message?: string | null;
+  service?: string;
+  intent?: "contact" | "booking";
+  sourcePath?: string;
+  utmCampaign?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+}) {
+  const isBooking =
+    args.intent === "booking" &&
+    args.service &&
+    isBookingRequestService(args.service);
+
+  const payload = isBooking
+    ? formatStaffBookingRequestEmail({
+        name: args.name,
+        email: args.email,
+        phone: args.phone,
+        serviceLabel: bookingRequestServiceLabel(args.service!),
+        message: args.message,
+        sourcePath: args.sourcePath,
+        utmCampaign: args.utmCampaign,
+        utmSource: args.utmSource,
+        utmMedium: args.utmMedium,
+      })
+    : formatStaffLeadEmail({
+        name: args.name,
+        email: args.email,
+        phone: args.phone,
+        message: args.message,
+        utmCampaign: args.utmCampaign,
+        utmSource: args.utmSource,
+        utmMedium: args.utmMedium,
+      });
+
+  await notifyStaffEmail({
+    ...payload,
+    replyTo: args.email,
+  });
+}
 
 /**
  * Public lead capture. Associates anonymous visitor cookie with PII only
@@ -31,26 +101,55 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    parsed.data.intent === "booking" &&
+    parsed.data.service &&
+    !isBookingRequestService(parsed.data.service)
+  ) {
+    return NextResponse.json(
+      { error: "Please choose a valid service" },
+      { status: 400 },
+    );
+  }
+
   const { visitorId, firstTouch } = await readAttributionFromCookies();
   const emailNorm = parsed.data.email.trim().toLowerCase();
   const name = parsed.data.name.trim();
+  const storedMessage = buildStoredMessage(parsed.data);
+  const isBooking = parsed.data.intent === "booking";
+  const successMessage = isBooking
+    ? "Thanks — your request was sent. We will email you to confirm your appointment."
+    : "Thanks — we will be in touch soon.";
 
-  if (
-    !isSupabasePublicConfigured() ||
-    !isSupabaseConfigured() ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
+  const supabaseReady =
+    isSupabasePublicConfigured() &&
+    isSupabaseConfigured() &&
+    Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  if (!supabaseReady) {
+    await sendStaffNotification({
+      name,
+      email: emailNorm,
+      phone: parsed.data.phone,
+      message: storedMessage,
+      service: parsed.data.service,
+      intent: parsed.data.intent,
+      sourcePath: parsed.data.sourcePath,
+      utmCampaign: firstTouch?.utmCampaign,
+      utmSource: firstTouch?.utmSource,
+      utmMedium: firstTouch?.utmMedium,
+    });
+
     return NextResponse.json({
       ok: true,
       demo: true,
-      message: "Thanks — we received your message (demo mode).",
+      message: successMessage,
     });
   }
 
   try {
     const admin = createServiceClient();
 
-    // Ensure visitor session exists so FK succeeds — never overwrite first-touch
     if (visitorId && firstTouch) {
       const { data: existing } = await admin
         .from(MA5_TABLES.visitorSessions)
@@ -86,7 +185,7 @@ export async function POST(request: Request) {
         name,
         email: emailNorm,
         phone: parsed.data.phone?.trim() || null,
-        message: parsed.data.message?.trim() || null,
+        message: storedMessage,
         utm_source: firstTouch?.utmSource ?? null,
         utm_medium: firstTouch?.utmMedium ?? null,
         utm_campaign: firstTouch?.utmCampaign ?? null,
@@ -108,40 +207,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Optional email notify — reserved env; fail soft
-    const to = process.env.CONTACT_TO_EMAIL?.trim();
-    if (to && process.env.RESEND_API_KEY) {
-      try {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "MA5 Contact <onboarding@resend.dev>",
-            to: [to],
-            subject: `New lead: ${name}`,
-            text: [
-              `Name: ${name}`,
-              `Email: ${emailNorm}`,
-              `Phone: ${parsed.data.phone ?? "—"}`,
-              `Campaign: ${firstTouch?.utmCampaign ?? "—"}`,
-              `Source: ${firstTouch?.utmSource ?? "—"} / ${firstTouch?.utmMedium ?? "—"}`,
-              "",
-              parsed.data.message ?? "",
-            ].join("\n"),
-          }),
-        });
-      } catch (mailErr) {
-        console.error("[api/leads] notify", mailErr);
-      }
-    }
+    await sendStaffNotification({
+      name,
+      email: emailNorm,
+      phone: parsed.data.phone,
+      message: storedMessage,
+      service: parsed.data.service,
+      intent: parsed.data.intent,
+      sourcePath: parsed.data.sourcePath,
+      utmCampaign: firstTouch?.utmCampaign,
+      utmSource: firstTouch?.utmSource,
+      utmMedium: firstTouch?.utmMedium,
+    });
 
     return NextResponse.json({
       ok: true,
       leadId: lead.id,
-      message: "Thanks — we will be in touch soon.",
+      message: successMessage,
     });
   } catch (err) {
     console.error("[api/leads]", err);
