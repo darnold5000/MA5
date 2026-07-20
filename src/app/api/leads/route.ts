@@ -118,7 +118,7 @@ export async function POST(request: Request) {
   const storedMessage = buildStoredMessage(parsed.data);
   const isBooking = parsed.data.intent === "booking";
   const successMessage = isBooking
-    ? "Thanks — your request was sent. We will email you to confirm your appointment."
+    ? "Thanks — your request was sent. We will follow up by email or phone to confirm your appointment."
     : "Thanks — we will be in touch soon.";
 
   const supabaseReady =

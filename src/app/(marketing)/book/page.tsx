@@ -28,8 +28,8 @@ export default async function BookPage({ searchParams }: BookPageProps) {
         title="Book a consultation or assessment"
         description={
           serviceLabel
-            ? `You selected ${serviceLabel}. Complete the form and we will email you to confirm your appointment.`
-            : "Assessments, InBody scans, and consultations are scheduled by our team. Submit your request and we will follow up by email."
+            ? `You selected ${serviceLabel}. Complete the form and we will follow up by email or phone to confirm your appointment.`
+            : "Assessments, InBody scans, and consultations are scheduled by our team. Submit your request and we will follow up by email or phone."
         }
       />
 

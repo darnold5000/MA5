@@ -64,7 +64,7 @@ export function BookingRequestForm({
 
     setSuccess(
       data.message ??
-        "Thanks — your request was sent. Mike will follow up by email to schedule.",
+        "Thanks — your request was sent. Mike will follow up by email or phone to schedule.",
     );
     setName("");
     setEmail("");
@@ -81,8 +81,8 @@ export function BookingRequestForm({
         Request a booking
       </p>
       <p className="text-sm text-muted">
-        Tell us what you are interested in and how to reach you. We will email
-        you back to confirm a time — no account required.
+        Tell us what you are interested in and how to reach you. We will follow
+        up by email or phone to confirm a time — no account required.
       </p>
 
       <label className="block">
@@ -95,7 +95,7 @@ export function BookingRequestForm({
           onChange={(e) =>
             setService(e.target.value as BookingRequestService)
           }
-          className="mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none"
+          className="ma5-select mt-1.5 w-full border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none"
         >
           {BOOKING_REQUEST_SERVICES.map((option) => (
             <option key={option.value} value={option.value}>
