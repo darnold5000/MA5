@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/marketing", label: "Overview", exact: true },
   { href: "/admin/marketing/leads", label: "Leads", exact: false },
   { href: "/admin/marketing/campaigns", label: "Campaigns", exact: false },
+  { href: "/admin/marketing/content", label: "Website content", exact: false },
 ] as const;
 
 export function MarketingSubnav() {

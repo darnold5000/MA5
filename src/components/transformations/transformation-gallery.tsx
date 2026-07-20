@@ -21,9 +21,10 @@ function TransformationImage({
     <Image
       src={src}
       alt={alt}
-      fill
+      width={0}
+      height={0}
       sizes={sizes}
-      className="object-cover transition duration-500 group-hover:scale-[1.03]"
+      className="h-auto w-full"
     />
   );
 }
@@ -47,19 +48,18 @@ export function TransformationGallery({
         return (
           <figure
             key={item.id}
-            className="group overflow-hidden border border-border bg-surface"
+            className="border border-border bg-surface"
           >
-            <div className="relative aspect-square overflow-hidden">
+            <div className="bg-background/50 p-2">
               {images.length > 1 ? (
-                <div className="flex h-full flex-col">
+                <div className="flex flex-col gap-2">
                   {images.map((src, index) => (
-                    <div key={src} className="relative min-h-0 flex-1">
-                      <TransformationImage
-                        src={src}
-                        alt={`${item.alt} (${index + 1} of ${images.length})`}
-                        sizes={imageSizes}
-                      />
-                    </div>
+                    <TransformationImage
+                      key={src}
+                      src={src}
+                      alt={`${item.alt} (${index + 1} of ${images.length})`}
+                      sizes={imageSizes}
+                    />
                   ))}
                 </div>
               ) : (

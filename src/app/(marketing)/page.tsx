@@ -8,7 +8,7 @@ import { ServicesOverview } from "@/components/home/services-overview";
 import { TeamSection } from "@/components/home/team-section";
 import { ValueProposition } from "@/components/home/value-proposition";
 
-export default function HomePage() {
+export default async function HomePage() {
   return (
     <>
       <HeroSection />

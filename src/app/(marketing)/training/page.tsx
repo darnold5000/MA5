@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
 import { PosterVideo } from "@/components/marketing/poster-video";
+import { VerticalPosterVideo } from "@/components/marketing/vertical-poster-video";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { TrainingPricingSection } from "@/components/training/training-pricing-section";
 import { siteConfig } from "@/content/site-config";
@@ -48,6 +49,9 @@ export default function TrainingPage() {
         </article>
 
         <article className="border border-border bg-surface p-6">
+          <p className="mb-4 text-xs font-semibold tracking-[0.2em] text-muted uppercase">
+            Layout option A
+          </p>
           <div className="relative mb-6 overflow-hidden">
             <PosterVideo
               videoSrc={trainingCopy.smallGroup.video.src}
@@ -71,6 +75,46 @@ export default function TrainingPage() {
           </div>
         </article>
       </div>
+
+      <article className="mt-8 border border-border bg-surface p-6">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Layout option B
+        </p>
+        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start">
+          <div className="relative aspect-[4/3] overflow-hidden border border-border">
+            <Image
+              src={trainingCopy.smallGroup.video.posterSrc}
+              alt="Small group training at MA5 Performance"
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 40vw"
+            />
+          </div>
+          <div className="flex flex-col items-center lg:items-start">
+            <VerticalPosterVideo
+              videoSrc={trainingCopy.smallGroup.video.src}
+              posterSrc={trainingCopy.smallGroup.video.posterSrc}
+              title={trainingCopy.smallGroup.video.title}
+            />
+            <div className="mt-6 w-full">
+              <h2 className="font-display text-3xl tracking-wide uppercase">
+                {trainingCopy.smallGroup.title}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted">
+                {trainingCopy.smallGroup.intro}
+              </p>
+              <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
+                {trainingCopy.smallGroup.points.map((point) => (
+                  <li key={`vertical-${point}`}>• {point}</li>
+                ))}
+              </ul>
+              <div className="mt-6">
+                <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
 
       <TrainingPricingSection />
 

@@ -36,6 +36,7 @@ export const MA5_TABLES = {
   leads: "ma5_leads",
   memberGoals: "ma5_member_goals",
   progressPhotos: "ma5_progress_photos",
+  marketingGallery: "ma5_marketing_gallery",
 } as const;
 
 export type Ma5TableName = (typeof MA5_TABLES)[keyof typeof MA5_TABLES];

@@ -4,8 +4,13 @@ import { TransformationGallery } from "@/components/transformations/transformati
 import { siteConfig } from "@/content/site-config";
 import { featuredTransformations } from "@/content/transformations";
 import { testimonials } from "@/content/testimonials";
+import { featuredTransformationsFromGallery } from "@/features/marketing-gallery/display";
+import { listMarketingGallery } from "@/features/marketing-gallery/queries";
 
-export function ResultsSection() {
+export async function ResultsSection() {
+  const uploaded = await listMarketingGallery("transformations");
+  const items = featuredTransformationsFromGallery(uploaded, featuredTransformations);
+
   return (
     <section className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -16,7 +21,7 @@ export function ResultsSection() {
         />
 
         <TransformationGallery
-          items={featuredTransformations}
+          items={items}
           className="mt-12"
         />
 

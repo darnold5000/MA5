@@ -11,6 +11,10 @@ import {
   JOURNEY_PHOTOS_BUCKET,
   journeyPhotoPath,
 } from "@/lib/journey/constants";
+import {
+  marketingGalleryPath,
+} from "@/lib/marketing-gallery/constants";
+import type { MarketingGallerySection } from "@/features/marketing-gallery/types";
 
 /** Resize/compress in the browser before upload (keeps avatars small). */
 export async function fileToJpegBlob(
@@ -154,6 +158,46 @@ export async function uploadLogoFromBrowser(input: {
     const url = publicAssetUrl(path);
     if (!url) return { error: "Could not build image URL" };
     return { path, url };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Upload failed",
+    };
+  }
+}
+
+export async function uploadMarketingGalleryImageFromBrowser(input: {
+  section: MarketingGallerySection;
+  file: File;
+}): Promise<
+  | { path: string; demoDataUrl?: string }
+  | { error: string; demoDataUrl?: string }
+> {
+  if (!isAllowedImageType(input.file.type) && !input.file.type.startsWith("image/")) {
+    return { error: "Use JPG, PNG, or WebP." };
+  }
+  if (input.file.size > MAX_IMAGE_BYTES) {
+    return { error: "Image must be 5MB or smaller." };
+  }
+
+  try {
+    const blob = await fileToJpegBlob(input.file, 2000, 0.9);
+    const fileId = crypto.randomUUID();
+    const path = marketingGalleryPath(input.section, fileId);
+
+    if (!isSupabaseConfigured()) {
+      const dataUrl = await blobToDataUrl(blob);
+      return { path: `demo:${dataUrl}`, demoDataUrl: dataUrl };
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase.storage
+      .from(BRAND_ASSETS_BUCKET)
+      .upload(path, blob, { contentType: "image/jpeg", upsert: false });
+    if (error) {
+      const dataUrl = await blobToDataUrl(blob);
+      return { error: error.message, demoDataUrl: dataUrl };
+    }
+    return { path };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Upload failed",

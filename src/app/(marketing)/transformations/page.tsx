@@ -5,6 +5,8 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { TransformationGallery } from "@/components/transformations/transformation-gallery";
 import { siteConfig } from "@/content/site-config";
 import { transformations } from "@/content/transformations";
+import { mergeTransformations } from "@/features/marketing-gallery/display";
+import { listMarketingGallery } from "@/features/marketing-gallery/queries";
 
 export const metadata: Metadata = {
   title: "Results",
@@ -12,7 +14,10 @@ export const metadata: Metadata = {
     "Client transformations and results from MA5 Performance in Avon, Indiana.",
 };
 
-export default function TransformationsPage() {
+export default async function TransformationsPage() {
+  const uploaded = await listMarketingGallery("transformations");
+  const items = mergeTransformations(uploaded, transformations);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <SectionHeading
@@ -23,7 +28,7 @@ export default function TransformationsPage() {
         className="mx-auto"
       />
 
-      <TransformationGallery items={transformations} className="mt-12" />
+      <TransformationGallery items={items} className="mt-12" />
 
       <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
         <ButtonLink href={siteConfig.booking.path}>

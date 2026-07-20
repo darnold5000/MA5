@@ -27,6 +27,7 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showNewClient, setShowNewClient] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -76,6 +77,7 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
       setPhone("");
       setNotes("");
       setRole("client");
+      setShowNewClient(false);
     }
     router.refresh();
   }
@@ -110,70 +112,85 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 border border-border bg-surface p-5 sm:grid-cols-2">
-        <label className="space-y-1 text-sm sm:col-span-2">
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            Full name
-          </span>
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="min-h-11 w-full border border-border bg-background px-3"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            Email
-          </span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="min-h-11 w-full border border-border bg-background px-3"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            Phone
-          </span>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="min-h-11 w-full border border-border bg-background px-3"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            Role
-          </span>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as "client" | "coach")}
-            className="min-h-11 w-full border border-border bg-background px-3"
-          >
-            <option value="client">Member (client)</option>
-            <option value="coach">Coach</option>
-          </select>
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            Notes
-          </span>
-          <input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="min-h-11 w-full border border-border bg-background px-3"
-          />
-        </label>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          Invite members by email. New accounts are invitation-only.
+        </p>
         <button
           type="button"
-          disabled={pending || !fullName || !email}
-          onClick={() => void sendInvite()}
-          className="inline-flex min-h-11 items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50 sm:col-span-2"
+          onClick={() => setShowNewClient((open) => !open)}
+          className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
         >
-          {pending ? "Sending…" : "Send invitation"}
+          {showNewClient ? "Close" : "New client"}
         </button>
       </div>
+
+      {showNewClient ? (
+        <div className="grid gap-3 border border-border bg-surface p-5 sm:grid-cols-2">
+          <label className="space-y-1 text-sm sm:col-span-2">
+            <span className="text-xs font-semibold tracking-wide uppercase">
+              Full name
+            </span>
+            <input
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="min-h-11 w-full border border-border bg-background px-3"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase">
+              Email
+            </span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="min-h-11 w-full border border-border bg-background px-3"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase">
+              Phone
+            </span>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="min-h-11 w-full border border-border bg-background px-3"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase">
+              Role
+            </span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as "client" | "coach")}
+              className="min-h-11 w-full border border-border bg-background px-3"
+            >
+              <option value="client">Member (client)</option>
+              <option value="coach">Coach</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase">
+              Notes
+            </span>
+            <input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-11 w-full border border-border bg-background px-3"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={pending || !fullName || !email}
+            onClick={() => void sendInvite()}
+            className="inline-flex min-h-11 items-center justify-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50 sm:col-span-2"
+          >
+            {pending ? "Sending…" : "Send invitation"}
+          </button>
+        </div>
+      ) : null}
 
       {error ? (
         <p className="text-sm text-brand" role="alert">
