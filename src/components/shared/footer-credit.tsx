@@ -28,7 +28,7 @@ export function FooterCredit({
     <p
       className={
         className ??
-        "text-[11px] leading-relaxed text-muted/80"
+        "text-sm leading-snug text-muted"
       }
     >
       <span className="sr-only">{clientName} website. </span>
@@ -38,7 +38,7 @@ export function FooterCredit({
         target="_blank"
         rel="noreferrer"
         title="Professional websites, software & AI solutions."
-        className="underline-offset-2 transition-colors duration-200 hover:text-foreground hover:underline hover:opacity-100"
+        className="font-semibold text-foreground underline-offset-2 transition-colors duration-200 hover:text-brand hover:underline"
       >
         Signal Works
       </a>

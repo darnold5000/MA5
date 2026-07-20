@@ -121,18 +121,23 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-muted sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8">
-          <div className="space-y-1">
-            <p>
-              © {year} {siteConfig.name}. All rights reserved.
-            </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <p>
+            © {year} {siteConfig.name}. All rights reserved.
+          </p>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
             <FooterCredit
               clientName={siteConfig.name}
               signalWorksUrl={siteConfig.signalWorks.url}
               variant={siteConfig.signalWorks.creditVariant}
             />
+            <Link
+              href="/login?next=/admin"
+              className="transition hover:text-foreground"
+            >
+              Staff login
+            </Link>
           </div>
-          <p>Scheduling powered by Mindbody. See Privacy for details.</p>
         </div>
       </div>
     </footer>

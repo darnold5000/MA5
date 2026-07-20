@@ -120,11 +120,6 @@ export function LoginForm() {
           {pending ? "Signing in…" : "Sign in"}
         </button>
       </form>
-
-      <p className="mt-6 text-sm leading-relaxed text-muted">
-        Need an account? Member accounts are created by MA5 staff. Please
-        contact us if you believe you should have access.
-      </p>
     </AuthCard>
   );
 }
