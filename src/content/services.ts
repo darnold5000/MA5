@@ -245,7 +245,7 @@ export const saunaCopy = {
     embedUrl:
       "https://player.vimeo.com/video/1087849433?badge=0&byline=0&h=407c3556ce&portrait=0&title=0&autoplay=0&loop=0&muted=0&controls=1",
     title: "MA5 private infrared sauna room",
-    posterSrc: "/images/services/sauna-recovery.jpeg",
+    posterSrc: "/images/services/sauna-video-poster.png",
   },
   benefits: [
     {
