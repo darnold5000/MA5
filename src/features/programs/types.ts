@@ -138,6 +138,14 @@ export type LastPerformance = {
   loggedAt: string;
 };
 
+export type CoachWorkoutReview = {
+  entry: CalendarEntry;
+  workout: WorkoutDetail | null;
+  completion: WorkoutCompletion | null;
+  setLogs: WorkoutSetLog[];
+  clientName: string;
+};
+
 export type WorkoutDetail = Workout & {
   blocks: Array<
     WorkoutBlock & {

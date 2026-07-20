@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { CoachWorkoutReviewPanel } from "@/components/programs/coach-workout-review-panel";
 import type {
   CalendarEntry,
   Program,
   Workout,
+  WorkoutCompletion,
 } from "@/features/programs/types";
 
 type ClientOption = { id: string; name: string };
@@ -16,6 +18,7 @@ type Props = {
   workouts: Workout[];
   programs: Program[];
   calendarEntries: CalendarEntry[];
+  completions: WorkoutCompletion[];
 };
 
 export function AssignCalendarManager({
@@ -23,11 +26,13 @@ export function AssignCalendarManager({
   workouts,
   programs,
   calendarEntries,
+  completions,
 }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [workoutId, setWorkoutId] = useState(workouts[0]?.id ?? "");
   const [programId, setProgramId] = useState(programs[0]?.id ?? "");
   const [entryDate, setEntryDate] = useState(
@@ -44,6 +49,19 @@ export function AssignCalendarManager({
         .sort((a, b) => a.entryDate.localeCompare(b.entryDate)),
     [calendarEntries, clientId],
   );
+
+  const selectedClientName =
+    clients.find((client) => client.id === clientId)?.name ?? "Client";
+
+  const completionByEntryId = useMemo(() => {
+    const map = new Map<string, WorkoutCompletion>();
+    for (const completion of completions) {
+      if (completion.clientUserId === clientId) {
+        map.set(completion.calendarEntryId, completion);
+      }
+    }
+    return map;
+  }, [clientId, completions]);
 
   async function post(body: unknown) {
     setPending(true);
@@ -72,7 +90,10 @@ export function AssignCalendarManager({
           </span>
           <select
             value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
+            onChange={(e) => {
+              setClientId(e.target.value);
+              setSelectedEntryId(null);
+            }}
             className="th-input"
           >
             {clients.map((c) => (
@@ -205,24 +226,56 @@ export function AssignCalendarManager({
           </button>
         </div>
         <ul className="mt-4 space-y-2">
-          {entries.map((e) => (
-            <li
-              key={e.id}
-              className="flex flex-wrap items-center justify-between gap-2 border border-[var(--th-border)] bg-white px-3 py-2 text-sm"
-            >
-              <span>
-                <span className="font-semibold">{e.entryDate}</span> · {e.title}
-              </span>
-              <span className="text-xs tracking-wide th-muted uppercase">
-                {e.publishStatus} · {e.source}
-              </span>
-            </li>
-          ))}
+          {entries.map((e) => {
+            const completed = completionByEntryId.has(e.id);
+            const isSelected = selectedEntryId === e.id;
+            return (
+              <li key={e.id}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedEntryId((current) =>
+                      current === e.id ? null : e.id,
+                    )
+                  }
+                  className={`flex w-full flex-wrap items-center justify-between gap-2 border px-3 py-2 text-left text-sm transition ${
+                    isSelected
+                      ? "border-[var(--th-blue)] bg-[var(--th-blue)]/5"
+                      : "border-[var(--th-border)] bg-white hover:border-[var(--th-blue)]/40"
+                  }`}
+                >
+                  <span>
+                    <span className="font-semibold">{e.entryDate}</span> · {e.title}
+                  </span>
+                  <span className="flex items-center gap-2 text-xs tracking-wide th-muted uppercase">
+                    {completed ? (
+                      <span className="text-emerald-600">Completed</span>
+                    ) : null}
+                    <span>
+                      {e.publishStatus} · {e.source}
+                    </span>
+                    <span className="text-[var(--th-blue)]">
+                      {isSelected ? "Hide" : "Review"}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
           {entries.length === 0 ? (
             <li className="text-sm th-muted">No calendar entries yet.</li>
           ) : null}
         </ul>
       </section>
+
+      {selectedEntryId ? (
+        <CoachWorkoutReviewPanel
+          clientUserId={clientId}
+          clientName={selectedClientName}
+          calendarEntryId={selectedEntryId}
+          onClose={() => setSelectedEntryId(null)}
+        />
+      ) : null}
 
       {error ? (
         <p className="text-sm text-[var(--th-blue)]" role="alert">

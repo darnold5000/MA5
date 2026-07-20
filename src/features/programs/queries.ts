@@ -18,6 +18,7 @@ import type {
   ClientTrainingProgress,
   CoachAttentionAlert,
   CoachClientProgressRow,
+  CoachWorkoutReview,
   Exercise,
   WorkoutDetail,
   WorkoutSetLog,
@@ -166,6 +167,43 @@ async function loadClientSetLogs(clientIds: string[]): Promise<WorkoutSetLog[]> 
     const state = await readProgramsState();
     return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
   }
+}
+
+export async function getCoachWorkoutReview(
+  clientUserId: string,
+  calendarEntryId: string,
+  clientName?: string,
+): Promise<CoachWorkoutReview | null> {
+  const state = await getProgramsState();
+  const entry = state.calendarEntries.find(
+    (item) => item.id === calendarEntryId && item.clientUserId === clientUserId,
+  );
+  if (!entry) return null;
+
+  const setLogs = (await loadClientSetLogs([clientUserId])).filter(
+    (log) => log.calendarEntryId === calendarEntryId,
+  );
+  const completion =
+    state.completions.find(
+      (item) =>
+        item.calendarEntryId === calendarEntryId &&
+        item.clientUserId === clientUserId,
+    ) ?? null;
+
+  let resolvedName = clientName?.trim();
+  if (!resolvedName) {
+    const roster = await listRosterClients();
+    resolvedName =
+      roster.find((client) => client.id === clientUserId)?.name ?? "Client";
+  }
+
+  return {
+    entry,
+    workout: entry.workoutId ? getWorkoutDetail(state, entry.workoutId) : null,
+    completion,
+    setLogs,
+    clientName: resolvedName,
+  };
 }
 
 export async function listClientProgramDays(

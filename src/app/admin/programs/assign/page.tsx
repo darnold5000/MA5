@@ -28,7 +28,8 @@ export default async function AdminAssignPage() {
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Assign</h1>
           <p className="mt-2 text-sm th-muted">
-            Individual client calendars — draft, publish, or assign a program.
+            Individual client calendars — draft, publish, assign programs, and
+            review logged performance.
           </p>
         </div>
         <ProgramsSectionNav active="assign" />
@@ -37,6 +38,7 @@ export default async function AdminAssignPage() {
           workouts={state.workouts}
           programs={state.programs}
           calendarEntries={state.calendarEntries}
+          completions={state.completions}
         />
       </div>
     </ProgramsLightShell>
