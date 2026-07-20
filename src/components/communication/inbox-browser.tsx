@@ -59,7 +59,7 @@ const INITIAL: FeedItem[] = [
     title: "Payment received",
     body: "14x Membership",
     when: "Monday",
-    href: "/app/billing",
+    href: "/app/profile#membership",
     unread: false,
   },
   {

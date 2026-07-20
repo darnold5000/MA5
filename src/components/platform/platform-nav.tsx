@@ -9,7 +9,7 @@ const CLIENT_NAV = [
   { href: "/app", label: "Home" },
   { href: "/app/schedule", label: "Reserve" },
   { href: "/app/bookings", label: "My Training" },
-  { href: "/app/billing", label: "Plan" },
+  { href: "/app/journey", label: "My Journey" },
   { href: "/app/programs", label: "Programs" },
   { href: "/app/messages", label: "Messages" },
 ] as const;

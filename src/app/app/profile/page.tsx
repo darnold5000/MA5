@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { ManageBillingButton } from "@/components/billing/manage-billing-button";
 import { MemberAttributionSection } from "@/components/marketing/member-attribution-section";
+import { MembershipSection } from "@/components/profile/membership-section";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { InstallMa5Section } from "@/components/pwa/install-ma5-section";
 import { ProfileAvatarUpload } from "@/components/profile/profile-avatar-upload";
@@ -15,9 +14,9 @@ import {
 } from "@/components/profile/profile-forms";
 import { getMemberAttribution } from "@/features/marketing";
 import { getClientProfileSettings } from "@/features/settings/queries";
+import { getMembershipSummary } from "@/lib/billing/membership-summary";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
-import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
 
 export const metadata: Metadata = {
   title: "Profile",
@@ -48,18 +47,8 @@ export default async function ProfilePage() {
   const profile = await getClientProfileSettings();
 
   const membership = session
-    ? await getActiveMembershipForUser(session.id)
-    : null;
-
-  const planName = membership?.productName ?? "No active plan";
-  const planStatus = membership?.status ?? "None";
-  const renewsOn = membership?.currentPeriodEnd
-    ? new Intl.DateTimeFormat("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }).format(new Date(membership.currentPeriodEnd))
-    : null;
+    ? await getMembershipSummary(session.id)
+    : await getMembershipSummary("demo-client");
 
   const userId = session?.id ?? "demo-client";
   const attribution = await getMemberAttribution(userId);
@@ -108,43 +97,14 @@ export default async function ProfilePage() {
         />
       </Section>
 
-      <Section title="Membership">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-              Current plan
-            </p>
-            <p className="mt-1 text-sm text-foreground">{planName}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-              Status
-            </p>
-            <p className="mt-1 text-sm text-foreground">{planStatus}</p>
-            {renewsOn ? (
-              <p className="mt-0.5 text-xs text-muted">Renews {renewsOn}</p>
-            ) : null}
-          </div>
+      <section id="membership" className="border border-border bg-surface p-5 sm:p-6 scroll-mt-24">
+        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+          Membership
+        </p>
+        <div className="mt-5">
+          <MembershipSection membership={membership} />
         </div>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link
-            href="/app/billing"
-            className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-          >
-            View plans
-          </Link>
-          {session ? (
-            <ManageBillingButton label="Payment methods" />
-          ) : (
-            <Link
-              href="/app/billing"
-              className="inline-flex min-h-11 items-center border border-border px-4 text-xs font-semibold tracking-wide uppercase"
-            >
-              Payment methods
-            </Link>
-          )}
-        </div>
-      </Section>
+      </section>
 
       <MemberAttributionSection attribution={attribution} />
 

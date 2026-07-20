@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createOfferingCheckout } from "@/lib/billing";
+import { getOfferingBySlug } from "@/lib/billing/catalog";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
+import { hasCapability } from "@/lib/permissions/roles";
+
+const MEMBERSHIP_CONTACT_MESSAGE =
+  "Membership changes are handled by MA5. Please contact us for assistance.";
 
 const bodySchema = z.object({
   productSlug: z.string().min(1),
@@ -24,6 +29,17 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  const offering = await getOfferingBySlug(parsed.data.productSlug, {
+    activeOnly: true,
+  });
+  if (
+    offering &&
+    (offering.productType === "membership" || offering.productType === "addon") &&
+    !hasCapability(sessionUser.roles, "manage_memberships")
+  ) {
+    return NextResponse.json({ error: MEMBERSHIP_CONTACT_MESSAGE }, { status: 403 });
   }
 
   const result = await createOfferingCheckout({

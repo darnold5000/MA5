@@ -14,7 +14,7 @@ const SIDEBAR = [
   { href: "/app", label: "Home", match: "exact" as const },
   { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
   { href: "/app/bookings", label: "My Training", match: "prefix" as const },
-  { href: "/app/billing", label: "Plan", match: "prefix" as const },
+  { href: "/app/journey", label: "My Journey", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
   { href: "/app/messages", label: "Messages", match: "messages" as const },
 ] as const;
@@ -39,10 +39,10 @@ const MOBILE = [
     icon: "programs",
   },
   {
-    href: "/app/billing",
-    label: "Plan",
+    href: "/app/journey",
+    label: "My Journey",
     match: "prefix" as const,
-    icon: "plan",
+    icon: "journey",
   },
   {
     href: "/app/messages",
@@ -107,11 +107,13 @@ function NavIcon({
           <path d="M4 6h16M4 12h16M4 18h10" />
         </svg>
       );
-    case "plan":
+    case "journey":
       return (
         <svg {...common}>
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 8v4l2.5 2.5" />
+          <path d="M4 20V10" />
+          <path d="M10 20V4" />
+          <path d="M16 20v-8" />
+          <path d="M22 20V8" />
         </svg>
       );
     case "messages":
