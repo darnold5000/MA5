@@ -13,6 +13,24 @@
   --accent-gold: #c9a227;
 }
 
+/* Fitness Hub + Operations — light mode (white bg, black text, red accents) */
+.hub-theme[data-hub-theme="light"] {
+  --background: #ffffff;
+  --foreground: #111111;
+  --surface: #f7f7f7;
+  --surface-strong: #eeeeee;
+  --brand: #e2062b;
+  --brand-foreground: #ffffff;
+  --muted: #5c5c5c;
+  --border: #e0e0e0;
+  --focus: #e2062b;
+  --accent-gold: #a8831a;
+}
+
+.hub-theme[data-hub-theme="light"] .text-brand {
+  color: var(--brand);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

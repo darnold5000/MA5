@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { ButtonLink } from "@/components/shared/button-link";
-import { PosterVideo } from "@/components/marketing/poster-video";
 import { VerticalPosterVideo } from "@/components/marketing/vertical-poster-video";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { TrainingPricingSection } from "@/components/training/training-pricing-section";
@@ -49,6 +48,36 @@ export default function TrainingPage() {
         </article>
 
         <article className="border border-border bg-surface p-6">
+          <div className="relative mb-6 aspect-[16/9] overflow-hidden bg-black">
+            <VerticalPosterVideo
+              fill
+              videoSrc={trainingCopy.smallGroup.video.src}
+              posterSrc={trainingCopy.smallGroup.video.verticalPosterSrc}
+              title={trainingCopy.smallGroup.video.title}
+              className="absolute inset-0"
+            />
+          </div>
+          <h2 className="font-display text-3xl tracking-wide uppercase">
+            {trainingCopy.smallGroup.title}
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted">
+            {trainingCopy.smallGroup.intro}
+          </p>
+          <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
+            {trainingCopy.smallGroup.points.map((point) => (
+              <li key={point}>• {point}</li>
+            ))}
+          </ul>
+          <div className="mt-6">
+            <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
+          </div>
+        </article>
+
+        {/*
+          Layout option A — horizontal video card (restore by swapping with option B above).
+          Re-import PosterVideo from @/components/marketing/poster-video when restoring.
+
+        <article className="border border-border bg-surface p-6">
           <p className="mb-4 text-xs font-semibold tracking-[0.2em] text-muted uppercase">
             Layout option A
           </p>
@@ -74,38 +103,8 @@ export default function TrainingPage() {
             <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
           </div>
         </article>
+        */}
       </div>
-
-      <article className="mt-8 border border-border bg-surface p-6">
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Layout option B
-        </p>
-        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-start">
-          <div>
-            <h2 className="font-display text-3xl tracking-wide uppercase">
-              {trainingCopy.smallGroup.title}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              {trainingCopy.smallGroup.intro}
-            </p>
-            <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
-              {trainingCopy.smallGroup.points.map((point) => (
-                <li key={`vertical-${point}`}>• {point}</li>
-              ))}
-            </ul>
-            <div className="mt-6">
-              <ButtonLink href={siteConfig.booking.path}>Book NOW</ButtonLink>
-            </div>
-          </div>
-          <div className="flex justify-center lg:justify-end">
-            <VerticalPosterVideo
-              videoSrc={trainingCopy.smallGroup.video.src}
-              posterSrc={trainingCopy.smallGroup.video.verticalPosterSrc}
-              title={trainingCopy.smallGroup.video.title}
-            />
-          </div>
-        </div>
-      </article>
 
       <TrainingPricingSection />
 

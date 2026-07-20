@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ScheduleBrowser } from "@/components/booking/schedule-browser";
 import { readDemoBookings } from "@/features/booking/demo-store";
+import { isMemberBookableClassType } from "@/content/member-services";
 import {
   listPublishedSessions,
   listUserBookings,
@@ -20,7 +21,9 @@ type SchedulePageProps = {
 
 export default async function SchedulePage({ searchParams }: SchedulePageProps) {
   const params = await searchParams;
-  const sessions = await listPublishedSessions();
+  const sessions = (await listPublishedSessions()).filter((s) =>
+    isMemberBookableClassType(s.classTypeId),
+  );
   const configured = isSupabasePublicConfigured();
   const session = configured ? await getSessionUser() : null;
   const dbBookings = configured

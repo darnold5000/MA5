@@ -10,6 +10,8 @@ type VerticalPosterVideoProps = {
   posterSrc: string;
   title: string;
   className?: string;
+  /** Fill a parent container (e.g. 16:9 card media area) instead of standalone 9:16 */
+  fill?: boolean;
 };
 
 function PlayIcon() {
@@ -29,6 +31,7 @@ export function VerticalPosterVideo({
   posterSrc,
   title,
   className,
+  fill = false,
 }: VerticalPosterVideoProps) {
   const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -40,15 +43,20 @@ export function VerticalPosterVideo({
     });
   };
 
+  const frameClass = cn(
+    "relative overflow-hidden text-left",
+    fill
+      ? "h-full w-full max-w-none"
+      : "mx-auto aspect-[9/16] w-full max-w-sm",
+    className,
+  );
+
   if (!playing) {
     return (
       <button
         type="button"
         onClick={handlePlay}
-        className={cn(
-          "group relative mx-auto aspect-[9/16] w-full max-w-sm overflow-hidden text-left",
-          className,
-        )}
+        className={cn("group", frameClass)}
         aria-label={`Play video: ${title}`}
       >
         <Image
@@ -56,7 +64,10 @@ export function VerticalPosterVideo({
           alt=""
           fill
           sizes="(max-width: 1024px) 100vw, 320px"
-          className="object-cover transition duration-300 group-hover:scale-[1.02]"
+          className={cn(
+            "transition duration-300 group-hover:scale-[1.02]",
+            fill ? "object-contain" : "object-cover",
+          )}
         />
         <div className="absolute inset-0 bg-black/40 transition duration-300 group-hover:bg-black/50" />
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -72,12 +83,7 @@ export function VerticalPosterVideo({
   }
 
   return (
-    <div
-      className={cn(
-        "relative mx-auto aspect-[9/16] w-full max-w-sm overflow-hidden bg-black",
-        className,
-      )}
-    >
+    <div className={cn(frameClass, "bg-black")}>
       <video
         ref={videoRef}
         src={videoSrc}

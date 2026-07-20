@@ -7,6 +7,7 @@
 export type BookingTypeQuery =
   | "assessment"
   | "small-group"
+  | "semi-private"
   | "sports-performance"
   | "inbody"
   | "sauna"
@@ -15,10 +16,11 @@ export type BookingTypeQuery =
 const SERVICE_BY_QUERY: Record<BookingTypeQuery, string | null> = {
   assessment: "ct-assessment",
   "small-group": "ct-small-group",
+  "semi-private": "ct-semi-private",
   "sports-performance": "ct-sports",
   inbody: "ct-inbody",
   sauna: "ct-sauna",
-  "open-gym": null,
+  "open-gym": "ct-open-gym",
 };
 
 /** Primary Book CTA — full schedule in Fitness Hub. */

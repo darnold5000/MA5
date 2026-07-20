@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  MEMBER_SERVICE_FILTERS,
+  isMemberServiceFilter,
+} from "@/content/member-services";
 import type { SessionItem } from "@/features/scheduling/fallback-data";
 import {
   formatDurationMinutes,
@@ -22,14 +26,7 @@ type ScheduleBrowserProps = {
 
 type WeekFilter = "this" | "next" | "all";
 
-const SERVICE_FILTERS = [
-  { id: "all", label: "All Sessions" },
-  { id: "ct-small-group", label: "Small Group" },
-  { id: "ct-assessment", label: "Assessment" },
-  { id: "ct-sports", label: "Sports Performance" },
-  { id: "ct-sauna", label: "Sauna" },
-  { id: "ct-inbody", label: "InBody" },
-] as const;
+const SERVICE_FILTERS = MEMBER_SERVICE_FILTERS;
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
@@ -58,8 +55,9 @@ export function ScheduleBrowser({
   );
   const [week, setWeek] = useState<WeekFilter>("this");
   const [service, setService] = useState<string>(() => {
-    const valid = SERVICE_FILTERS.some((f) => f.id === initialService);
-    return valid ? initialService : "all";
+    return initialService && isMemberServiceFilter(initialService)
+      ? initialService
+      : "all";
   });
   const [availableOnly, setAvailableOnly] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);

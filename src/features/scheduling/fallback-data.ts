@@ -113,6 +113,24 @@ export const FALLBACK_CLASS_TYPES: ClassType[] = [
     defaultCapacity: 1,
     defaultPriceCents: 0,
   },
+  {
+    id: "ct-semi-private",
+    slug: "semi-private",
+    name: "Semi-Private Training",
+    description: "Coached session with a small client-to-coach ratio.",
+    defaultDurationMinutes: 60,
+    defaultCapacity: 4,
+    defaultPriceCents: 0,
+  },
+  {
+    id: "ct-open-gym",
+    slug: "open-gym",
+    name: "Open Gym",
+    description: "Reserved floor time in the private training facility.",
+    defaultDurationMinutes: 60,
+    defaultCapacity: 6,
+    defaultPriceCents: 0,
+  },
 ];
 
 function makeSession(
@@ -142,22 +160,26 @@ function makeSession(
   };
 }
 
-const assessment = FALLBACK_CLASS_TYPES[0];
-const smallGroup = FALLBACK_CLASS_TYPES[1];
-const sports = FALLBACK_CLASS_TYPES[2];
-const inbody = FALLBACK_CLASS_TYPES[3];
-const sauna = FALLBACK_CLASS_TYPES[4];
+function classType(id: string): ClassType {
+  const found = FALLBACK_CLASS_TYPES.find((t) => t.id === id);
+  if (!found) throw new Error(`Unknown class type: ${id}`);
+  return found;
+}
 
 export const FALLBACK_SESSIONS: SessionItem[] = [
-  makeSession("sess-assess-1", assessment, 1, 9, 0),
-  makeSession("sess-assess-2", assessment, 3, 17, 0),
-  makeSession("sess-sg-1", smallGroup, 1, 6, 4),
-  makeSession("sess-sg-2", smallGroup, 2, 18, 7),
-  makeSession("sess-sg-3", smallGroup, 4, 6, 2),
-  makeSession("sess-sports-1", sports, 2, 16, 3),
-  makeSession("sess-inbody-1", inbody, 5, 10, 0),
-  makeSession("sess-sauna-1", sauna, 2, 19, 0),
-  makeSession("sess-sauna-2", sauna, 6, 12, 0),
+  makeSession("sess-assess-1", classType("ct-assessment"), 1, 9, 0),
+  makeSession("sess-assess-2", classType("ct-assessment"), 3, 17, 0),
+  makeSession("sess-sg-1", classType("ct-small-group"), 1, 6, 4),
+  makeSession("sess-sg-2", classType("ct-small-group"), 2, 18, 7),
+  makeSession("sess-sg-3", classType("ct-small-group"), 4, 6, 2),
+  makeSession("sess-sports-1", classType("ct-sports"), 2, 16, 3),
+  makeSession("sess-inbody-1", classType("ct-inbody"), 5, 10, 0),
+  makeSession("sess-sauna-1", classType("ct-sauna"), 2, 19, 0),
+  makeSession("sess-sauna-2", classType("ct-sauna"), 6, 12, 0),
+  makeSession("sess-semi-1", classType("ct-semi-private"), 1, 10, 2),
+  makeSession("sess-semi-2", classType("ct-semi-private"), 3, 7, 1),
+  makeSession("sess-og-1", classType("ct-open-gym"), 2, 8, 3),
+  makeSession("sess-og-2", classType("ct-open-gym"), 5, 14, 0),
 ];
 
 export const FALLBACK_BOOKINGS: BookingItem[] = [

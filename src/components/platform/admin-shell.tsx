@@ -8,6 +8,8 @@ import { usePathname } from "next/navigation";
 import { ClientHubPreview } from "@/components/admin/client-hub-preview";
 import { DemoPreviewChrome } from "@/components/platform/demo-preview";
 import { SignOutButton } from "@/components/platform/sign-out-button";
+import { HubThemeProvider } from "@/components/platform/theme-context";
+import { ThemeToggle } from "@/components/platform/theme-toggle";
 import { siteConfig } from "@/content/site-config";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +83,7 @@ export function AdminShell({
     pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
   return (
+    <HubThemeProvider>
     <div
       className={cn(
         "flex min-h-full flex-1",
@@ -165,6 +168,7 @@ export function AdminShell({
             programsLight ? "border-[var(--th-border)]" : "border-border",
           )}
         >
+          <ThemeToggle showLabel className="w-full" />
           <button
             type="button"
             onClick={() => setDemoOpen(true)}
@@ -255,7 +259,8 @@ export function AdminShell({
               </span>
             </div>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <ClientHubPreview
               label="Preview"
               className="text-xs font-semibold tracking-wide uppercase"
@@ -320,5 +325,6 @@ export function AdminShell({
         onOpenChange={setDemoOpen}
       />
     </div>
+    </HubThemeProvider>
   );
 }
