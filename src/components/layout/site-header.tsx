@@ -22,7 +22,7 @@ function isNavActive(pathname: string, href: string) {
 
 const navLinkClass = (active: boolean) =>
   cn(
-    "text-sm tracking-wide transition",
+    "px-1 text-base tracking-wide transition",
     active
       ? "font-semibold text-brand"
       : "text-muted hover:text-foreground",
@@ -65,7 +65,7 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
 
         <nav
           aria-label="Primary"
-          className="hidden min-w-0 items-center justify-center gap-3 lg:flex xl:gap-4"
+          className="hidden min-w-0 items-center justify-center gap-5 lg:flex xl:gap-6 2xl:gap-7"
         >
           {siteConfig.navigation.map((item) => {
             const active = isNavActive(pathname, item.href);
