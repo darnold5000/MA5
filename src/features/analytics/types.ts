@@ -103,6 +103,21 @@ export type PaymentSnapshot = {
   refunds: number;
 };
 
+export type FeeMethodRow = {
+  method: string;
+  feeCents: number;
+  grossCents: number;
+  effectiveRatePercent: number;
+};
+
+export type FeeSnapshot = {
+  feesThisMonthCents: number;
+  grossThisMonthCents: number;
+  netThisMonthCents: number;
+  effectiveFeeRatePercent: number;
+  byMethod: FeeMethodRow[];
+};
+
 export type DailyOpsDashboard = {
   isDemo?: boolean;
   health: HealthMetric[];
@@ -125,6 +140,7 @@ export type BusinessReports = {
   averageCapacityPercent: number;
   topPrograms: ProgramPopularity[];
   payments: PaymentSnapshot;
+  fees: FeeSnapshot;
   activity: ActivityItem[];
   kpis: PeriodMetric[];
 };

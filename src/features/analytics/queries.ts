@@ -5,6 +5,7 @@ import type {
   BusinessReports,
   ChartPoint,
   DailyOpsDashboard,
+  FeeSnapshot,
   HealthMetric,
   HealthStatus,
   PaymentRow,
@@ -642,6 +643,78 @@ function ytdNote(): string {
   return `Jan–${monthShortLabel(year, month)} ${year}`;
 }
 
+const EMPTY_FEES: FeeSnapshot = {
+  feesThisMonthCents: 0,
+  grossThisMonthCents: 0,
+  netThisMonthCents: 0,
+  effectiveFeeRatePercent: 0,
+  byMethod: [],
+};
+
+async function fetchFeeSnapshot(): Promise<FeeSnapshot> {
+  const supabase = await createClient();
+  const monthStart = startOfMonth();
+  const now = new Date();
+
+  const { data, error } = await supabase
+    .from(MA5_TABLES.payments)
+    .select(
+      "amount_cents, processing_fee_cents, net_amount_cents, payment_method_type, status",
+    )
+    .eq("status", "succeeded")
+    .gte("created_at", monthStart.toISOString())
+    .lte("created_at", now.toISOString());
+
+  if (error) throw error;
+
+  let grossThisMonthCents = 0;
+  let feesThisMonthCents = 0;
+  let netThisMonthCents = 0;
+  const byMethodMap = new Map<string, { feeCents: number; grossCents: number }>();
+
+  for (const row of data ?? []) {
+    const gross = (row.amount_cents as number) ?? 0;
+    const fee = Math.abs((row.processing_fee_cents as number) ?? 0);
+    const net =
+      (row.net_amount_cents as number) ?? Math.max(gross - fee, 0);
+    const method = (row.payment_method_type as string | null)?.trim() || "Unknown";
+
+    grossThisMonthCents += gross;
+    feesThisMonthCents += fee;
+    netThisMonthCents += net;
+
+    const bucket = byMethodMap.get(method) ?? { feeCents: 0, grossCents: 0 };
+    bucket.feeCents += fee;
+    bucket.grossCents += gross;
+    byMethodMap.set(method, bucket);
+  }
+
+  const effectiveFeeRatePercent =
+    grossThisMonthCents > 0
+      ? Math.round((feesThisMonthCents / grossThisMonthCents) * 1000) / 10
+      : 0;
+
+  const byMethod = [...byMethodMap.entries()]
+    .map(([method, values]) => ({
+      method,
+      feeCents: values.feeCents,
+      grossCents: values.grossCents,
+      effectiveRatePercent:
+        values.grossCents > 0
+          ? Math.round((values.feeCents / values.grossCents) * 1000) / 10
+          : 0,
+    }))
+    .sort((a, b) => b.feeCents - a.feeCents);
+
+  return {
+    feesThisMonthCents,
+    grossThisMonthCents,
+    netThisMonthCents,
+    effectiveFeeRatePercent,
+    byMethod,
+  };
+}
+
 export async function getBusinessReports(): Promise<BusinessReports> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
     return { ...DEMO_BUSINESS_REPORTS, isDemo: true };
@@ -672,6 +745,7 @@ export async function getBusinessReports(): Promise<BusinessReports> {
       failedMonth,
       outstandingCents,
       refundsMonth,
+      fees,
     ] = await Promise.all([
       sumRevenueBetween(today, now),
       sumRevenueBetween(weekStart, now),
@@ -687,6 +761,7 @@ export async function getBusinessReports(): Promise<BusinessReports> {
       countPaymentsBetween(monthStart, now, ["failed"]),
       sumOutstandingInvoices(),
       countRefundsThisMonth(),
+      fetchFeeSnapshot(),
     ]);
 
     const revenuePeriods: PeriodMetric[] = [
@@ -750,6 +825,7 @@ export async function getBusinessReports(): Promise<BusinessReports> {
         outstandingCents,
         refunds: refundsMonth,
       },
+      fees,
       activity: await fetchActivityFeed(),
       kpis,
     };

@@ -9,7 +9,8 @@ import {
   TopPrograms,
 } from "@/components/analytics/ops-panels";
 import { SimpleBarChart } from "@/components/analytics/simple-bar-chart";
-import { getBusinessReports } from "@/features/analytics";
+import { PaymentImportPanel } from "@/components/admin/payment-import-panel";
+import { formatCompactMoney, getBusinessReports } from "@/features/analytics";
 
 export const metadata: Metadata = {
   title: "Reports · Operations",
@@ -23,7 +24,7 @@ function formatChartMoney(value: number): string {
 
 export default async function AdminReportsPage() {
   const data = await getBusinessReports();
-  const { memberships, attendance, payments } = data;
+  const { memberships, attendance, payments, fees } = data;
 
   return (
     <div className="mx-auto max-w-5xl space-y-12">
@@ -55,6 +56,8 @@ export default async function AdminReportsPage() {
         </p>
       ) : null}
 
+      <PaymentImportPanel />
+
       <section className="space-y-5">
         <SectionHeader eyebrow="Money" title="Revenue" />
         <PeriodGrid metrics={data.revenuePeriods} columns={5} />
@@ -67,6 +70,57 @@ export default async function AdminReportsPage() {
             formatValue={formatChartMoney}
           />
         </div>
+      </section>
+
+      <section className="space-y-5">
+        <SectionHeader eyebrow="Processing" title="Fees & net revenue" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Gross this month"
+            value={formatCompactMoney(fees.grossThisMonthCents)}
+          />
+          <MetricCard
+            label="Fees this month"
+            value={formatCompactMoney(fees.feesThisMonthCents)}
+          />
+          <MetricCard
+            label="Net this month"
+            value={formatCompactMoney(fees.netThisMonthCents)}
+            note="after processing fees"
+          />
+          <MetricCard
+            label="Effective fee rate"
+            value={`${fees.effectiveFeeRatePercent}%`}
+          />
+        </div>
+        {fees.byMethod.length > 0 ? (
+          <div>
+            <p className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">
+              Fees by payment method
+            </p>
+            <ul className="divide-y divide-border border border-border bg-surface">
+              {fees.byMethod.map((row) => (
+                <li
+                  key={row.method}
+                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                >
+                  <span className="font-semibold text-foreground">
+                    {row.method}
+                  </span>
+                  <span className="text-muted">
+                    Fees {formatCompactMoney(row.feeCents)} · Gross{" "}
+                    {formatCompactMoney(row.grossCents)} · {row.effectiveRatePercent}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">
+            Fee breakdown appears after Mindbody imports or when Stripe fee data
+            is recorded on payments.
+          </p>
+        )}
       </section>
 
       <section className="space-y-5">

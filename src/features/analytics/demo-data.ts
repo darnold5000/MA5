@@ -288,6 +288,26 @@ export const DEMO_BUSINESS_REPORTS: BusinessReports = {
     outstandingCents: 44700,
     refunds: 1,
   },
+  fees: {
+    feesThisMonthCents: 84200,
+    grossThisMonthCents: 2845000,
+    netThisMonthCents: 2760800,
+    effectiveFeeRatePercent: 3.0,
+    byMethod: [
+      {
+        method: "Card",
+        feeCents: 61200,
+        grossCents: 1980000,
+        effectiveRatePercent: 3.1,
+      },
+      {
+        method: "ACH",
+        feeCents: 23000,
+        grossCents: 865000,
+        effectiveRatePercent: 2.7,
+      },
+    ],
+  },
   activity: [
     { id: "a1", text: "John booked a session", when: "14 min ago" },
     { id: "a2", text: "Sarah renewed membership", when: "42 min ago" },
