@@ -13,6 +13,7 @@ import {
 } from "@/components/analytics/ops-panels";
 import { PaymentImportPanel } from "@/components/admin/payment-import-panel";
 import { getBusinessReports } from "@/features/analytics";
+import { EMPTY_FEES } from "@/features/analytics/queries";
 
 export const metadata: Metadata = {
   title: "Reports · Operations",
@@ -28,7 +29,8 @@ const reportsCountUp = COUNTUP_SESSION_KEYS.reports;
 
 export default async function AdminReportsPage() {
   const data = await getBusinessReports();
-  const { memberships, attendance, payments, fees } = data;
+  const { memberships, attendance, payments } = data;
+  const fees = data.fees ?? EMPTY_FEES;
 
   return (
     <div className="mx-auto max-w-5xl space-y-12">

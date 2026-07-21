@@ -643,7 +643,7 @@ function ytdNote(): string {
   return `Jan–${monthShortLabel(year, month)} ${year}`;
 }
 
-const EMPTY_FEES: FeeSnapshot = {
+export const EMPTY_FEES: FeeSnapshot = {
   feesThisMonthCents: 0,
   grossThisMonthCents: 0,
   netThisMonthCents: 0,
@@ -652,20 +652,24 @@ const EMPTY_FEES: FeeSnapshot = {
 };
 
 async function fetchFeeSnapshot(): Promise<FeeSnapshot> {
-  const supabase = await createClient();
-  const monthStart = startOfMonth();
-  const now = new Date();
+  try {
+    const supabase = await createClient();
+    const monthStart = startOfMonth();
+    const now = new Date();
 
-  const { data, error } = await supabase
-    .from(MA5_TABLES.payments)
-    .select(
-      "amount_cents, processing_fee_cents, net_amount_cents, payment_method_type, status",
-    )
-    .eq("status", "succeeded")
-    .gte("created_at", monthStart.toISOString())
-    .lte("created_at", now.toISOString());
+    const { data, error } = await supabase
+      .from(MA5_TABLES.payments)
+      .select(
+        "amount_cents, processing_fee_cents, net_amount_cents, payment_method_type, status",
+      )
+      .eq("status", "succeeded")
+      .gte("created_at", monthStart.toISOString())
+      .lte("created_at", now.toISOString());
 
-  if (error) throw error;
+    if (error) {
+      console.error("[analytics] fetchFeeSnapshot", error);
+      return EMPTY_FEES;
+    }
 
   let grossThisMonthCents = 0;
   let feesThisMonthCents = 0;
@@ -706,13 +710,17 @@ async function fetchFeeSnapshot(): Promise<FeeSnapshot> {
     }))
     .sort((a, b) => b.feeCents - a.feeCents);
 
-  return {
-    feesThisMonthCents,
-    grossThisMonthCents,
-    netThisMonthCents,
-    effectiveFeeRatePercent,
-    byMethod,
-  };
+    return {
+      feesThisMonthCents,
+      grossThisMonthCents,
+      netThisMonthCents,
+      effectiveFeeRatePercent,
+      byMethod,
+    };
+  } catch (err) {
+    console.error("[analytics] fetchFeeSnapshot", err);
+    return EMPTY_FEES;
+  }
 }
 
 export async function getBusinessReports(): Promise<BusinessReports> {

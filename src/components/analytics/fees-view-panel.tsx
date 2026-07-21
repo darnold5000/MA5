@@ -9,6 +9,7 @@ import {
   ViewToggle,
   type AnalyticsViewMode,
 } from "@/components/analytics/view-toggle";
+import { EMPTY_FEES } from "@/features/analytics/queries";
 import type { FeeSnapshot } from "@/features/analytics/types";
 import { formatCompactMoney } from "@/features/analytics/format";
 
@@ -17,7 +18,11 @@ function formatChartMoney(value: number): string {
   return `$${value}`;
 }
 
-export function FeesViewPanel({ fees }: { fees: FeeSnapshot }) {
+export function FeesViewPanel({
+  fees = EMPTY_FEES,
+}: {
+  fees?: FeeSnapshot;
+}) {
   const [view, setView] = useState<AnalyticsViewMode>("numbers");
 
   const feeChart = fees.byMethod.map((row) => ({
