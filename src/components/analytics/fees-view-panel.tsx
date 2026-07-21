@@ -9,7 +9,7 @@ import {
   type AnalyticsViewMode,
 } from "@/components/analytics/view-toggle";
 import type { FeeSnapshot } from "@/features/analytics/types";
-import { formatCompactMoney } from "@/features/analytics";
+import { formatCompactMoney } from "@/features/analytics/format";
 
 function formatChartMoney(value: number): string {
   if (value >= 1000) return `$${Math.round(value / 1000)}k`;
