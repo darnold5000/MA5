@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { CommunityPost } from "@/features/community/types";
@@ -35,6 +35,75 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+function Composer({
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+  pending,
+  placeholder,
+  submitLabel,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onCancel?: () => void;
+  pending: boolean;
+  placeholder: string;
+  submitLabel: string;
+  autoFocus?: boolean;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus();
+  }, [autoFocus]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <textarea
+          ref={ref}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={2}
+          maxLength={2000}
+          placeholder={placeholder}
+          className="min-h-12 flex-1 border border-border bg-background px-3 py-2 text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSubmit();
+            }
+            if (e.key === "Escape" && onCancel) {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+        />
+        <button
+          type="button"
+          disabled={pending || !value.trim()}
+          onClick={onSubmit}
+          className="inline-flex min-h-12 items-center self-end bg-brand px-4 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
+        >
+          {pending ? "…" : submitLabel}
+        </button>
+      </div>
+      {onCancel ? (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-[10px] font-semibold tracking-wide text-muted uppercase hover:text-foreground"
+        >
+          Cancel
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function CommunityBoard({
   posts,
   canDelete,
@@ -49,19 +118,20 @@ export function CommunityBoard({
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function submit() {
-    if (!draft.trim()) return;
+  function postMessage(body: string, parentId: string | null) {
+    if (!body.trim()) return;
     setError(null);
     startTransition(async () => {
       const res = await fetch("/api/community", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          body: draft.trim(),
-          parentId: replyTo,
+          body: body.trim(),
+          parentId,
         }),
       });
       if (!res.ok) {
@@ -71,8 +141,12 @@ export function CommunityBoard({
         setError(data?.error ?? "Could not post");
         return;
       }
-      setDraft("");
-      setReplyTo(null);
+      if (parentId) {
+        setReplyDraft("");
+        setReplyTo(null);
+      } else {
+        setDraft("");
+      }
       router.refresh();
     });
   }
@@ -98,6 +172,17 @@ export function CommunityBoard({
     });
   }
 
+  function startReply(postId: string) {
+    setReplyTo(postId);
+    setReplyDraft("");
+    setError(null);
+  }
+
+  function cancelReply() {
+    setReplyTo(null);
+    setReplyDraft("");
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -111,47 +196,19 @@ export function CommunityBoard({
       </div>
 
       <section className="border border-border bg-surface p-4 sm:p-5">
-        {replyTo ? (
-          <p className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted">
-            Replying to a post
-            <button
-              type="button"
-              onClick={() => setReplyTo(null)}
-              className="font-semibold tracking-wide text-brand uppercase hover:underline"
-            >
-              Cancel
-            </button>
-          </p>
-        ) : null}
-        {error ? (
+        {error && !replyTo ? (
           <p className="mb-2 text-sm text-brand" role="alert">
             {error}
           </p>
         ) : null}
-        <div className="flex gap-2">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={2}
-            maxLength={2000}
-            placeholder={replyTo ? "Write a reply…" : "Leave a message…"}
-            className="min-h-12 flex-1 border border-border bg-background px-3 py-2 text-sm"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-          />
-          <button
-            type="button"
-            disabled={pending || !draft.trim()}
-            onClick={submit}
-            className="inline-flex min-h-12 items-center self-end bg-brand px-4 text-[11px] font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
-          >
-            {pending ? "…" : replyTo ? "Reply" : "Post"}
-          </button>
-        </div>
+        <Composer
+          value={draft}
+          onChange={setDraft}
+          onSubmit={() => postMessage(draft, null)}
+          pending={pending}
+          placeholder="Leave a message…"
+          submitLabel="Post"
+        />
       </section>
 
       <div className="space-y-4">
@@ -173,13 +230,12 @@ export function CommunityBoard({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setReplyTo(post.id);
-                    setDraft("");
-                  }}
+                  onClick={() =>
+                    replyTo === post.id ? cancelReply() : startReply(post.id)
+                  }
                   className="px-2 py-1 text-[10px] font-semibold tracking-wide text-muted uppercase hover:text-foreground"
                 >
-                  Reply
+                  {replyTo === post.id ? "Close" : "Reply"}
                 </button>
                 {canDelete ? (
                   <button
@@ -231,6 +287,26 @@ export function CommunityBoard({
                   </li>
                 ))}
               </ul>
+            ) : null}
+
+            {replyTo === post.id ? (
+              <div className="mt-4 border-l border-brand/40 pl-4">
+                {error ? (
+                  <p className="mb-2 text-sm text-brand" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+                <Composer
+                  value={replyDraft}
+                  onChange={setReplyDraft}
+                  onSubmit={() => postMessage(replyDraft, post.id)}
+                  onCancel={cancelReply}
+                  pending={pending}
+                  placeholder={`Reply to ${post.authorName}…`}
+                  submitLabel="Reply"
+                  autoFocus
+                />
+              </div>
             ) : null}
           </article>
         ))}

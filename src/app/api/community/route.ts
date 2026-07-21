@@ -7,7 +7,10 @@ import {
   parseCommunityState,
   serializeCommunityState,
 } from "@/features/community";
-import type { CommunityBoardState, CommunityPost } from "@/features/community/types";
+import type {
+  CommunityBoardState,
+  CommunityPost,
+} from "@/features/community/types";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
@@ -36,16 +39,76 @@ function demoResponse(state: CommunityBoardState, body: unknown) {
   return response;
 }
 
-function removePost(
-  posts: CommunityPost[],
-  postId: string,
-): CommunityPost[] {
+function removePost(posts: CommunityPost[], postId: string): CommunityPost[] {
   return posts
     .filter((p) => p.id !== postId)
     .map((p) => ({
       ...p,
       replies: removePost(p.replies, postId),
     }));
+}
+
+function isMissingTableError(err: unknown): boolean {
+  const message =
+    err && typeof err === "object" && "message" in err
+      ? String((err as { message?: unknown }).message ?? "")
+      : String(err ?? "");
+  const code =
+    err && typeof err === "object" && "code" in err
+      ? String((err as { code?: unknown }).code ?? "")
+      : "";
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    /ma5_community_posts/i.test(message) ||
+    /does not exist/i.test(message) ||
+    /schema cache/i.test(message)
+  );
+}
+
+async function postToDemoCookie(input: {
+  body: string;
+  parentId: string | null;
+  authorUserId: string;
+  authorName: string;
+}) {
+  const jar = await import("next/headers").then((m) => m.cookies());
+  const cookieStore = await jar;
+  const state = parseCommunityState(
+    cookieStore.get(COMMUNITY_COOKIE)?.value,
+    defaultCommunityState(),
+  );
+
+  if (input.parentId) {
+    const root = state.posts.find((p) => p.id === input.parentId);
+    if (!root) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+  }
+
+  const now = new Date().toISOString();
+  const post: CommunityPost = {
+    id: `community-${Date.now()}`,
+    authorUserId: input.authorUserId,
+    authorName: input.authorName,
+    body: input.body,
+    parentId: input.parentId,
+    createdAt: now,
+    isMine: true,
+    replies: [],
+  };
+
+  const next: CommunityBoardState = input.parentId
+    ? {
+        posts: state.posts.map((p) =>
+          p.id === input.parentId
+            ? { ...p, replies: [...p.replies, post] }
+            : p,
+        ),
+      }
+    : { posts: [post, ...state.posts] };
+
+  return demoResponse(next, { ok: true, postId: post.id, demo: true });
 }
 
 export async function GET() {
@@ -70,54 +133,31 @@ export async function POST(request: Request) {
   const body = parsed.data.body;
 
   if (!session) {
-    const jar = await import("next/headers").then((m) => m.cookies());
-    const cookieStore = await jar;
-    const state = parseCommunityState(
-      cookieStore.get(COMMUNITY_COOKIE)?.value,
-      defaultCommunityState(),
-    );
-
-    if (parentId) {
-      const root = state.posts.find((p) => p.id === parentId);
-      if (!root) {
-        return NextResponse.json({ error: "Post not found" }, { status: 404 });
-      }
-    }
-
-    const now = new Date().toISOString();
-    const post: CommunityPost = {
-      id: `community-${Date.now()}`,
-      authorUserId: "client-alex",
-      authorName: "You",
+    return postToDemoCookie({
       body,
       parentId,
-      createdAt: now,
-      isMine: true,
-      replies: [],
-    };
-
-    let next: CommunityBoardState;
-    if (parentId) {
-      next = {
-        posts: state.posts.map((p) =>
-          p.id === parentId ? { ...p, replies: [...p.replies, post] } : p,
-        ),
-      };
-    } else {
-      next = { posts: [post, ...state.posts] };
-    }
-    return demoResponse(next, { ok: true, postId: post.id });
+      authorUserId: "client-alex",
+      authorName: "You",
+    });
   }
 
   try {
     const supabase = await createClient();
 
     if (parentId) {
-      const { data: parent } = await supabase
+      const { data: parent, error: parentError } = await supabase
         .from(MA5_TABLES.communityPosts)
         .select("id, parent_id")
         .eq("id", parentId)
         .maybeSingle();
+      if (parentError && isMissingTableError(parentError)) {
+        return postToDemoCookie({
+          body,
+          parentId,
+          authorUserId: session.id,
+          authorName: session.profile?.full_name?.trim() || "You",
+        });
+      }
       if (!parent || parent.parent_id) {
         return NextResponse.json(
           { error: "You can only reply to top-level posts" },
@@ -126,20 +166,53 @@ export async function POST(request: Request) {
       }
     }
 
+    const insertPayload: {
+      author_user_id: string;
+      body: string;
+      parent_id?: string | null;
+    } = {
+      author_user_id: session.id,
+      body,
+    };
+    if (parentId) insertPayload.parent_id = parentId;
+
     const { data, error } = await supabase
       .from(MA5_TABLES.communityPosts)
-      .insert({
-        author_user_id: session.id,
-        body,
-        parent_id: parentId,
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
-    if (error) throw error;
+
+    if (error) {
+      if (isMissingTableError(error)) {
+        return postToDemoCookie({
+          body,
+          parentId,
+          authorUserId: session.id,
+          authorName: session.profile?.full_name?.trim() || "You",
+        });
+      }
+      console.error("[api/community] insert", error);
+      return NextResponse.json(
+        {
+          error:
+            "Could not post message. If this persists, apply migration 021_community_board.sql in Supabase.",
+          detail: error.message,
+        },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({ ok: true, postId: data.id });
   } catch (err) {
     console.error("[api/community]", err);
+    if (isMissingTableError(err)) {
+      return postToDemoCookie({
+        body,
+        parentId,
+        authorUserId: session.id,
+        authorName: session.profile?.full_name?.trim() || "You",
+      });
+    }
     return NextResponse.json(
       { error: "Could not post message" },
       { status: 500 },
@@ -166,10 +239,10 @@ export async function DELETE(request: Request) {
       cookieStore.get(COMMUNITY_COOKIE)?.value,
       defaultCommunityState(),
     );
-    const next = {
-      posts: removePost(state.posts, parsed.data.postId),
-    };
-    return demoResponse(next, { ok: true });
+    return demoResponse(
+      { posts: removePost(state.posts, parsed.data.postId) },
+      { ok: true },
+    );
   }
 
   if (!canAccessAdmin(session.roles)) {
@@ -182,7 +255,21 @@ export async function DELETE(request: Request) {
       .from(MA5_TABLES.communityPosts)
       .delete()
       .eq("id", parsed.data.postId);
-    if (error) throw error;
+    if (error) {
+      if (isMissingTableError(error)) {
+        const jar = await import("next/headers").then((m) => m.cookies());
+        const cookieStore = await jar;
+        const state = parseCommunityState(
+          cookieStore.get(COMMUNITY_COOKIE)?.value,
+          defaultCommunityState(),
+        );
+        return demoResponse(
+          { posts: removePost(state.posts, parsed.data.postId) },
+          { ok: true, demo: true },
+        );
+      }
+      throw error;
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[api/community DELETE]", err);
