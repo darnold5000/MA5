@@ -4,5 +4,5 @@ export {
   DEMO_BUSINESS_REPORTS,
   EMPTY_FEES,
 } from "./demo-data";
-export { formatCompactMoney, capacityPercent } from "./format";
+export { formatCompactMoney, formatChartAxisMoney, capacityPercent } from "./format";
 export { getBusinessReports, getDailyOpsDashboard } from "./queries";

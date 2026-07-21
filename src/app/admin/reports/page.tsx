@@ -19,11 +19,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function formatChartMoney(value: number): string {
-  if (value >= 1000) return `$${Math.round(value / 1000)}k`;
-  return `$${value}`;
-}
-
 const reportsCountUp = COUNTUP_SESSION_KEYS.reports;
 
 export default async function AdminReportsPage() {
@@ -69,7 +64,7 @@ export default async function AdminReportsPage() {
           metrics={data.revenuePeriods}
           chartPoints={data.revenueChart}
           columns={5}
-          formatChartValue={formatChartMoney}
+          chartFormat="money"
           numbersLabel="By period"
           chartLabel="Revenue by month (YTD)"
         />
@@ -209,7 +204,7 @@ export default async function AdminReportsPage() {
       <section className="space-y-5">
         <SectionHeader eyebrow="At a glance" title="Key metrics" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {data.kpis.map((k, i) => (
+          {data.kpis.map((k) => (
             <MetricCard
               key={k.id}
               label={k.label}
@@ -222,9 +217,6 @@ export default async function AdminReportsPage() {
                     ? "positive"
                     : "default"
               }
-              animate
-              delayMs={i * 40}
-              countUpSessionKey={reportsCountUp}
             />
           ))}
         </div>

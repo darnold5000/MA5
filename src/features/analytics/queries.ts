@@ -150,25 +150,50 @@ async function countRefundsThisMonth(): Promise<number> {
   return count ?? 0;
 }
 
+const IN_QUERY_BATCH = 100;
+
+async function fetchBookingsForSessions(
+  sessionIds: string[],
+): Promise<{ session_id: string; status: string }[]> {
+  const supabase = await createClient();
+  const rows: { session_id: string; status: string }[] = [];
+
+  for (let i = 0; i < sessionIds.length; i += IN_QUERY_BATCH) {
+    const batch = sessionIds.slice(i, i + IN_QUERY_BATCH);
+    const { data, error } = await supabase
+      .from(MA5_TABLES.bookings)
+      .select("session_id, status")
+      .in("session_id", batch)
+      .not("status", "eq", "cancelled");
+
+    if (error) throw error;
+    rows.push(...((data ?? []) as { session_id: string; status: string }[]));
+  }
+
+  return rows;
+}
+
 async function buildRevenueChart(): Promise<ChartPoint[]> {
   const now = new Date();
   const { year, month } = zonedParts(now);
-  const points: ChartPoint[] = [];
 
-  for (let m = 1; m <= month; m++) {
-    const from = zonedDayStart(year, m, 1);
-    const end =
-      m === month
-        ? now
-        : new Date(zonedDayStart(year, m + 1, 1).getTime() - 1);
-    const revenue = await sumRevenueBetween(from, end);
-    points.push({
-      label: monthShortLabel(year, m),
-      value: Math.round(revenue / 100),
-    });
-  }
+  const months = Array.from({ length: month }, (_, i) => i + 1);
+  const revenues = await Promise.all(
+    months.map(async (m) => {
+      const from = zonedDayStart(year, m, 1);
+      const end =
+        m === month
+          ? now
+          : new Date(zonedDayStart(year, m + 1, 1).getTime() - 1);
+      const revenue = await sumRevenueBetween(from, end);
+      return {
+        label: monthShortLabel(year, m),
+        value: Math.round(revenue / 100),
+      };
+    }),
+  );
 
-  return points;
+  return revenues;
 }
 
 async function fetchMembershipSnapshot() {
@@ -256,13 +281,7 @@ async function fetchBookingMetrics() {
     };
   }
 
-  const { data: bookings, error: bookingErr } = await supabase
-    .from(MA5_TABLES.bookings)
-    .select("session_id, status")
-    .in("session_id", sessionIds)
-    .not("status", "eq", "cancelled");
-
-  if (bookingErr) throw bookingErr;
+  const bookings = await fetchBookingsForSessions(sessionIds);
 
   const sessionStart = new Map(
     (sessions ?? []).map((s) => [s.id as string, s.starts_at as string]),
@@ -288,7 +307,7 @@ async function fetchBookingMetrics() {
     if (startsAt >= weekStart && startsAt < weekEnd) sessionsWeek += 1;
   }
 
-  for (const booking of bookings ?? []) {
+  for (const booking of bookings) {
     const startsAtRaw = sessionStart.get(booking.session_id as string);
     if (!startsAtRaw) continue;
     const startsAt = new Date(startsAtRaw);

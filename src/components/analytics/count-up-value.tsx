@@ -93,14 +93,12 @@ export function CountUpValue({
   sessionKey?: string;
 }) {
   const [display, setDisplay] = useState(value);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const parsed = parseDisplayValue(value);
 
     if (!parsed) {
       setDisplay(value);
-      setReady(true);
       return;
     }
 
@@ -110,14 +108,12 @@ export function CountUpValue({
 
     if (skip) {
       setDisplay(value);
-      setReady(true);
       return;
     }
 
     setDisplay(
       `${parsed.prefix}${formatPart(0, parsed.decimals, parsed.useGrouping)}${parsed.suffix}`,
     );
-    setReady(true);
 
     let frame = 0;
     let startAt = 0;
@@ -147,11 +143,7 @@ export function CountUpValue({
 
   return (
     <span
-      className={cn(
-        "tabular-nums transition-opacity duration-300",
-        ready ? "opacity-100" : "opacity-0",
-        className,
-      )}
+      className={cn("tabular-nums", className)}
       aria-label={value}
     >
       {display}

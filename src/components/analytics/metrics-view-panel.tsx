@@ -10,12 +10,13 @@ import {
   type AnalyticsViewMode,
 } from "@/components/analytics/view-toggle";
 import type { ChartPoint, PeriodMetric } from "@/features/analytics/types";
+import { formatChartAxisMoney } from "@/features/analytics/format";
 
 export function MetricsViewPanel({
   metrics,
   chartPoints,
   columns = 4,
-  formatChartValue,
+  chartFormat = "plain",
   numbersLabel = "By period",
   chartLabel = "Over time",
   defaultView = "numbers",
@@ -24,7 +25,8 @@ export function MetricsViewPanel({
   metrics: PeriodMetric[];
   chartPoints: ChartPoint[];
   columns?: 4 | 5;
-  formatChartValue?: (value: number) => string;
+  /** How to label chart bar values (client-safe — no server functions). */
+  chartFormat?: "plain" | "money";
   numbersLabel?: string;
   chartLabel?: string;
   defaultView?: AnalyticsViewMode;
@@ -32,6 +34,8 @@ export function MetricsViewPanel({
 }) {
   const [view, setView] = useState<AnalyticsViewMode>(defaultView);
   const hasChartData = chartPoints.some((p) => p.value > 0);
+  const formatChartValue =
+    chartFormat === "money" ? formatChartAxisMoney : undefined;
 
   return (
     <div className="space-y-3">
