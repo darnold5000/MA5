@@ -6,6 +6,7 @@ import type {
   MarketingGalleryItem,
   MarketingGallerySection,
 } from "@/features/marketing-gallery/types";
+import type { CommunityPlacementId } from "@/content/community";
 import { publicAssetUrl } from "@/lib/assets/constants";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -17,6 +18,7 @@ type GalleryRow = {
   storage_path: string;
   alt_text: string;
   client_name: string | null;
+  placement: CommunityPlacementId | null;
   sort_order: number;
   featured: boolean;
   created_at: string;
@@ -35,6 +37,7 @@ function mapRow(row: GalleryRow): MarketingGalleryItem {
     imageUrl,
     altText: row.alt_text,
     clientName: row.client_name,
+    placement: row.placement ?? null,
     sortOrder: row.sort_order,
     featured: row.featured,
     createdAt: row.created_at,
@@ -72,6 +75,7 @@ export async function createMarketingGalleryItem(input: {
   altText?: string;
   clientName?: string | null;
   featured?: boolean;
+  placement?: CommunityPlacementId | null;
 }): Promise<MarketingGalleryItem> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
     const store = await readMarketingGalleryDemoStore();
@@ -84,6 +88,7 @@ export async function createMarketingGalleryItem(input: {
         : input.storagePath,
       altText: input.altText ?? "",
       clientName: input.clientName ?? null,
+      placement: input.placement ?? null,
       sortOrder: store[input.section].length,
       featured: input.featured ?? false,
       createdAt: new Date().toISOString(),
@@ -100,6 +105,7 @@ export async function createMarketingGalleryItem(input: {
       alt_text: input.altText ?? "",
       client_name: input.clientName ?? null,
       featured: input.featured ?? false,
+      placement: input.placement ?? null,
       sort_order: 0,
     })
     .select("*")
@@ -111,6 +117,55 @@ export async function createMarketingGalleryItem(input: {
     item.imageUrl = publicAssetUrl(item.storagePath) ?? item.storagePath;
   }
   return item;
+}
+
+export async function updateMarketingGalleryItem(input: {
+  id: string;
+  placement?: CommunityPlacementId | null;
+  featured?: boolean;
+  clientName?: string | null;
+  altText?: string;
+}): Promise<MarketingGalleryItem | null> {
+  if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    const store = await readMarketingGalleryDemoStore();
+    for (const section of ["transformations", "community"] as const) {
+      const index = store[section].findIndex((item) => item.id === input.id);
+      if (index < 0) continue;
+      const current = store[section][index]!;
+      const updated: MarketingGalleryItem = {
+        ...current,
+        placement:
+          input.placement !== undefined ? input.placement : current.placement,
+        featured: input.featured !== undefined ? input.featured : current.featured,
+        clientName:
+          input.clientName !== undefined ? input.clientName : current.clientName,
+        altText: input.altText !== undefined ? input.altText : current.altText,
+      };
+      store[section][index] = updated;
+      return updated;
+    }
+    return null;
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (input.placement !== undefined) patch.placement = input.placement;
+  if (input.featured !== undefined) patch.featured = input.featured;
+  if (input.clientName !== undefined) patch.client_name = input.clientName;
+  if (input.altText !== undefined) patch.alt_text = input.altText;
+
+  if (Object.keys(patch).length === 0) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from(MA5_TABLES.marketingGallery)
+    .update(patch)
+    .eq("id", input.id)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+  return mapRow(data as GalleryRow);
 }
 
 export async function deleteMarketingGalleryItem(id: string): Promise<{

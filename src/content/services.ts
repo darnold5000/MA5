@@ -113,8 +113,8 @@ export const coachCopy = {
 } as const;
 
 export const communityCopy = {
-  headline: "More Than a Gym. A Community.",
-  body: "At MA5 Performance, we believe lasting results are built through more than great training—they're built through meaningful relationships. From workouts and competitions to social events and member appreciation gatherings, we're committed to creating an environment where everyone feels welcomed, supported, and challenged to become their best.",
+  headline: "More Than a Gym. A Family.",
+  body: "At MA5 Performance, we believe lasting results are built through more than great training—they're built through meaningful relationships. From workouts and competitions to social events and giving back, we're committed to creating an environment where everyone feels welcomed, supported, and challenged to become their best.",
   imageSrc: "/images/facility/community.png",
   imageAlt: "MA5 Performance members celebrating together at the gym",
 } as const;

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import type { CommunityPlacementId } from "@/content/community";
 import type {
   MarketingGalleryItem,
   MarketingGallerySection,
@@ -13,6 +14,13 @@ function emptyStore(): DemoGalleryStore {
   return { transformations: [], community: [] };
 }
 
+function normalizeItem(item: MarketingGalleryItem): MarketingGalleryItem {
+  return {
+    ...item,
+    placement: item.placement ?? null,
+  };
+}
+
 export function parseMarketingGalleryStore(
   raw: string | undefined,
 ): DemoGalleryStore {
@@ -21,9 +29,11 @@ export function parseMarketingGalleryStore(
     const parsed = JSON.parse(raw) as DemoGalleryStore;
     return {
       transformations: Array.isArray(parsed.transformations)
-        ? parsed.transformations
+        ? parsed.transformations.map(normalizeItem)
         : [],
-      community: Array.isArray(parsed.community) ? parsed.community : [],
+      community: Array.isArray(parsed.community)
+        ? parsed.community.map(normalizeItem)
+        : [],
     };
   } catch {
     return emptyStore();
@@ -45,6 +55,7 @@ export function demoGalleryItem(input: {
   altText?: string;
   clientName?: string | null;
   featured?: boolean;
+  placement?: CommunityPlacementId | null;
 }): MarketingGalleryItem {
   return {
     id: crypto.randomUUID(),
@@ -53,6 +64,7 @@ export function demoGalleryItem(input: {
     imageUrl: input.imageUrl,
     altText: input.altText ?? "",
     clientName: input.clientName ?? null,
+    placement: input.placement ?? null,
     sortOrder: 0,
     featured: input.featured ?? false,
     createdAt: new Date().toISOString(),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { COMMUNITY_PLACEMENT_IDS } from "@/content/community";
 import {
   MARKETING_GALLERY_COOKIE,
   parseMarketingGalleryStore,
@@ -10,6 +11,7 @@ import {
   createMarketingGalleryItem,
   deleteMarketingGalleryItem,
   listMarketingGallery,
+  updateMarketingGalleryItem,
 } from "@/features/marketing-gallery/queries";
 import type { MarketingGallerySection } from "@/features/marketing-gallery/types";
 import { getSessionUser } from "@/lib/auth/session";
@@ -19,6 +21,7 @@ import { canAccessAdmin } from "@/lib/permissions/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 const sectionSchema = z.enum(["transformations", "community"]);
+const placementSchema = z.enum(COMMUNITY_PLACEMENT_IDS);
 
 const createSchema = z.object({
   section: sectionSchema,
@@ -26,6 +29,15 @@ const createSchema = z.object({
   altText: z.string().max(240).optional(),
   clientName: z.string().max(80).nullable().optional(),
   featured: z.boolean().optional(),
+  placement: placementSchema.nullable().optional(),
+});
+
+const updateSchema = z.object({
+  id: z.string().uuid(),
+  placement: placementSchema.nullable().optional(),
+  featured: z.boolean().optional(),
+  clientName: z.string().max(80).nullable().optional(),
+  altText: z.string().max(240).optional(),
 });
 
 function galleryCookieResponse(
@@ -88,7 +100,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { section, storagePath, altText, clientName, featured } = parsed.data;
+  const { section, storagePath, altText, clientName, featured, placement } =
+    parsed.data;
+
+  if (section === "community" && !placement) {
+    return NextResponse.json(
+      { error: "Choose where this photo appears on Our Community" },
+      { status: 400 },
+    );
+  }
+
   if (
     !storagePath.startsWith(`marketing/${section}/`) &&
     !storagePath.startsWith("demo:")
@@ -103,6 +124,7 @@ export async function POST(request: Request) {
       altText,
       clientName,
       featured,
+      placement: section === "community" ? placement : null,
     });
 
     if (!auth.session) {
@@ -119,6 +141,44 @@ export async function POST(request: Request) {
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not save photo" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireAdmin();
+  if ("error" in auth && auth.error) return auth.error;
+
+  const json = await request.json().catch(() => null);
+  const parsed = updateSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  try {
+    const item = await updateMarketingGalleryItem(parsed.data);
+    if (!item) {
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+
+    if (!auth.session) {
+      const jar = await import("next/headers").then((m) => m.cookies());
+      const cookieStore = await jar;
+      const store = parseMarketingGalleryStore(
+        cookieStore.get(MARKETING_GALLERY_COOKIE)?.value,
+      );
+      const section = item.section as MarketingGallerySection;
+      store[section] = store[section].map((row) =>
+        row.id === item.id ? item : row,
+      );
+      return galleryCookieResponse(store, { item, warning: "Saved to demo store" });
+    }
+
+    return NextResponse.json({ item });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not update photo" },
       { status: 500 },
     );
   }

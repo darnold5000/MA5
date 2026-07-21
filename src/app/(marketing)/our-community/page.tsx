@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 
-import { CommunityPhotoGrid } from "@/components/marketing/community-gallery";
-import { ButtonLink } from "@/components/shared/button-link";
-import { SectionHeading } from "@/components/shared/section-heading";
-import { getBookingHref } from "@/content/booking";
-import { communityCopy } from "@/content/services";
+import { CommunityCta } from "@/components/marketing/community-cta";
+import { CommunityEventBlock } from "@/components/marketing/community-event-block";
+import { CommunityHero } from "@/components/marketing/community-hero";
+import {
+  communityEventSections,
+  type CommunityPlacementId,
+} from "@/content/community";
 import { listMarketingGallery } from "@/features/marketing-gallery/queries";
+import type { MarketingGalleryItem } from "@/features/marketing-gallery/types";
 
 export const metadata: Metadata = {
   title: "Our Community",
@@ -14,47 +16,39 @@ export const metadata: Metadata = {
     "MA5 Performance is more than a gym — it's a supportive community built on meaningful relationships, events, and shared goals in Avon, Indiana.",
 };
 
+function photoForPlacement(
+  items: MarketingGalleryItem[],
+  placement: CommunityPlacementId,
+): MarketingGalleryItem | undefined {
+  return items.find((item) => item.placement === placement);
+}
+
 export default async function OurCommunityPage() {
   const communityPhotos = await listMarketingGallery("community");
+  const heroPhoto = photoForPlacement(communityPhotos, "hero");
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <div>
-          <SectionHeading
-            eyebrow="Our Community"
-            title={communityCopy.headline}
-            description={communityCopy.body}
-          />
-          <div className="mt-8">
-            <ButtonLink href={getBookingHref("assessment")}>
-              Join Our Community
-            </ButtonLink>
-          </div>
-        </div>
-        <div className="relative aspect-[4/3] overflow-hidden border border-border">
-          <Image
-            src={communityCopy.imageSrc}
-            alt={communityCopy.imageAlt}
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 40vw"
-            priority
-          />
-        </div>
+    <>
+      <CommunityHero
+        imageSrc={heroPhoto?.imageUrl}
+        imageAlt={heroPhoto?.altText}
+      />
+
+      <div className="mx-auto max-w-7xl space-y-20 px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        {communityEventSections.map((section) => {
+          const photo = photoForPlacement(communityPhotos, section.id);
+          return (
+            <CommunityEventBlock
+              key={section.id}
+              section={section}
+              imageSrc={photo?.imageUrl}
+              imageAlt={photo?.altText}
+            />
+          );
+        })}
       </div>
 
-      {communityPhotos.length > 0 ? (
-        <section className="mt-16 border-t border-border pt-12">
-          <h2 className="font-display text-2xl tracking-wide uppercase sm:text-3xl">
-            Community moments
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Tap a photo to view it larger.
-          </p>
-          <CommunityPhotoGrid items={communityPhotos} className="mt-8" />
-        </section>
-      ) : null}
-    </div>
+      <CommunityCta />
+    </>
   );
 }

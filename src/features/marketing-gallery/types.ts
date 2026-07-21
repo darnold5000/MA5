@@ -1,3 +1,5 @@
+import type { CommunityPlacementId } from "@/content/community";
+
 export type MarketingGallerySection = "transformations" | "community";
 
 export type MarketingGalleryItem = {
@@ -7,6 +9,8 @@ export type MarketingGalleryItem = {
   imageUrl: string;
   altText: string;
   clientName: string | null;
+  /** Our Community page slot; null for transformations or unassigned. */
+  placement: CommunityPlacementId | null;
   sortOrder: number;
   featured: boolean;
   createdAt: string;

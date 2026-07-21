@@ -3,6 +3,11 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  communityPlacementLabel,
+  communityPlacementOptions,
+  type CommunityPlacementId,
+} from "@/content/community";
 import type {
   MarketingGalleryItem,
   MarketingGallerySection,
@@ -36,6 +41,8 @@ type MarketingGalleryManagerProps = {
   initialItems: MarketingGalleryItem[];
   showClientName?: boolean;
   showFeatured?: boolean;
+  /** Require / show page-slot dropdown (Our Community). */
+  showPlacement?: boolean;
 };
 
 export function MarketingGalleryManager({
@@ -45,6 +52,7 @@ export function MarketingGalleryManager({
   initialItems,
   showClientName = false,
   showFeatured = false,
+  showPlacement = false,
 }: MarketingGalleryManagerProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,9 +62,17 @@ export function MarketingGalleryManager({
   const [message, setMessage] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [featured, setFeatured] = useState(false);
+  const [placement, setPlacement] = useState<CommunityPlacementId | "">(
+    showPlacement ? "hero" : "",
+  );
 
   async function onUpload(file: File | undefined) {
     if (!file) return;
+    if (showPlacement && !placement) {
+      setError("Choose where this photo appears on Our Community");
+      return;
+    }
+
     setPending(true);
     setError(null);
     setMessage(null);
@@ -79,8 +95,11 @@ export function MarketingGalleryManager({
         clientName: showClientName ? clientName || null : null,
         altText: showClientName
           ? `${clientName || "Client"} at MA5 Performance`
-          : "MA5 Performance community",
+          : placement
+            ? `MA5 Performance — ${communityPlacementLabel(placement)}`
+            : "MA5 Performance community",
         featured: showFeatured ? featured : false,
+        placement: showPlacement && placement ? placement : null,
       }),
     });
     const data = (await res.json().catch(() => ({}))) as {
@@ -99,6 +118,41 @@ export function MarketingGalleryManager({
     setClientName("");
     setFeatured(false);
     setMessage(data.warning ?? "Photo uploaded");
+    router.refresh();
+  }
+
+  async function updatePlacement(
+    id: string,
+    nextPlacement: CommunityPlacementId | "",
+  ) {
+    setPending(true);
+    setError(null);
+    setMessage(null);
+
+    const res = await fetch("/api/admin/marketing/gallery", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        placement: nextPlacement || null,
+      }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      item?: MarketingGalleryItem;
+      warning?: string;
+    };
+    setPending(false);
+
+    if (!res.ok || !data.item) {
+      setError(data.error ?? "Could not update placement");
+      return;
+    }
+
+    setItems((current) =>
+      current.map((item) => (item.id === id ? data.item! : item)),
+    );
+    setMessage(data.warning ?? "Placement updated");
     router.refresh();
   }
 
@@ -134,6 +188,26 @@ export function MarketingGalleryManager({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
+        {showPlacement ? (
+          <label className="min-w-[14rem] flex-1 space-y-1 text-sm">
+            <span className="text-xs font-semibold tracking-wide uppercase">
+              Page section
+            </span>
+            <select
+              value={placement}
+              onChange={(e) =>
+                setPlacement(e.target.value as CommunityPlacementId | "")
+              }
+              className="min-h-11 w-full border border-border bg-background px-3"
+            >
+              {communityPlacementOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {showClientName ? (
           <label className="min-w-[12rem] flex-1 space-y-1 text-sm">
             <span className="text-xs font-semibold tracking-wide uppercase">
@@ -170,7 +244,7 @@ export function MarketingGalleryManager({
         />
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || (showPlacement && !placement)}
           onClick={() => inputRef.current?.click()}
           className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
         >
@@ -205,26 +279,53 @@ export function MarketingGalleryManager({
                   className="h-auto w-full"
                 />
               </div>
-              <figcaption className="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
-                <div className="min-w-0 text-xs text-muted">
-                  {item.clientName ? (
-                    <p className="truncate font-semibold tracking-wide text-foreground uppercase">
-                      {item.clientName}
-                    </p>
-                  ) : null}
-                  {item.featured ? (
-                    <p className="text-brand">Featured on home</p>
-                  ) : null}
+              <figcaption className="space-y-2 border-t border-border px-3 py-2">
+                {showPlacement ? (
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold tracking-wide text-muted uppercase">
+                      Shows next to
+                    </span>
+                    <select
+                      value={item.placement ?? ""}
+                      disabled={pending}
+                      onChange={(e) =>
+                        void updatePlacement(
+                          item.id,
+                          e.target.value as CommunityPlacementId | "",
+                        )
+                      }
+                      className="min-h-9 w-full border border-border bg-background px-2 text-foreground"
+                    >
+                      <option value="">Unassigned</option>
+                      {communityPlacementOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 text-xs text-muted">
+                    {item.clientName ? (
+                      <p className="truncate font-semibold tracking-wide text-foreground uppercase">
+                        {item.clientName}
+                      </p>
+                    ) : null}
+                    {item.featured ? (
+                      <p className="text-brand">Featured on home</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => void removeItem(item.id)}
+                    aria-label="Delete photo"
+                    className="inline-flex min-h-9 min-w-9 items-center justify-center border border-border text-muted transition hover:border-brand hover:text-brand disabled:opacity-50"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => void removeItem(item.id)}
-                  aria-label="Delete photo"
-                  className="inline-flex min-h-9 min-w-9 items-center justify-center border border-border text-muted transition hover:border-brand hover:text-brand disabled:opacity-50"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
               </figcaption>
             </figure>
           ))}

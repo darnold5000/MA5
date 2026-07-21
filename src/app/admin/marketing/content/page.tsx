@@ -28,8 +28,8 @@ export default async function AdminMarketingContentPage() {
         </h1>
         <p className="mt-2 text-sm text-muted">
           Upload and remove photos for the Results gallery and Our Community
-          page. Built-in gallery images in the codebase still appear until you
-          add uploads.
+          page. For Community, choose which section each photo sits next to
+          (Hero, Gatlinburg, Father&apos;s Heart, etc.).
         </p>
       </div>
 
@@ -47,8 +47,9 @@ export default async function AdminMarketingContentPage() {
       <MarketingGalleryManager
         section="community"
         title="Our Community"
-        description="Photos appear in a gallery on /our-community."
+        description="Upload a photo and choose which section it appears next to on /our-community (Hero, Gatlinburg, Father's Heart, and so on). Replacing a slot overwrites the previous photo for that section when you assign the same placement."
         initialItems={community}
+        showPlacement
       />
     </div>
   );
