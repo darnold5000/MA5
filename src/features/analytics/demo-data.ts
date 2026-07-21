@@ -1,7 +1,16 @@
 import type {
   BusinessReports,
   DailyOpsDashboard,
+  FeeSnapshot,
 } from "@/features/analytics/types";
+
+export const EMPTY_FEES: FeeSnapshot = {
+  feesThisMonthCents: 0,
+  grossThisMonthCents: 0,
+  netThisMonthCents: 0,
+  effectiveFeeRatePercent: 0,
+  byMethod: [],
+};
 
 /** Demo Daily Ops — what Mike opens every morning. */
 export const DEMO_DAILY_OPS: DailyOpsDashboard = {

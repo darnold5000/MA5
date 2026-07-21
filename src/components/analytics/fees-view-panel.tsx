@@ -9,7 +9,7 @@ import {
   ViewToggle,
   type AnalyticsViewMode,
 } from "@/components/analytics/view-toggle";
-import { EMPTY_FEES } from "@/features/analytics/queries";
+import { EMPTY_FEES } from "@/features/analytics/demo-data";
 import type { FeeSnapshot } from "@/features/analytics/types";
 import { formatCompactMoney } from "@/features/analytics/format";
 

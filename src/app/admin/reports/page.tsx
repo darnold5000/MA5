@@ -12,8 +12,7 @@ import {
   TopPrograms,
 } from "@/components/analytics/ops-panels";
 import { PaymentImportPanel } from "@/components/admin/payment-import-panel";
-import { getBusinessReports } from "@/features/analytics";
-import { EMPTY_FEES } from "@/features/analytics/queries";
+import { EMPTY_FEES, getBusinessReports } from "@/features/analytics";
 
 export const metadata: Metadata = {
   title: "Reports · Operations",

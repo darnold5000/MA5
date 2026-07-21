@@ -1,4 +1,8 @@
-import { DEMO_BUSINESS_REPORTS, DEMO_DAILY_OPS } from "@/features/analytics/demo-data";
+import {
+  DEMO_BUSINESS_REPORTS,
+  DEMO_DAILY_OPS,
+  EMPTY_FEES,
+} from "@/features/analytics/demo-data";
 import { formatCompactMoney } from "@/features/analytics/format";
 import type {
   ActivityItem,
@@ -643,14 +647,6 @@ function ytdNote(): string {
   return `Jan–${monthShortLabel(year, month)} ${year}`;
 }
 
-export const EMPTY_FEES: FeeSnapshot = {
-  feesThisMonthCents: 0,
-  grossThisMonthCents: 0,
-  netThisMonthCents: 0,
-  effectiveFeeRatePercent: 0,
-  byMethod: [],
-};
-
 async function fetchFeeSnapshot(): Promise<FeeSnapshot> {
   try {
     const supabase = await createClient();
@@ -671,44 +667,48 @@ async function fetchFeeSnapshot(): Promise<FeeSnapshot> {
       return EMPTY_FEES;
     }
 
-  let grossThisMonthCents = 0;
-  let feesThisMonthCents = 0;
-  let netThisMonthCents = 0;
-  const byMethodMap = new Map<string, { feeCents: number; grossCents: number }>();
+    let grossThisMonthCents = 0;
+    let feesThisMonthCents = 0;
+    let netThisMonthCents = 0;
+    const byMethodMap = new Map<
+      string,
+      { feeCents: number; grossCents: number }
+    >();
 
-  for (const row of data ?? []) {
-    const gross = (row.amount_cents as number) ?? 0;
-    const fee = Math.abs((row.processing_fee_cents as number) ?? 0);
-    const net =
-      (row.net_amount_cents as number) ?? Math.max(gross - fee, 0);
-    const method = (row.payment_method_type as string | null)?.trim() || "Unknown";
+    for (const row of data ?? []) {
+      const gross = (row.amount_cents as number) ?? 0;
+      const fee = Math.abs((row.processing_fee_cents as number) ?? 0);
+      const net =
+        (row.net_amount_cents as number) ?? Math.max(gross - fee, 0);
+      const method =
+        (row.payment_method_type as string | null)?.trim() || "Unknown";
 
-    grossThisMonthCents += gross;
-    feesThisMonthCents += fee;
-    netThisMonthCents += net;
+      grossThisMonthCents += gross;
+      feesThisMonthCents += fee;
+      netThisMonthCents += net;
 
-    const bucket = byMethodMap.get(method) ?? { feeCents: 0, grossCents: 0 };
-    bucket.feeCents += fee;
-    bucket.grossCents += gross;
-    byMethodMap.set(method, bucket);
-  }
+      const bucket = byMethodMap.get(method) ?? { feeCents: 0, grossCents: 0 };
+      bucket.feeCents += fee;
+      bucket.grossCents += gross;
+      byMethodMap.set(method, bucket);
+    }
 
-  const effectiveFeeRatePercent =
-    grossThisMonthCents > 0
-      ? Math.round((feesThisMonthCents / grossThisMonthCents) * 1000) / 10
-      : 0;
+    const effectiveFeeRatePercent =
+      grossThisMonthCents > 0
+        ? Math.round((feesThisMonthCents / grossThisMonthCents) * 1000) / 10
+        : 0;
 
-  const byMethod = [...byMethodMap.entries()]
-    .map(([method, values]) => ({
-      method,
-      feeCents: values.feeCents,
-      grossCents: values.grossCents,
-      effectiveRatePercent:
-        values.grossCents > 0
-          ? Math.round((values.feeCents / values.grossCents) * 1000) / 10
-          : 0,
-    }))
-    .sort((a, b) => b.feeCents - a.feeCents);
+    const byMethod = [...byMethodMap.entries()]
+      .map(([method, values]) => ({
+        method,
+        feeCents: values.feeCents,
+        grossCents: values.grossCents,
+        effectiveRatePercent:
+          values.grossCents > 0
+            ? Math.round((values.feeCents / values.grossCents) * 1000) / 10
+            : 0,
+      }))
+      .sort((a, b) => b.feeCents - a.feeCents);
 
     return {
       feesThisMonthCents,
