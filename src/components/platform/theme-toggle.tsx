@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 type ThemeToggleProps = {
   className?: string;
+  /** Icon + text (default). Use false for compact icon-only buttons. */
+  showLabel?: boolean;
 };
 
 function SunIcon({ className }: { className?: string }) {
@@ -42,7 +44,10 @@ function MoonIcon({ className }: { className?: string }) {
   );
 }
 
-export function ThemeToggle({ className }: ThemeToggleProps) {
+export function ThemeToggle({
+  className,
+  showLabel = true,
+}: ThemeToggleProps) {
   const { theme, toggleTheme } = useHubTheme();
   const isDark = theme === "dark";
   const label = isDark ? "Dark mode" : "Light mode";
@@ -52,7 +57,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-border px-3 text-foreground transition hover:border-brand sm:px-4",
+        "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 border border-border text-foreground transition hover:border-brand",
+        showLabel ? "px-3 sm:px-4" : "size-11 px-0",
         className,
       )}
       aria-label={`${label}. Switch to ${isDark ? "light" : "dark"} mode.`}
@@ -63,9 +69,11 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       ) : (
         <SunIcon className="h-5 w-5 shrink-0" />
       )}
-      <span className="text-xs font-semibold tracking-wide whitespace-nowrap uppercase">
-        {label}
-      </span>
+      {showLabel ? (
+        <span className="text-xs font-semibold tracking-wide whitespace-nowrap uppercase">
+          {label}
+        </span>
+      ) : null}
     </button>
   );
 }

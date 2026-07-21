@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ClientHubPreview } from "@/components/admin/client-hub-preview";
-import { DemoPreviewChrome } from "@/components/platform/demo-preview";
+// Demo mode — kept but hidden
+// import { ClientHubPreview } from "@/components/admin/client-hub-preview";
+// import { DemoPreviewChrome } from "@/components/platform/demo-preview";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { HubThemeProvider } from "@/components/platform/theme-context";
 import { ThemeToggle } from "@/components/platform/theme-toggle";
@@ -45,12 +46,27 @@ const SIDEBAR = [
   },
 ] as const;
 
-const MOBILE = [
-  { href: "/admin", label: "Home", match: "exact" as const },
-  { href: "/admin/schedule", label: "Schedule", match: "prefix" as const },
-  { href: "/admin/clients", label: "Clients", match: "prefix" as const },
-  { href: "/admin/reports", label: "Reports", match: "prefix" as const },
-  { href: "/admin/settings", label: "More", match: "prefix" as const },
+/** Primary destinations in the mobile bottom bar (icons only). */
+const MOBILE_TAB = [
+  { href: "/admin", label: "Home", match: "exact" as const, icon: "home" },
+  {
+    href: "/admin/schedule",
+    label: "Schedule",
+    match: "prefix" as const,
+    icon: "calendar",
+  },
+  {
+    href: "/admin/clients",
+    label: "Clients",
+    match: "prefix" as const,
+    icon: "clients",
+  },
+  {
+    href: "/admin/messages",
+    label: "Inbox",
+    match: "communication" as const,
+    icon: "messages",
+  },
 ] as const;
 
 function isActive(
@@ -60,7 +76,9 @@ function isActive(
 ) {
   if (match === "exact") return pathname === href;
   if (match === "programs") {
-    return pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
+    return (
+      pathname === "/admin/programs" || pathname.startsWith("/admin/programs/")
+    );
   }
   if (match === "communication") {
     return (
@@ -75,6 +93,69 @@ function isActive(
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function NavIcon({
+  name,
+  className,
+}: {
+  name: (typeof MOBILE_TAB)[number]["icon"] | "menu" | "close";
+  className?: string;
+}) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.75,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: cn("h-6 w-6", className),
+    "aria-hidden": true as const,
+  };
+
+  switch (name) {
+    case "home":
+      return (
+        <svg {...common}>
+          <path d="M3 10.5 12 3l9 7.5" />
+          <path d="M5 10v10h14V10" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...common}>
+          <rect x="3" y="5" width="18" height="16" rx="1" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
+      );
+    case "clients":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <circle cx="16" cy="9" r="2.5" />
+          <path d="M3 19a6 6 0 0 1 12 0" />
+          <path d="M14 19a5 5 0 0 1 7 0" />
+        </svg>
+      );
+    case "messages":
+      return (
+        <svg {...common}>
+          <path d="M4 6h16v10H8l-4 3V6z" />
+        </svg>
+      );
+    case "menu":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      );
+    case "close":
+      return (
+        <svg {...common}>
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      );
+  }
+}
+
 export function AdminShell({
   children,
   communicationUnread = 0,
@@ -83,263 +164,387 @@ export function AdminShell({
   communicationUnread?: number;
 }) {
   const pathname = usePathname();
-  const [demoOpen, setDemoOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Demo mode kept but hidden — restore by uncommenting demoOpen / triggers below.
+  // const [demoOpen, setDemoOpen] = useState(false);
   const programsLight =
     pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   return (
     <HubThemeProvider scope="admin">
-    <div
-      className={cn(
-        "flex min-h-full flex-1",
-        programsLight ? "programs-th bg-[var(--th-bg)]" : "bg-background",
-      )}
-    >
-      <aside
+      <div
         className={cn(
-          "sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r lg:flex",
-          programsLight
-            ? "border-[var(--th-border)] bg-[var(--th-surface)]"
-            : "border-border bg-surface",
+          "flex min-h-full flex-1",
+          programsLight ? "programs-th bg-[var(--th-bg)]" : "bg-background",
         )}
       >
-        <div
+        <aside
           className={cn(
-            "border-b px-4 py-5",
-            programsLight ? "border-[var(--th-border)]" : "border-border",
-          )}
-        >
-          <Link href="/admin" className="flex items-center gap-3">
-            <Image
-              src="/images/brand/ma5-logo.jpeg"
-              alt=""
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-full object-cover"
-            />
-            <div>
-              <span
-                className={cn(
-                  "block font-display text-lg tracking-[0.08em] uppercase",
-                  programsLight && "text-[var(--th-text)]",
-                )}
-              >
-                {siteConfig.shortName}
-              </span>
-              <span
-                className={cn(
-                  "text-[10px] tracking-wide uppercase",
-                  programsLight ? "text-[var(--th-muted)]" : "text-muted",
-                )}
-              >
-                Operations
-              </span>
-            </div>
-          </Link>
-        </div>
-        <nav aria-label="Operations" className="flex flex-1 flex-col gap-1 p-3">
-          {SIDEBAR.map((item) => {
-            const active = isActive(pathname, item.href, item.match);
-            const showBadge =
-              item.match === "communication" && communicationUnread > 0;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center justify-between gap-2 px-3 py-2.5 text-sm tracking-wide transition",
-                  programsLight
-                    ? active
-                      ? "border-l-2 border-[var(--th-blue)] bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
-                      : "border-l-2 border-transparent text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                    : active
-                      ? "border-l-2 border-brand bg-brand/10 text-foreground"
-                      : "border-l-2 border-transparent text-muted hover:text-foreground",
-                )}
-              >
-                <span>{item.label}</span>
-                {showBadge ? (
-                  <span className="flex h-5 min-w-5 items-center justify-center bg-brand px-1 text-[10px] font-semibold text-brand-foreground">
-                    {communicationUnread > 9 ? "9+" : communicationUnread}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-        <div
-          className={cn(
-            "mt-auto space-y-1 border-t p-4",
-            programsLight ? "border-[var(--th-border)]" : "border-border",
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => setDemoOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={demoOpen}
-            className={cn(
-              "flex w-full items-center gap-2 px-3 py-2 text-left text-sm tracking-wide",
-              programsLight
-                ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            <span
-              className={cn(
-                "flex size-5 shrink-0 items-center justify-center border text-[10px] font-semibold",
-                programsLight
-                  ? "border-[var(--th-blue)] text-[var(--th-blue)]"
-                  : "border-current",
-              )}
-              aria-hidden
-            >
-              ?
-            </span>
-            Demo guide
-          </button>
-          <Link
-            href="/admin/settings"
-            className={cn(
-              "block px-3 py-2 text-sm tracking-wide",
-              programsLight
-                ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                : "text-muted hover:text-foreground",
-            )}
-          >
-            Settings
-          </Link>
-          <ClientHubPreview
-            label="Preview client view"
-            className={cn(
-              "block w-full px-3 py-2",
-              programsLight && "text-[var(--th-muted)]",
-            )}
-          />
-          <SignOutButton
-            className={cn(
-              "block w-full px-3 py-2 text-sm tracking-wide",
-              programsLight
-                ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                : "text-muted hover:text-foreground",
-            )}
-          />
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header
-          className={cn(
-            "flex items-center justify-between border-b px-4 py-3 lg:hidden",
+            "sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r lg:flex",
             programsLight
               ? "border-[var(--th-border)] bg-[var(--th-surface)]"
               : "border-border bg-surface",
           )}
         >
-          <Link href="/admin" className="flex items-center gap-2">
-            <Image
-              src="/images/brand/ma5-logo.jpeg"
-              alt=""
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-full object-cover"
-            />
-            <div>
+          <div
+            className={cn(
+              "border-b px-4 py-5",
+              programsLight ? "border-[var(--th-border)]" : "border-border",
+            )}
+          >
+            <Link href="/admin" className="flex items-center gap-3">
+              <Image
+                src="/images/brand/ma5-logo.jpeg"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-full object-cover"
+              />
+              <div>
+                <span
+                  className={cn(
+                    "block font-display text-lg tracking-[0.08em] uppercase",
+                    programsLight && "text-[var(--th-text)]",
+                  )}
+                >
+                  {siteConfig.shortName}
+                </span>
+                <span
+                  className={cn(
+                    "text-[10px] tracking-wide uppercase",
+                    programsLight ? "text-[var(--th-muted)]" : "text-muted",
+                  )}
+                >
+                  Operations
+                </span>
+              </div>
+            </Link>
+          </div>
+          <nav aria-label="Operations" className="flex flex-1 flex-col gap-1 p-3">
+            {SIDEBAR.map((item) => {
+              const active = isActive(pathname, item.href, item.match);
+              const showBadge =
+                item.match === "communication" && communicationUnread > 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center justify-between gap-2 px-3 py-2.5 text-sm tracking-wide transition",
+                    programsLight
+                      ? active
+                        ? "border-l-2 border-[var(--th-blue)] bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
+                        : "border-l-2 border-transparent text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                      : active
+                        ? "border-l-2 border-brand bg-brand/10 text-foreground"
+                        : "border-l-2 border-transparent text-muted hover:text-foreground",
+                  )}
+                >
+                  <span>{item.label}</span>
+                  {showBadge ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center bg-brand px-1 text-[10px] font-semibold text-brand-foreground">
+                      {communicationUnread > 9 ? "9+" : communicationUnread}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+          <div
+            className={cn(
+              "mt-auto space-y-1 border-t p-4",
+              programsLight ? "border-[var(--th-border)]" : "border-border",
+            )}
+          >
+            {/* Demo mode — kept but hidden
+            <button
+              type="button"
+              onClick={() => setDemoOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={demoOpen}
+              className={cn(
+                "flex w-full items-center gap-2 px-3 py-2 text-left text-sm tracking-wide",
+                programsLight
+                  ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                  : "text-muted hover:text-foreground",
+              )}
+            >
               <span
                 className={cn(
-                  "block font-display text-sm tracking-wide uppercase",
-                  programsLight && "text-[var(--th-text)]",
+                  "flex size-5 shrink-0 items-center justify-center border text-[10px] font-semibold",
+                  programsLight
+                    ? "border-[var(--th-blue)] text-[var(--th-blue)]"
+                    : "border-current",
                 )}
+                aria-hidden
               >
-                {siteConfig.shortName}
+                ?
               </span>
-              <span
-                className={cn(
-                  "text-[10px] tracking-wide uppercase",
-                  programsLight ? "text-[var(--th-muted)]" : "text-muted",
-                )}
-              >
-                Operations
-              </span>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
+              Demo guide
+            </button>
+            */}
+            <Link
+              href="/admin/settings"
+              className={cn(
+                "block px-3 py-2 text-sm tracking-wide",
+                programsLight
+                  ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
+                  : "text-muted hover:text-foreground",
+              )}
+            >
+              Settings
+            </Link>
+            {/* Client hub preview — kept but hidden
             <ClientHubPreview
-              label="Preview"
-              className="text-xs font-semibold tracking-wide uppercase"
+              label="Preview client view"
+              className={cn(
+                "block w-full px-3 py-2",
+                programsLight && "text-[var(--th-muted)]",
+              )}
             />
+            */}
             <SignOutButton
               className={cn(
-                "text-xs font-semibold tracking-wide uppercase",
+                "block w-full px-3 py-2 text-sm tracking-wide",
                 programsLight
                   ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
                   : "text-muted hover:text-foreground",
               )}
             />
-            <ThemeToggle />
           </div>
-        </header>
+        </aside>
 
-        <header
-          className={cn(
-            "sticky top-0 z-40 hidden items-center justify-end border-b px-6 py-2.5 backdrop-blur lg:flex",
-            programsLight
-              ? "border-[var(--th-border)] bg-[var(--th-surface)]/95"
-              : "border-border bg-background/95",
-          )}
-        >
-          <ThemeToggle />
-        </header>
+        <div className="flex min-w-0 flex-1 flex-col pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <header
+            className={cn(
+              "sticky top-0 z-50 flex items-center justify-between gap-3 border-b px-4 py-3 lg:hidden",
+              programsLight
+                ? "border-[var(--th-border)] bg-[var(--th-surface)]"
+                : "border-border bg-surface",
+            )}
+          >
+            <Link href="/admin" className="flex min-w-0 items-center gap-2.5">
+              <Image
+                src="/images/brand/ma5-logo.jpeg"
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-8 shrink-0 rounded-full object-cover"
+              />
+              <div className="min-w-0">
+                <span
+                  className={cn(
+                    "block font-display text-base tracking-[0.08em] uppercase",
+                    programsLight && "text-[var(--th-text)]",
+                  )}
+                >
+                  {siteConfig.shortName}
+                </span>
+                <span
+                  className={cn(
+                    "text-[10px] tracking-wide uppercase",
+                    programsLight ? "text-[var(--th-muted)]" : "text-muted",
+                  )}
+                >
+                  Operations
+                </span>
+              </div>
+            </Link>
+            <button
+              type="button"
+              className={cn(
+                "inline-flex size-11 shrink-0 items-center justify-center border touch-manipulation",
+                programsLight
+                  ? "border-[var(--th-border)] text-[var(--th-text)]"
+                  : "border-border text-foreground",
+              )}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls="admin-mobile-menu"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <NavIcon name={menuOpen ? "close" : "menu"} />
+            </button>
+          </header>
 
-        <main
-          id="main-content"
-          className={cn(
-            "flex-1 px-4 py-6 sm:px-6 lg:px-8",
-            programsLight && "bg-[var(--th-bg)] text-[var(--th-text)]",
-          )}
-        >
-          {children}
-        </main>
-
-        <nav
-          aria-label="Operations mobile"
-          className={cn(
-            "sticky bottom-0 grid grid-cols-5 border-t lg:hidden",
-            programsLight
-              ? "border-[var(--th-border)] bg-[var(--th-surface)]"
-              : "border-border bg-surface",
-          )}
-        >
-          {MOBILE.map((item) => {
-            const active = isActive(pathname, item.href, item.match);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
+          {menuOpen ? (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                aria-label="Dismiss menu"
+                onClick={() => setMenuOpen(false)}
+              />
+              <div
+                id="admin-mobile-menu"
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center px-1 text-[10px] font-semibold tracking-wide uppercase",
+                  "absolute inset-x-0 top-[57px] z-50 max-h-[calc(100dvh-57px-4.25rem)] overflow-y-auto border-b shadow-lg lg:hidden",
                   programsLight
-                    ? active
-                      ? "text-[var(--th-blue)]"
-                      : "text-[var(--th-muted)]"
-                    : active
-                      ? "text-brand"
-                      : "text-muted",
+                    ? "border-[var(--th-border)] bg-[var(--th-surface)]"
+                    : "border-border bg-surface",
                 )}
               >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+                <nav aria-label="More" className="flex flex-col p-2">
+                  {SIDEBAR.map((item) => {
+                    const active = isActive(pathname, item.href, item.match);
+                    const showBadge =
+                      item.match === "communication" &&
+                      communicationUnread > 0;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex min-h-12 items-center justify-between gap-2 px-3 text-sm tracking-wide touch-manipulation",
+                          programsLight
+                            ? active
+                              ? "bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
+                              : "text-[var(--th-text)]"
+                            : active
+                              ? "bg-brand/10 font-semibold text-foreground"
+                              : "text-foreground",
+                        )}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <span>{item.label}</span>
+                        {showBadge ? (
+                          <span className="flex h-5 min-w-5 items-center justify-center bg-brand px-1 text-[10px] font-semibold text-brand-foreground">
+                            {communicationUnread > 9
+                              ? "9+"
+                              : communicationUnread}
+                          </span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                  <Link
+                    href="/admin/settings"
+                    className={cn(
+                      "flex min-h-12 items-center px-3 text-sm tracking-wide touch-manipulation",
+                      programsLight
+                        ? "text-[var(--th-text)]"
+                        : "text-foreground",
+                    )}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                </nav>
+                <div
+                  className={cn(
+                    "space-y-2 border-t p-3",
+                    programsLight
+                      ? "border-[var(--th-border)]"
+                      : "border-border",
+                  )}
+                >
+                  <ThemeToggle className="w-full justify-start" />
+                  {/* Client hub preview — kept but hidden
+                  <ClientHubPreview
+                    label="Preview client view"
+                    className="block w-full px-3 py-2 text-sm"
+                  />
+                  */}
+                  <SignOutButton
+                    showIcon
+                    className={cn(
+                      "flex min-h-12 w-full items-center gap-2 px-3 text-left text-sm tracking-wide",
+                      programsLight
+                        ? "text-[var(--th-muted)]"
+                        : "text-muted",
+                    )}
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
 
-      <DemoPreviewChrome
-        showFloatingTrigger={false}
-        open={demoOpen}
-        onOpenChange={setDemoOpen}
-      />
-    </div>
+          <header
+            className={cn(
+              "sticky top-0 z-40 hidden items-center justify-end border-b px-6 py-2.5 backdrop-blur lg:flex",
+              programsLight
+                ? "border-[var(--th-border)] bg-[var(--th-surface)]/95"
+                : "border-border bg-background/95",
+            )}
+          >
+            <ThemeToggle />
+          </header>
+
+          <main
+            id="main-content"
+            className={cn(
+              "flex-1 px-4 py-6 sm:px-6 lg:px-8",
+              programsLight && "bg-[var(--th-bg)] text-[var(--th-text)]",
+            )}
+          >
+            {children}
+          </main>
+
+          <nav
+            aria-label="Operations mobile"
+            className={cn(
+              "fixed inset-x-0 bottom-0 z-50 border-t pb-[env(safe-area-inset-bottom)] lg:hidden",
+              programsLight
+                ? "border-[var(--th-border)] bg-[var(--th-surface)]/95"
+                : "border-border bg-surface/95",
+            )}
+          >
+            <div className="mx-auto grid max-w-lg grid-cols-4">
+              {MOBILE_TAB.map((item) => {
+                const active = isActive(pathname, item.href, item.match);
+                const showBadge =
+                  item.match === "communication" && communicationUnread > 0;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "relative flex min-h-14 flex-col items-center justify-center touch-manipulation",
+                      programsLight
+                        ? active
+                          ? "text-[var(--th-blue)]"
+                          : "text-[var(--th-muted)]"
+                        : active
+                          ? "text-brand"
+                          : "text-muted",
+                    )}
+                    aria-label={item.label}
+                    title={item.label}
+                  >
+                    <NavIcon name={item.icon} />
+                    {showBadge ? (
+                      <span className="absolute top-1.5 right-[22%] flex h-4 min-w-4 items-center justify-center bg-brand px-0.5 text-[9px] font-semibold text-brand-foreground">
+                        {communicationUnread > 9 ? "9+" : communicationUnread}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+
+        {/* Demo mode — kept but hidden
+        <DemoPreviewChrome
+          showFloatingTrigger={false}
+          open={demoOpen}
+          onOpenChange={setDemoOpen}
+        />
+        */}
+      </div>
     </HubThemeProvider>
   );
 }
