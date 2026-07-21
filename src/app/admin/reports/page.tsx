@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { MetricCard, PeriodGrid } from "@/components/analytics/metric-card";
+import { MetricCard } from "@/components/analytics/metric-card";
+import { FeesViewPanel } from "@/components/analytics/fees-view-panel";
+import { MetricsViewPanel } from "@/components/analytics/metrics-view-panel";
 import {
   ActivityFeed,
   CapacityList,
   SectionHeader,
   TopPrograms,
 } from "@/components/analytics/ops-panels";
-import { SimpleBarChart } from "@/components/analytics/simple-bar-chart";
 import { PaymentImportPanel } from "@/components/admin/payment-import-panel";
-import { formatCompactMoney, getBusinessReports } from "@/features/analytics";
+import { getBusinessReports } from "@/features/analytics";
 
 export const metadata: Metadata = {
   title: "Reports · Operations",
@@ -60,78 +61,29 @@ export default async function AdminReportsPage() {
 
       <section className="space-y-5">
         <SectionHeader eyebrow="Money" title="Revenue" />
-        <PeriodGrid metrics={data.revenuePeriods} columns={5} />
-        <div>
-          <p className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">
-            Revenue over time
-          </p>
-          <SimpleBarChart
-            points={data.revenueChart}
-            formatValue={formatChartMoney}
-          />
-        </div>
+        <MetricsViewPanel
+          metrics={data.revenuePeriods}
+          chartPoints={data.revenueChart}
+          columns={5}
+          formatChartValue={formatChartMoney}
+          numbersLabel="By period"
+          chartLabel="Revenue by month (YTD)"
+        />
       </section>
 
       <section className="space-y-5">
         <SectionHeader eyebrow="Processing" title="Fees & net revenue" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            label="Gross this month"
-            value={formatCompactMoney(fees.grossThisMonthCents)}
-          />
-          <MetricCard
-            label="Fees this month"
-            value={formatCompactMoney(fees.feesThisMonthCents)}
-          />
-          <MetricCard
-            label="Net this month"
-            value={formatCompactMoney(fees.netThisMonthCents)}
-            note="after processing fees"
-          />
-          <MetricCard
-            label="Effective fee rate"
-            value={`${fees.effectiveFeeRatePercent}%`}
-          />
-        </div>
-        {fees.byMethod.length > 0 ? (
-          <div>
-            <p className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">
-              Fees by payment method
-            </p>
-            <ul className="divide-y divide-border border border-border bg-surface">
-              {fees.byMethod.map((row) => (
-                <li
-                  key={row.method}
-                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-                >
-                  <span className="font-semibold text-foreground">
-                    {row.method}
-                  </span>
-                  <span className="text-muted">
-                    Fees {formatCompactMoney(row.feeCents)} · Gross{" "}
-                    {formatCompactMoney(row.grossCents)} · {row.effectiveRatePercent}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-sm text-muted">
-            Fee breakdown appears after Mindbody imports or when Stripe fee data
-            is recorded on payments.
-          </p>
-        )}
+        <FeesViewPanel fees={fees} />
       </section>
 
       <section className="space-y-5">
         <SectionHeader eyebrow="Schedule" title="Bookings" />
-        <PeriodGrid metrics={data.bookingPeriods} />
-        <div>
-          <p className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">
-            Bookings this week
-          </p>
-          <SimpleBarChart points={data.bookingsChart} />
-        </div>
+        <MetricsViewPanel
+          metrics={data.bookingPeriods}
+          chartPoints={data.bookingsChart}
+          numbersLabel="By period"
+          chartLabel="Bookings this week (by day)"
+        />
       </section>
 
       <section className="space-y-5">
