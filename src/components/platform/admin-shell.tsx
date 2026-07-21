@@ -38,6 +38,11 @@ const SIDEBAR = [
     label: "Communication",
     match: "communication" as const,
   },
+  {
+    href: "/admin/community",
+    label: "Community",
+    match: "prefix" as const,
+  },
 ] as const;
 
 const MOBILE = [

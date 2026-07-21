@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ContactLeadForm } from "@/components/marketing/contact-lead-form";
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { SocialLinks } from "@/components/shared/social-links";
 import { siteConfig } from "@/content/site-config";
 
 export const metadata: Metadata = {
@@ -59,17 +60,7 @@ export default function ContactPage() {
           <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
             Social
           </p>
-          <div className="mt-2 flex flex-wrap gap-4 text-sm">
-            <a href={siteConfig.social.instagram} target="_blank" rel="noreferrer" className="hover:text-brand">
-              Instagram
-            </a>
-            <a href={siteConfig.social.facebook} target="_blank" rel="noreferrer" className="hover:text-brand">
-              Facebook
-            </a>
-            <a href={siteConfig.social.linkedin} target="_blank" rel="noreferrer" className="hover:text-brand">
-              LinkedIn
-            </a>
-          </div>
+          <SocialLinks className="mt-2" />
         </div>
       </div>
 

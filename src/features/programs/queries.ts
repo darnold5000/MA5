@@ -9,6 +9,8 @@ import {
   resolveProgramsClientIds,
 } from "@/features/programs/progress";
 import { buildLastPerformanceMap } from "@/features/programs/set-logs";
+import { buildExerciseHistory } from "@/features/programs/exercise-history";
+import type { ExerciseHistorySummary } from "@/features/programs/exercise-history";
 import {
   loadProgramsStateFromSupabase,
   mapSetLogRow,
@@ -291,6 +293,16 @@ export async function getClientTrainingProgress(
   const setLogs = await loadClientSetLogs(clientIds);
   const days = mapClientDays(state, clientIds, setLogs);
   return buildClientTrainingProgress(days, state, clientIds);
+}
+
+export async function getClientExerciseHistory(
+  clientUserId: string,
+  email?: string | null,
+): Promise<ExerciseHistorySummary[]> {
+  const state = await getProgramsState();
+  const clientIds = resolveProgramsClientIds(clientUserId, email);
+  const setLogs = await loadClientSetLogs(clientIds);
+  return buildExerciseHistory(setLogs, state.exercises);
 }
 
 export async function listCoachClientProgress(): Promise<

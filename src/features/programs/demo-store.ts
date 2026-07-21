@@ -51,6 +51,7 @@ function seedState(): ProgramsState {
   const exBackSquat = libraryExerciseId("Legs", "Back Squat");
   const exDeadlift = libraryExerciseId("Legs", "Conventional Deadlift");
   const exPullup = libraryExerciseId("Back", "Pull-Up");
+  const exFrontSquat = libraryExerciseId("Legs", "Front Squat");
 
   const upperId = "wo_upper_1";
   const lowerId = "wo_lower_1";
@@ -543,8 +544,62 @@ function seedState(): ProgramsState {
       ...sam.completions,
       ...emily.completions,
     ],
-    setLogs: [],
+    setLogs: seedDemoSetLogs({
+      exBackSquat,
+      exFrontSquat,
+      blockId: "wb_a",
+    }),
   };
+}
+
+function seedDemoSetLogs(input: {
+  exBackSquat: string;
+  exFrontSquat: string;
+  blockId: string;
+}): WorkoutSetLog[] {
+  const sessions = [
+    { entryId: "cal_alex_m18", offset: -18, back: 135, front: 75 },
+    { entryId: "cal_alex_m12", offset: -12, back: 145, front: 80 },
+    { entryId: "cal_alex_m6", offset: -6, back: 155, front: 90 },
+    { entryId: "cal_alex_m2", offset: -2, back: 165, front: 95 },
+  ];
+  const logs: WorkoutSetLog[] = [];
+  let n = 0;
+  for (const session of sessions) {
+    const loggedAt = `${daysOffsetIso(session.offset)}T18:00:00.000Z`;
+    for (const [setNumber, bump] of [
+      [1, 0],
+      [2, 5],
+      [3, 10],
+    ] as const) {
+      n += 1;
+      logs.push({
+        id: `setlog_back_${n}`,
+        calendarEntryId: session.entryId,
+        clientUserId: "client-alex",
+        workoutBlockId: input.blockId,
+        exerciseId: input.exBackSquat,
+        setNumber,
+        targetReps: 5,
+        reps: 5,
+        weightLb: session.back + bump,
+        loggedAt,
+      });
+      logs.push({
+        id: `setlog_front_${n}`,
+        calendarEntryId: session.entryId,
+        clientUserId: "client-alex",
+        workoutBlockId: input.blockId,
+        exerciseId: input.exFrontSquat,
+        setNumber,
+        targetReps: 10,
+        reps: 10,
+        weightLb: session.front + bump,
+        loggedAt,
+      });
+    }
+  }
+  return logs;
 }
 
 export function emptyProgramsState(): ProgramsState {

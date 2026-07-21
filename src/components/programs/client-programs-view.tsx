@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { WorkoutBlockSetLogger } from "@/components/programs/workout-block-set-logger";
+import { ExerciseHistoryPanel } from "@/components/programs/exercise-history-panel";
+import type { ExerciseHistorySummary } from "@/features/programs/exercise-history";
 import type {
   ClientProgramDay,
   ClientTrainingProgress,
@@ -15,11 +17,16 @@ import { VideoPlayer } from "@/lib/video/player";
 type Props = {
   days: ClientProgramDay[];
   progress: ClientTrainingProgress;
+  exerciseHistory: ExerciseHistorySummary[];
   /** Kept for call-site clarity; completion uses the signed-in session. */
   clientUserId?: string;
 };
 
-export function ClientProgramsView({ days, progress }: Props) {
+export function ClientProgramsView({
+  days,
+  progress,
+  exerciseHistory,
+}: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = days.filter(
     (d) =>
@@ -112,6 +119,8 @@ export function ClientProgramsView({ days, progress }: Props) {
           </div>
         )}
       </section>
+
+      <ExerciseHistoryPanel summaries={exerciseHistory} />
 
       <section>
         <h2 className="font-display text-2xl tracking-wide uppercase">

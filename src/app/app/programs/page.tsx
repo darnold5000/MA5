@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { ClientProgramsView } from "@/components/programs/client-programs-view";
 import {
+  getClientExerciseHistory,
   getClientTrainingProgress,
   listClientProgramDays,
 } from "@/features/programs/queries";
@@ -20,9 +21,10 @@ export default async function ProgramsPage() {
   }
 
   const email = session.email ?? session.profile?.email;
-  const [days, progress] = await Promise.all([
+  const [days, progress, exerciseHistory] = await Promise.all([
     listClientProgramDays(session.id, email),
     getClientTrainingProgress(session.id, email),
+    getClientExerciseHistory(session.id, email),
   ]);
 
   return (
@@ -42,6 +44,7 @@ export default async function ProgramsPage() {
       <ClientProgramsView
         days={days}
         progress={progress}
+        exerciseHistory={exerciseHistory}
         clientUserId={session.id}
       />
     </div>

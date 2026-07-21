@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FooterCredit } from "@/components/shared/footer-credit";
+import { SocialLinks } from "@/components/shared/social-links";
 import { siteConfig } from "@/content/site-config";
 
 export function SiteFooter() {
@@ -29,32 +30,7 @@ export function SiteFooter() {
           <p className="mt-4 text-sm text-muted">
             {siteConfig.location.fullAddress}
           </p>
-          <div className="mt-4 flex flex-wrap gap-4 text-sm">
-            <a
-              href={siteConfig.social.instagram}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted transition hover:text-foreground"
-            >
-              Instagram
-            </a>
-            <a
-              href={siteConfig.social.facebook}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted transition hover:text-foreground"
-            >
-              Facebook
-            </a>
-            <a
-              href={siteConfig.social.linkedin}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted transition hover:text-foreground"
-            >
-              LinkedIn
-            </a>
-          </div>
+          <SocialLinks className="mt-4" />
         </div>
 
         <div>

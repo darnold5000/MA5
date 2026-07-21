@@ -7,6 +7,26 @@ import { useRouter } from "next/navigation";
 import type { Message, MessageThread } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
 
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("h-3.5 w-3.5", className)}
+      aria-hidden
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 export function AdminThreadView({
   thread,
   messages,
@@ -50,6 +70,26 @@ export function AdminThreadView({
     });
   }
 
+  function removeMessage(messageId: string) {
+    if (!window.confirm("Delete this message?")) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await fetch("/api/admin/messages/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, threadId: thread.id }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setError(data?.error ?? "Delete failed");
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   return (
     <div className="flex min-h-[70vh] flex-col">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
@@ -89,15 +129,30 @@ export function AdminThreadView({
             >
               <div
                 className={cn(
-                  "max-w-[85%] px-4 py-3 text-sm",
+                  "relative max-w-[85%] px-4 py-3 text-sm",
                   staff
                     ? "bg-brand text-brand-foreground"
                     : "border border-border bg-surface",
                 )}
               >
-                <p className="text-[10px] font-semibold tracking-wide uppercase opacity-80">
-                  {m.senderName}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[10px] font-semibold tracking-wide uppercase opacity-80">
+                    {m.senderName}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeMessage(m.id)}
+                    disabled={pending}
+                    aria-label="Delete message"
+                    title="Delete"
+                    className={cn(
+                      "inline-flex h-6 w-6 shrink-0 items-center justify-center opacity-70 transition hover:opacity-100 disabled:opacity-40",
+                      staff ? "text-brand-foreground" : "text-muted",
+                    )}
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
                 <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
                 <p className="mt-2 text-[10px] opacity-70">
                   {new Date(m.createdAt).toLocaleString()}
