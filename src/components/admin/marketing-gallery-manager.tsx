@@ -198,7 +198,7 @@ export function MarketingGalleryManager({
               onChange={(e) =>
                 setPlacement(e.target.value as CommunityPlacementId | "")
               }
-              className="min-h-11 w-full border border-border bg-background px-3"
+              className="ma5-select min-h-11 w-full border border-border bg-background px-3"
             >
               {communityPlacementOptions.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -294,7 +294,7 @@ export function MarketingGalleryManager({
                           e.target.value as CommunityPlacementId | "",
                         )
                       }
-                      className="min-h-9 w-full border border-border bg-background px-2 text-foreground"
+                      className="ma5-select min-h-9 w-full border border-border bg-background px-2 text-foreground"
                     >
                       <option value="">Unassigned</option>
                       {communityPlacementOptions.map((option) => (
