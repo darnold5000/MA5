@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { MetricCard } from "@/components/analytics/metric-card";
+import { COUNTUP_SESSION_KEYS } from "@/components/analytics/metric-tone";
 import { FeesViewPanel } from "@/components/analytics/fees-view-panel";
 import { MetricsViewPanel } from "@/components/analytics/metrics-view-panel";
 import {
@@ -22,6 +23,8 @@ function formatChartMoney(value: number): string {
   if (value >= 1000) return `$${Math.round(value / 1000)}k`;
   return `$${value}`;
 }
+
+const reportsCountUp = COUNTUP_SESSION_KEYS.reports;
 
 export default async function AdminReportsPage() {
   const data = await getBusinessReports();
@@ -89,19 +92,37 @@ export default async function AdminReportsPage() {
       <section className="space-y-5">
         <SectionHeader eyebrow="Members" title="Memberships" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard label="Active" value={String(memberships.active)} />
+          <MetricCard
+            label="Active"
+            value={String(memberships.active)}
+            animate
+            delayMs={0}
+            countUpSessionKey={reportsCountUp}
+          />
           <MetricCard
             label="New this month"
             value={String(memberships.newThisMonth)}
+            tone="positive"
+            animate
+            delayMs={70}
+            countUpSessionKey={reportsCountUp}
           />
           <MetricCard
             label="Cancelled"
             value={String(memberships.cancelled)}
+            tone={memberships.cancelled > 0 ? "negative" : "muted"}
+            animate
+            delayMs={140}
+            countUpSessionKey={reportsCountUp}
           />
           <MetricCard
             label="Net growth"
-            value={`+${memberships.netGrowth}`}
+            value={`${memberships.netGrowth >= 0 ? "+" : ""}${memberships.netGrowth}`}
             note={`${memberships.atRisk} at risk · ${memberships.expired} expired`}
+            tone={memberships.netGrowth >= 0 ? "positive" : "negative"}
+            animate
+            delayMs={210}
+            countUpSessionKey={reportsCountUp}
           />
         </div>
       </section>
@@ -112,16 +133,27 @@ export default async function AdminReportsPage() {
           <MetricCard
             label="Attendance %"
             value={`${attendance.ratePercent}%`}
+            tone={attendance.ratePercent >= 80 ? "positive" : "warning"}
+            animate
+            delayMs={0}
+            countUpSessionKey={reportsCountUp}
           />
           <MetricCard
             label="Missed sessions"
             value={String(attendance.missedSessions)}
             note="last 30 days"
+            tone={attendance.missedSessions > 0 ? "warning" : "muted"}
+            animate
+            delayMs={70}
+            countUpSessionKey={reportsCountUp}
           />
           <MetricCard
             label="Avg attendance"
             value={String(attendance.averageAttendance)}
             note="per session"
+            animate
+            delayMs={140}
+            countUpSessionKey={reportsCountUp}
           />
         </div>
       </section>
@@ -140,25 +172,59 @@ export default async function AdminReportsPage() {
             label="Successful"
             value={String(payments.successful)}
             note="this month"
+            tone="positive"
+            animate
+            delayMs={0}
+            countUpSessionKey={reportsCountUp}
           />
           <MetricCard
             label="Failed"
             value={String(payments.failed)}
             note="need follow-up"
+            tone={payments.failed > 0 ? "negative" : "muted"}
+            animate
+            delayMs={70}
+            countUpSessionKey={reportsCountUp}
           />
           <MetricCard
             label="Outstanding"
             value={`$${(payments.outstandingCents / 100).toFixed(0)}`}
+            tone={payments.outstandingCents > 0 ? "warning" : "muted"}
+            animate
+            delayMs={140}
+            countUpSessionKey={reportsCountUp}
           />
-          <MetricCard label="Refunds" value={String(payments.refunds)} />
+          <MetricCard
+            label="Refunds"
+            value={String(payments.refunds)}
+            tone={payments.refunds > 0 ? "warning" : "muted"}
+            animate
+            delayMs={210}
+            countUpSessionKey={reportsCountUp}
+          />
         </div>
       </section>
 
       <section className="space-y-5">
         <SectionHeader eyebrow="At a glance" title="Key metrics" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {data.kpis.map((k) => (
-            <MetricCard key={k.id} label={k.label} value={k.value} />
+          {data.kpis.map((k, i) => (
+            <MetricCard
+              key={k.id}
+              label={k.label}
+              value={k.value}
+              tone={
+                k.label.toLowerCase().includes("failed")
+                  ? "negative"
+                  : k.label.toLowerCase().includes("revenue") ||
+                      k.label.toLowerCase().includes("successful")
+                    ? "positive"
+                    : "default"
+              }
+              animate
+              delayMs={i * 40}
+              countUpSessionKey={reportsCountUp}
+            />
           ))}
         </div>
       </section>

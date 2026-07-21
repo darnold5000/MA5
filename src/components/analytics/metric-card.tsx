@@ -3,7 +3,15 @@
 import Link from "next/link";
 
 import { CountUpValue } from "@/components/analytics/count-up-value";
-import type { OverviewMetric, PeriodMetric } from "@/features/analytics/types";
+import {
+  COUNTUP_SESSION_KEYS,
+  metricToneClass,
+} from "@/components/analytics/metric-tone";
+import type {
+  MetricTone,
+  OverviewMetric,
+  PeriodMetric,
+} from "@/features/analytics/types";
 import { cn } from "@/lib/utils";
 
 export function MetricCard({
@@ -14,6 +22,8 @@ export function MetricCard({
   className,
   animate = false,
   delayMs = 0,
+  tone = "default",
+  countUpSessionKey = COUNTUP_SESSION_KEYS.dailyOps,
   trend,
 }: {
   label: string;
@@ -23,6 +33,8 @@ export function MetricCard({
   className?: string;
   animate?: boolean;
   delayMs?: number;
+  tone?: MetricTone;
+  countUpSessionKey?: string;
   trend?: {
     percent: number;
     label: string;
@@ -50,9 +62,18 @@ export function MetricCard({
       <p className="text-xs font-semibold tracking-[0.16em] text-muted uppercase">
         {label}
       </p>
-      <p className="mt-4 font-display text-4xl tracking-wide text-foreground">
+      <p
+        className={cn(
+          "mt-4 font-display text-4xl tracking-wide",
+          metricToneClass(tone),
+        )}
+      >
         {animate ? (
-          <CountUpValue value={value} delayMs={delayMs} />
+          <CountUpValue
+            value={value}
+            delayMs={delayMs}
+            sessionKey={countUpSessionKey}
+          />
         ) : (
           value
         )}
@@ -113,10 +134,12 @@ export function PeriodGrid({
   metrics,
   columns = 4,
   animate = false,
+  countUpSessionKey = COUNTUP_SESSION_KEYS.dailyOps,
 }: {
   metrics: PeriodMetric[];
   columns?: 4 | 5;
   animate?: boolean;
+  countUpSessionKey?: string;
 }) {
   return (
     <div
@@ -131,8 +154,10 @@ export function PeriodGrid({
           label={m.label}
           value={m.value}
           note={m.note}
+          tone={m.tone}
           animate={animate}
           delayMs={animate ? i * 70 : 0}
+          countUpSessionKey={countUpSessionKey}
         />
       ))}
     </div>

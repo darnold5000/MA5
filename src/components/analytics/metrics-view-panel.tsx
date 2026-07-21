@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { PeriodGrid } from "@/components/analytics/metric-card";
+import { COUNTUP_SESSION_KEYS } from "@/components/analytics/metric-tone";
 import { SimpleBarChart } from "@/components/analytics/simple-bar-chart";
 import {
   ViewToggle,
@@ -18,6 +19,7 @@ export function MetricsViewPanel({
   numbersLabel = "By period",
   chartLabel = "Over time",
   defaultView = "numbers",
+  animate = true,
 }: {
   metrics: PeriodMetric[];
   chartPoints: ChartPoint[];
@@ -26,6 +28,7 @@ export function MetricsViewPanel({
   numbersLabel?: string;
   chartLabel?: string;
   defaultView?: AnalyticsViewMode;
+  animate?: boolean;
 }) {
   const [view, setView] = useState<AnalyticsViewMode>(defaultView);
   const hasChartData = chartPoints.some((p) => p.value > 0);
@@ -39,7 +42,12 @@ export function MetricsViewPanel({
         <ViewToggle value={view} onChange={setView} />
       </div>
       {view === "numbers" ? (
-        <PeriodGrid metrics={metrics} columns={columns} />
+        <PeriodGrid
+          metrics={metrics}
+          columns={columns}
+          animate={animate}
+          countUpSessionKey={COUNTUP_SESSION_KEYS.reports}
+        />
       ) : hasChartData ? (
         <SimpleBarChart points={chartPoints} formatValue={formatChartValue} />
       ) : (

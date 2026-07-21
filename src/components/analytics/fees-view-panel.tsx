@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { MetricCard } from "@/components/analytics/metric-card";
+import { COUNTUP_SESSION_KEYS } from "@/components/analytics/metric-tone";
 import { SimpleBarChart } from "@/components/analytics/simple-bar-chart";
 import {
   ViewToggle,
@@ -39,19 +40,35 @@ export function FeesViewPanel({ fees }: { fees: FeeSnapshot }) {
           <MetricCard
             label="Gross this month"
             value={formatCompactMoney(fees.grossThisMonthCents)}
+            tone="positive"
+            animate
+            delayMs={0}
+            countUpSessionKey={COUNTUP_SESSION_KEYS.reports}
           />
           <MetricCard
             label="Fees this month"
             value={formatCompactMoney(fees.feesThisMonthCents)}
+            tone="warning"
+            animate
+            delayMs={70}
+            countUpSessionKey={COUNTUP_SESSION_KEYS.reports}
           />
           <MetricCard
             label="Net this month"
             value={formatCompactMoney(fees.netThisMonthCents)}
             note="after processing fees"
+            tone="positive"
+            animate
+            delayMs={140}
+            countUpSessionKey={COUNTUP_SESSION_KEYS.reports}
           />
           <MetricCard
             label="Effective fee rate"
             value={`${fees.effectiveFeeRatePercent}%`}
+            tone="muted"
+            animate
+            delayMs={210}
+            countUpSessionKey={COUNTUP_SESSION_KEYS.reports}
           />
         </div>
       ) : hasChartData ? (

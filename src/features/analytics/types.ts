@@ -49,11 +49,19 @@ export type MessageRow = {
   unread: boolean;
 };
 
+export type MetricTone =
+  | "default"
+  | "positive"
+  | "negative"
+  | "warning"
+  | "muted";
+
 export type PeriodMetric = {
   id: string;
   label: string;
   value: string;
   note?: string;
+  tone?: MetricTone;
 };
 
 export type ChartPoint = {

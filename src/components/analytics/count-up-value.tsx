@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { COUNTUP_SESSION_KEYS } from "@/components/analytics/metric-tone";
 import { cn } from "@/lib/utils";
-
-const SESSION_KEY = "ma5_ops_countup_played";
 
 type ParsedValue = {
   prefix: string;
@@ -61,17 +60,17 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function hasPlayedThisSession(): boolean {
+function hasPlayedThisSession(sessionKey: string): boolean {
   try {
-    return sessionStorage.getItem(SESSION_KEY) === "1";
+    return sessionStorage.getItem(sessionKey) === "1";
   } catch {
     return false;
   }
 }
 
-function markPlayedThisSession(): void {
+function markPlayedThisSession(sessionKey: string): void {
   try {
-    sessionStorage.setItem(SESSION_KEY, "1");
+    sessionStorage.setItem(sessionKey, "1");
   } catch {
     /* ignore */
   }
@@ -84,12 +83,14 @@ export function CountUpValue({
   durationMs = 900,
   /** When true (default), only spin once per browser session — feels like login. */
   oncePerSession = true,
+  sessionKey = COUNTUP_SESSION_KEYS.dailyOps,
 }: {
   value: string;
   className?: string;
   delayMs?: number;
   durationMs?: number;
   oncePerSession?: boolean;
+  sessionKey?: string;
 }) {
   const [display, setDisplay] = useState(value);
   const [ready, setReady] = useState(false);
@@ -104,7 +105,8 @@ export function CountUpValue({
     }
 
     const skip =
-      prefersReducedMotion() || (oncePerSession && hasPlayedThisSession());
+      prefersReducedMotion() ||
+      (oncePerSession && hasPlayedThisSession(sessionKey));
 
     if (skip) {
       setDisplay(value);
@@ -131,7 +133,7 @@ export function CountUpValue({
           frame = requestAnimationFrame(tick);
         } else {
           setDisplay(value);
-          markPlayedThisSession();
+          markPlayedThisSession(sessionKey);
         }
       };
       frame = requestAnimationFrame(tick);
@@ -141,7 +143,7 @@ export function CountUpValue({
       window.clearTimeout(delayTimer);
       cancelAnimationFrame(frame);
     };
-  }, [value, delayMs, durationMs, oncePerSession]);
+  }, [value, delayMs, durationMs, oncePerSession, sessionKey]);
 
   return (
     <span
