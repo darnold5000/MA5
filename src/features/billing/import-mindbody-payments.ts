@@ -108,9 +108,11 @@ export async function importMindbodyPaymentWorkbook(
       .eq("external_payment_id", row.externalPaymentId)
       .maybeSingle();
 
-    const { error } = await admin
-      .from(MA5_TABLES.payments)
-      .upsert(record, { onConflict: "external_payment_id" });
+    const write = existing?.id
+      ? admin.from(MA5_TABLES.payments).update(record).eq("id", existing.id)
+      : admin.from(MA5_TABLES.payments).insert(record);
+
+    const { error } = await write;
 
     if (error) {
       skipReasons.push({

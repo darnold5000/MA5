@@ -8,9 +8,9 @@ alter table public.ma5_payments
     check (import_source is null or import_source in ('stripe', 'mindbody')),
   add column if not exists external_payment_id text;
 
+-- Non-partial index required for PostgREST upsert / ON CONFLICT (external_payment_id).
 create unique index if not exists ma5_payments_external_payment_id_uidx
-  on public.ma5_payments (external_payment_id)
-  where external_payment_id is not null;
+  on public.ma5_payments (external_payment_id);
 
 create index if not exists ma5_payments_import_source_idx
   on public.ma5_payments (import_source, created_at desc);
