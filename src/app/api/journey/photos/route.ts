@@ -8,6 +8,8 @@ import {
 } from "@/features/journey/queries";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
+import { isTenantPrefixedStoragePath } from "@/lib/tenant/storage-paths";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 const createSchema = z.object({
   storagePath: z.string().min(1),
@@ -16,6 +18,9 @@ const createSchema = z.object({
 
 export async function POST(request: Request) {
   if (!isSupabasePublicConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      return NextResponse.json({ error: "Not configured" }, { status: 503 });
+    }
     return NextResponse.json({ error: "Not configured", demo: true }, { status: 503 });
   }
 
@@ -30,7 +35,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  if (!parsed.data.storagePath.startsWith(`journey/${session.id}/`)) {
+  const storagePath = parsed.data.storagePath;
+  const legacyOk = storagePath.startsWith(`journey/${session.id}/`);
+  const tenantOk =
+    storagePath.includes(`/members/${session.id}/`) &&
+    isTenantPrefixedStoragePath(storagePath);
+  if (!legacyOk && !tenantOk) {
     return NextResponse.json({ error: "Invalid storage path" }, { status: 400 });
   }
 
@@ -51,6 +61,9 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   if (!isSupabasePublicConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      return NextResponse.json({ error: "Not configured" }, { status: 503 });
+    }
     return NextResponse.json({ error: "Not configured", demo: true }, { status: 503 });
   }
 
@@ -88,6 +101,9 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   if (!isSupabasePublicConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      return NextResponse.json({ error: "Not configured" }, { status: 503 });
+    }
     return NextResponse.json({ error: "Not configured", demo: true }, { status: 503 });
   }
 

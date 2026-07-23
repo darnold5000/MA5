@@ -15,6 +15,10 @@ import {
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
+import { requireMa5DeploymentContext } from "@/lib/tenant/deployment";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 const upsertSchema = z.object({
   calendarEntryId: z.string().min(1),
@@ -82,6 +86,9 @@ export async function POST(request: Request) {
         weight_lb: weightLb,
         logged_at: new Date().toISOString(),
       };
+      const insertPayload = isMa5DeploymentConfigured()
+        ? withTenantId(requireMa5DeploymentContext(), payload)
+        : payload;
 
       if (existing) {
         const { data: row, error } = await supabase
@@ -101,7 +108,7 @@ export async function POST(request: Request) {
 
       const { data: row, error } = await supabase
         .from(MA5_TABLES.workoutSetLogs)
-        .insert(payload)
+        .insert(insertPayload)
         .select("*")
         .single();
       if (error) {
@@ -117,6 +124,13 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+  }
+
+  if (shouldUseMa5LiveData()) {
+    return NextResponse.json(
+      { error: "Set logs require Supabase on Signal Works deployment" },
+      { status: 503 },
+    );
   }
 
   const state = await readProgramsState();

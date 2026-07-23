@@ -11,6 +11,10 @@ import {
   type GrowthFilters,
   type GrowthSearchParams,
 } from "@/features/marketing/filters";
+import {
+  emptyMarketingDashboard,
+  unavailableMarketingDashboard,
+} from "@/features/marketing/empty-dashboard";
 import { buildFunnelReport } from "@/features/marketing/funnel";
 import {
   computeGrowthScore,
@@ -30,6 +34,7 @@ import type {
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 type LeadRow = {
   id: string;
@@ -113,7 +118,9 @@ export type LeadFilters = {
 export async function listMarketingLeads(
   filters: LeadFilters = {},
 ): Promise<MarketingLead[]> {
+  const live = shouldUseMa5LiveData();
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (live) return [];
     return filterDemoLeads(DEMO_LEADS, filters);
   }
 
@@ -138,11 +145,13 @@ export async function listMarketingLeads(
     const { data, error } = await query;
     if (error) {
       console.error("[marketing/listLeads]", error);
+      if (live) throw new Error(error.message);
       return filterDemoLeads(DEMO_LEADS, filters);
     }
     return (data as LeadRow[]).map(mapLead);
   } catch (err) {
     console.error("[marketing/listLeads]", err);
+    if (live) throw err;
     return filterDemoLeads(DEMO_LEADS, filters);
   }
 }
@@ -282,8 +291,15 @@ export async function getMarketingDashboard(
 ): Promise<MarketingDashboard> {
   const filters = resolveGrowthFilters(searchParams);
   const label = rangeLabel(filters);
+  const live = shouldUseMa5LiveData();
 
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (live) {
+      return unavailableMarketingDashboard(
+        label,
+        "Supabase is not configured for marketing analytics.",
+      );
+    }
     return {
       ...DEMO_MARKETING_DASHBOARD,
       isDemo: true,
@@ -406,6 +422,12 @@ export async function getMarketingDashboard(
         leadsAllRes: leadsAllRes.error,
         visitorsInRangeRes: visitorsInRangeRes.error,
       });
+      if (live) {
+        return unavailableMarketingDashboard(
+          label,
+          "Could not load marketing metrics from Supabase.",
+        );
+      }
       return {
         ...DEMO_MARKETING_DASHBOARD,
         isDemo: true,
@@ -723,6 +745,12 @@ export async function getMarketingDashboard(
     };
   } catch (err) {
     console.error("[marketing/dashboard]", err);
+    if (live) {
+      return unavailableMarketingDashboard(
+        label,
+        err instanceof Error ? err.message : "Could not load marketing metrics.",
+      );
+    }
     return {
       ...DEMO_MARKETING_DASHBOARD,
       isDemo: true,
@@ -735,8 +763,10 @@ export async function getCampaignPerformance(
   filters?: GrowthFilters,
 ): Promise<CampaignRow[]> {
   const resolved = filters ?? resolveGrowthFilters({ range: "30d" });
+  const live = shouldUseMa5LiveData();
 
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (live) return [];
     return DEMO_CAMPAIGNS;
   }
 
@@ -874,6 +904,7 @@ export async function getCampaignPerformance(
       .slice(0, 50);
   } catch (err) {
     console.error("[marketing/campaigns]", err);
+    if (live) return [];
     return DEMO_CAMPAIGNS;
   }
 }
@@ -881,7 +912,9 @@ export async function getCampaignPerformance(
 export async function getMemberAttribution(
   userId: string,
 ): Promise<MemberAttribution | null> {
+  const live = shouldUseMa5LiveData();
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (live) return null;
     return userId === "demo-client" ? DEMO_MEMBER_ATTRIBUTION : null;
   }
 

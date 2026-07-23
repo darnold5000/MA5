@@ -8,6 +8,7 @@ import {
   listUserBookings,
 } from "@/features/scheduling/queries";
 import { getSessionUser } from "@/lib/auth/session";
+import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { isSupabasePublicConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   const dbBookings = configured
     ? await listUserBookings(session?.id ?? null)
     : [];
-  const demoBookings = await readDemoBookings();
+  const demoBookings = useLiveBookingsOnly() ? [] : await readDemoBookings();
 
   const activeBookings = [...demoBookings, ...dbBookings].filter(
     (b) => b.status !== "cancelled" && b.status !== "refunded",

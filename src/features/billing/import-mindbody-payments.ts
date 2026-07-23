@@ -24,10 +24,11 @@ function normalizeName(value: string): string {
 
 async function loadProfileNameIndex(
   admin: SupabaseClient,
+  tenantId?: string,
 ): Promise<Map<string, string>> {
-  const { data, error } = await admin
-    .from(MA5_TABLES.profiles)
-    .select("id, full_name, email");
+  let query = admin.from(MA5_TABLES.profiles).select("id, full_name, email");
+  if (tenantId) query = query.eq("tenant_id", tenantId);
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -42,8 +43,10 @@ async function loadProfileNameIndex(
 function toPaymentRecord(
   row: MindbodyPaymentRow,
   userId: string | null,
+  tenantId?: string,
 ): Record<string, unknown> {
   return {
+    ...(tenantId ? { tenant_id: tenantId } : {}),
     external_payment_id: row.externalPaymentId,
     user_id: userId,
     product_id: null,
@@ -76,10 +79,11 @@ function toPaymentRecord(
 export async function importMindbodyPaymentWorkbook(
   admin: SupabaseClient,
   buffer: ArrayBuffer,
-  options?: { importBefore?: Date | null },
+  options?: { importBefore?: Date | null; tenantId?: string },
 ): Promise<MindbodyImportSummary> {
   const parsed = parseMindbodyPaymentWorkbook(buffer);
-  const profileIndex = await loadProfileNameIndex(admin);
+  const tenantId = options?.tenantId;
+  const profileIndex = await loadProfileNameIndex(admin, tenantId);
 
   let imported = 0;
   let updated = 0;
@@ -101,12 +105,13 @@ export async function importMindbodyPaymentWorkbook(
     const userId = profileIndex.get(normalizeName(row.clientName)) ?? null;
     if (userId) matchedClients += 1;
 
-    const record = toPaymentRecord(row, userId);
-    const { data: existing } = await admin
+    const record = toPaymentRecord(row, userId, tenantId);
+    let existingQuery = admin
       .from(MA5_TABLES.payments)
       .select("id")
-      .eq("external_payment_id", row.externalPaymentId)
-      .maybeSingle();
+      .eq("external_payment_id", row.externalPaymentId);
+    if (tenantId) existingQuery = existingQuery.eq("tenant_id", tenantId);
+    const { data: existing } = await existingQuery.maybeSingle();
 
     const write = existing?.id
       ? admin.from(MA5_TABLES.payments).update(record).eq("id", existing.id)

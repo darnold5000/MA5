@@ -22,6 +22,8 @@ import {
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 export async function getClientProfileSettings(): Promise<ClientProfileSettings> {
   const session = isSupabaseConfigured() ? await getSessionUser() : null;
@@ -32,6 +34,7 @@ export async function getClientProfileSettings(): Promise<ClientProfileSettings>
   });
 
   if (!session || !isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) return fallback;
     return readDemoClientProfile(fallback);
   }
 
@@ -61,6 +64,7 @@ export async function getClientProfileSettings(): Promise<ClientProfileSettings>
     );
 
     if (!profile) {
+      if (shouldUseMa5LiveData()) return fallback;
       return readDemoClientProfile(fallback);
     }
 
@@ -92,21 +96,32 @@ export async function getClientProfileSettings(): Promise<ClientProfileSettings>
     };
   } catch (err) {
     console.error("[settings] profile load failed, using demo", err);
+    if (shouldUseMa5LiveData()) throw err;
     return readDemoClientProfile(fallback);
   }
 }
 
 export async function getFacilitySettings(): Promise<FacilitySettings> {
   if (!isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      throw new Error("Facility settings require Supabase on Signal Works deployment");
+    }
     return readDemoFacilitySettings();
+  }
+
+  if (isMa5DeploymentConfigured()) {
+    const fromLocation = await getDefaultLocationSettings();
+    if (!fromLocation) {
+      throw new Error(
+        "Default ma5_locations row is missing for this deployment (check MA5_LOCATION_ID)",
+      );
+    }
+    return fromLocation;
   }
 
   try {
     const session = await getSessionUser();
     if (!session) return readDemoFacilitySettings();
-
-    const fromLocation = await getDefaultLocationSettings();
-    if (fromLocation) return fromLocation;
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -158,6 +173,7 @@ export async function getFacilitySettings(): Promise<FacilitySettings> {
 
 export async function listCoaches(): Promise<CoachRosterEntry[]> {
   if (!isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) return [];
     return readDemoCoaches();
   }
 
@@ -175,7 +191,10 @@ export async function listCoaches(): Promise<CoachRosterEntry[]> {
     const ids = [
       ...new Set((roleRows ?? []).map((r) => String(r.user_id))),
     ];
-    if (ids.length === 0) return readDemoCoaches();
+    if (ids.length === 0) {
+      if (shouldUseMa5LiveData()) return [];
+      return readDemoCoaches();
+    }
 
     const { data: profiles, error } = await supabase
       .from(MA5_TABLES.profiles)
@@ -220,7 +239,9 @@ export async function listCoaches(): Promise<CoachRosterEntry[]> {
       };
     });
 
-    const demoExtras = await readDemoCoaches();
+    const demoExtras = shouldUseMa5LiveData()
+      ? []
+      : await readDemoCoaches();
     const emails = new Set(fromDb.map((c) => c.email.toLowerCase()));
     const invited = demoExtras.filter(
       (c) =>
@@ -232,6 +253,7 @@ export async function listCoaches(): Promise<CoachRosterEntry[]> {
     );
   } catch (err) {
     console.error("[settings] coaches load failed", err);
+    if (shouldUseMa5LiveData()) throw err;
     return readDemoCoaches();
   }
 }

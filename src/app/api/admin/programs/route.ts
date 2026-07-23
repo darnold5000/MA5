@@ -10,6 +10,11 @@ import {
   type ProgramsState,
 } from "@/features/programs/demo-store";
 import {
+  programsTenantRow,
+  resolveProgramsAdminGate,
+  shouldUseProgramsSupabaseBackend,
+} from "@/features/programs/admin-gate";
+import {
   loadProgramsStateFromSupabase,
   mapAssignmentRow,
   mapCalendarRow,
@@ -23,11 +28,10 @@ import {
 } from "@/features/programs/supabase-store";
 import { upsertTeamDayWorkout } from "@/features/programs/calendar-access";
 import type { Exercise, WorkoutBlock, WorkoutBlockSet } from "@/features/programs/types";
-import { getSessionUser } from "@/lib/auth/session";
-import { canAccessAdmin } from "@/lib/permissions/roles";
 import { detectVideoSourceFromUrl } from "@/lib/video/parse";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
+import { exerciseVideoPrefix } from "@/lib/tenant/storage-paths";
 import {
   isAllowedVideoType,
   MAX_VIDEO_BYTES,
@@ -94,33 +98,21 @@ function jsonError(error: string, status = 400) {
 }
 
 async function useSupabaseBackend(): Promise<boolean> {
-  // Prefer real DB whenever Supabase is configured and a staff user is signed in.
-  if (!isSupabaseConfigured()) return false;
-  const session = await getSessionUser();
-  return Boolean(session && canAccessAdmin(session.roles));
+  return shouldUseProgramsSupabaseBackend();
 }
 
 async function getAdminSupabase() {
-  // Prefer user session (RLS). Fall back to service role for staff tooling
-  // when the request has a valid admin session but anon RLS is awkward.
-  const session = await getSessionUser();
-  if (!session || !canAccessAdmin(session.roles)) {
-    return { error: jsonError("Admin access required", 401) as NextResponse };
-  }
-  try {
-    const supabase = await createClient();
-    return { supabase, userId: session.id };
-  } catch {
-    return { error: jsonError("Supabase is not configured", 500) as NextResponse };
-  }
+  return resolveProgramsAdminGate();
 }
 
 export async function GET() {
   if (await useSupabaseBackend()) {
-    const gate = await getAdminSupabase();
-    if ("error" in gate && gate.error) return gate.error;
+    const gateResult = await getAdminSupabase();
+    if ("error" in gateResult) return gateResult.error;
     try {
-      const state = await loadProgramsStateFromSupabase(gate.supabase!);
+      const state = await loadProgramsStateFromSupabase(gateResult.supabase, {
+        tenantId: gateResult.ctx?.tenantId,
+      });
       return jsonOk(state);
     } catch (err) {
       return jsonError(
@@ -128,6 +120,9 @@ export async function GET() {
         500,
       );
     }
+  }
+  if (shouldUseMa5LiveData()) {
+    return jsonError("Programs require Supabase on Signal Works deployment", 503);
   }
   const state = await readProgramsState();
   return jsonOk(state);
@@ -137,14 +132,19 @@ export async function POST(request: Request) {
   if (await useSupabaseBackend()) {
     return postSupabase(request);
   }
+  if (shouldUseMa5LiveData()) {
+    return jsonError("Programs require Supabase on Signal Works deployment", 503);
+  }
   return postCookie(request);
 }
 
 async function postSupabase(request: Request) {
-  const gate = await getAdminSupabase();
-  if ("error" in gate && gate.error) return gate.error;
-  const supabase = gate.supabase!;
-  const userId = gate.userId!;
+  const gateResult = await getAdminSupabase();
+  if ("error" in gateResult) return gateResult.error;
+  const supabase = gateResult.supabase;
+  const userId = gateResult.userId;
+  const tenantRow = (row: Record<string, unknown>) =>
+    programsTenantRow(gateResult, row);
 
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) {
@@ -220,16 +220,18 @@ async function postSupabase(request: Request) {
         }
         const { data: row, error } = await supabase
           .from(MA5_TABLES.exercises)
-          .insert({
-            title: data.title.trim(),
-            category: data.category ?? "Legs",
-            points_of_performance: data.pointsOfPerformance?.trim() ?? "",
-            video_source: videoSource,
-            video_url: videoUrl,
-            default_param_1: data.defaultParam1 ?? "reps",
-            default_param_2: data.defaultParam2 ?? "weight_lb",
-            created_by: userId,
-          })
+          .insert(
+            tenantRow({
+              title: data.title.trim(),
+              category: data.category ?? "Legs",
+              points_of_performance: data.pointsOfPerformance?.trim() ?? "",
+              video_source: videoSource,
+              video_url: videoUrl,
+              default_param_1: data.defaultParam1 ?? "reps",
+              default_param_2: data.defaultParam2 ?? "weight_lb",
+              created_by: userId,
+            }),
+          )
           .select("*")
           .single();
         if (error) return jsonError(error.message, 500);
@@ -304,7 +306,7 @@ async function postSupabase(request: Request) {
             storagePath: z.string().min(1).max(500),
           })
           .parse(json);
-        const expectedPrefix = `exercises/${data.id}/`;
+        const expectedPrefix = exerciseVideoPrefix(data.id);
         if (!data.storagePath.startsWith(expectedPrefix)) {
           return jsonError("Invalid storage path for this exercise");
         }
@@ -335,11 +337,13 @@ async function postSupabase(request: Request) {
           .parse(json);
         const { data: row, error } = await supabase
           .from(MA5_TABLES.workouts)
-          .insert({
-            title: data.title.trim(),
-            coach_instructions: data.coachInstructions?.trim() ?? "",
-            created_by: userId,
-          })
+          .insert(
+            tenantRow({
+              title: data.title.trim(),
+              coach_instructions: data.coachInstructions?.trim() ?? "",
+              created_by: userId,
+            }),
+          )
           .select("*")
           .single();
         if (error) return jsonError(error.message, 500);
@@ -548,11 +552,13 @@ async function postSupabase(request: Request) {
           .parse(json);
         const { data: programRow, error } = await supabase
           .from(MA5_TABLES.programs)
-          .insert({
-            title: data.title.trim(),
-            weeks: data.weeks,
-            created_by: userId,
-          })
+          .insert(
+            tenantRow({
+              title: data.title.trim(),
+              weeks: data.weeks,
+              created_by: userId,
+            }),
+          )
           .select("*")
           .single();
         if (error) return jsonError(error.message, 500);
@@ -624,11 +630,13 @@ async function postSupabase(request: Request) {
           .parse(json);
         const { data: row, error } = await supabase
           .from(MA5_TABLES.teams)
-          .insert({
-            name: data.name.trim(),
-            difficulty: data.difficulty?.trim() || null,
-            created_by: userId,
-          })
+          .insert(
+            tenantRow({
+              name: data.name.trim(),
+              difficulty: data.difficulty?.trim() || null,
+              created_by: userId,
+            }),
+          )
           .select("*")
           .single();
         if (error) return jsonError(error.message, 500);
@@ -734,15 +742,17 @@ async function postSupabase(request: Request) {
           .maybeSingle();
         const { data: row, error } = await supabase
           .from(MA5_TABLES.calendarEntries)
-          .insert({
-            entry_date: data.entryDate,
-            workout_id: data.workoutId,
-            title: data.title ?? workout?.title ?? "Workout",
-            publish_status: data.publish ? "published" : "draft",
-            source: "library",
-            client_user_id: data.clientUserId ?? null,
-            team_id: data.teamId ?? null,
-          })
+          .insert(
+            tenantRow({
+              entry_date: data.entryDate,
+              workout_id: data.workoutId,
+              title: data.title ?? workout?.title ?? "Workout",
+              publish_status: data.publish ? "published" : "draft",
+              source: "library",
+              client_user_id: data.clientUserId ?? null,
+              team_id: data.teamId ?? null,
+            }),
+          )
           .select("*")
           .single();
         if (error) {
@@ -805,13 +815,15 @@ async function postSupabase(request: Request) {
         }
         const { data: assignmentRow, error } = await supabase
           .from(MA5_TABLES.programAssignments)
-          .insert({
-            program_id: data.programId,
-            client_user_id: data.clientUserId ?? null,
-            team_id: data.teamId ?? null,
-            start_date: data.startDate,
-            status: "active",
-          })
+          .insert(
+            tenantRow({
+              program_id: data.programId,
+              client_user_id: data.clientUserId ?? null,
+              team_id: data.teamId ?? null,
+              start_date: data.startDate,
+              status: "active",
+            }),
+          )
           .select("*")
           .single();
         if (error) {
@@ -822,7 +834,9 @@ async function postSupabase(request: Request) {
           }
           return jsonError(error.message, 500);
         }
-        const state = await loadProgramsStateFromSupabase(supabase);
+        const state = await loadProgramsStateFromSupabase(supabase, {
+          tenantId: gateResult.ctx?.tenantId,
+        });
         const entries = await materializeProgramDaysToDb({
           supabase,
           programId: data.programId,
@@ -833,6 +847,7 @@ async function postSupabase(request: Request) {
           publish: data.publish ?? false,
           programDays: state.programDays,
           workoutsById: new Map(state.workouts.map((w) => [w.id, w])),
+          ctx: gateResult.ctx,
         });
         return jsonOk({
           ok: true,

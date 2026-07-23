@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { claimStripeWebhookEvent } from "@/lib/billing/webhook-dedup";
+import {
+  claimStripeWebhookEvent,
+  completeStripeWebhookEvent,
+  failStripeWebhookEvent,
+} from "@/lib/billing/webhook-dedup";
 import { handleStripeWebhookEvent } from "@/lib/billing/webhooks";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
@@ -50,14 +54,35 @@ export async function POST(request: Request) {
     );
   }
 
+  let claim:
+    | Awaited<ReturnType<typeof claimStripeWebhookEvent>>
+    | undefined;
+
   try {
-    const claim = await claimStripeWebhookEvent(event, body);
+    claim = await claimStripeWebhookEvent(event, body);
+
     if (claim.status === "duplicate") {
       return NextResponse.json({ received: true, synced: true, duplicate: true });
     }
 
+    if (claim.status === "in_progress") {
+      return NextResponse.json(
+        { error: "Webhook event is already being processed" },
+        { status: 500 },
+      );
+    }
+
     await handleStripeWebhookEvent(event, claim.client);
+    await completeStripeWebhookEvent(claim.client, event.id);
   } catch (err) {
+    if (claim?.status === "process") {
+      try {
+        await failStripeWebhookEvent(claim.client, event.id, err);
+      } catch (failErr) {
+        console.error("[stripe/webhook] could not record failure", failErr);
+      }
+    }
+
     const message = err instanceof Error ? err.message : "Webhook handler failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

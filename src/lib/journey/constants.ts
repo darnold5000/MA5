@@ -1,5 +1,3 @@
-export const JOURNEY_PHOTOS_BUCKET = "ma5-member-journey";
+export { memberJourneyPhotoPath as journeyPhotoPath } from "@/lib/tenant/storage-paths";
 
-export function journeyPhotoPath(userId: string, fileId: string) {
-  return `journey/${userId}/${fileId}.jpg`;
-}
+export const JOURNEY_PHOTOS_BUCKET = "ma5-member-journey";

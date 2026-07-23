@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "vapid-keys": "node scripts/generate-vapid-keys.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:types": "node scripts/gen-database-types.mjs",
+    "gen:types:cli": "cd supabase-signalworks && npx supabase gen types typescript --linked > ../src/types/database.ts",
+    "supabase:link": "cd supabase-signalworks && npx supabase link --project-ref gezdzzqnylloaxcmuzvm"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.3",

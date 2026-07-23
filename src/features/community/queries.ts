@@ -10,6 +10,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 type PostRow = {
   id: string;
@@ -20,12 +21,14 @@ type PostRow = {
 };
 
 export async function loadCommunityBoard(): Promise<CommunityBoardState> {
+  const live = shouldUseMa5LiveData();
   const session =
     isSupabasePublicConfigured() && isSupabaseConfigured()
       ? await getSessionUser()
       : null;
 
   if (!session || !isSupabaseConfigured()) {
+    if (live) return emptyCommunityBoard();
     return loadDemoCommunityState(session?.id ?? "client-alex");
   }
 
@@ -85,6 +88,7 @@ export async function loadCommunityBoard(): Promise<CommunityBoardState> {
     return { posts: roots };
   } catch (err) {
     console.error("[community] load failed, using demo", err);
+    if (live) return emptyCommunityBoard();
     return loadDemoCommunityState(session.id);
   }
 }

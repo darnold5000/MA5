@@ -1,6 +1,7 @@
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { defaultLocationLabel } from "@/features/settings/locations";
+import { listAdminSessionsFromDb } from "@/features/scheduling/admin-sessions";
 import { mergeSessions, readOpsState } from "@/features/admin/ops-store";
 import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
 import { listActiveOfferings } from "@/lib/billing/catalog";
@@ -36,6 +37,15 @@ export async function listAllSessions(): Promise<SessionItem[]> {
   if (!isSupabaseConfigured()) {
     const state = await readOpsState();
     return mergeSessions(state);
+  }
+
+  if (isMa5DeploymentConfigured()) {
+    try {
+      return await listAdminSessionsFromDb();
+    } catch (err) {
+      console.error("[scheduling] list sessions failed", err);
+      throw err;
+    }
   }
 
   try {

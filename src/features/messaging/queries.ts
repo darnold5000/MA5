@@ -18,6 +18,7 @@ import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin, hasCapability } from "@/lib/permissions/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 function mapThreadRow(
   row: Record<string, unknown>,
@@ -270,23 +271,31 @@ function audienceLabel(type: Announcement["audienceType"]): string {
 }
 
 export async function loadCommunicationState(): Promise<CommunicationState> {
-  const demo = await loadDemoCommunicationState();
+  const live = shouldUseMa5LiveData();
+  const demo = live ? defaultCommunicationState() : await loadDemoCommunicationState();
 
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (live) throw new Error("Messaging requires Supabase on Signal Works deployment");
     return demo;
   }
 
   const session = await getSessionUser();
-  if (!session) return demo;
+  if (!session) {
+    if (live) return defaultCommunicationState();
+    return demo;
+  }
 
   try {
     const isStaff =
       canAccessAdmin(session.roles) &&
       hasCapability(session.roles, "message_clients");
     const fromDb = await loadFromSupabase(session.id, isStaff);
-    return fromDb ?? demo;
+    if (fromDb) return fromDb;
+    if (live) return defaultCommunicationState();
+    return demo;
   } catch (err) {
     console.error("[messaging] loadCommunicationState", err);
+    if (live) throw err;
     return demo;
   }
 }

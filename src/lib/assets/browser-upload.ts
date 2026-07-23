@@ -7,16 +7,19 @@ import {
   MAX_IMAGE_BYTES,
   publicAssetUrl,
 } from "@/lib/assets/constants";
-import {
-  JOURNEY_PHOTOS_BUCKET,
-  journeyPhotoPath,
-} from "@/lib/journey/constants";
-import {
-  marketingGalleryPath,
-} from "@/lib/marketing-gallery/constants";
+import { JOURNEY_PHOTOS_BUCKET } from "@/lib/journey/constants";
+import { journeyPhotoPath } from "@/lib/journey/constants";
+import { marketingGalleryPath } from "@/lib/marketing-gallery/constants";
 import type { MarketingGallerySection } from "@/features/marketing-gallery/types";
+import {
+  brandAvatarPath,
+  brandLogoPath,
+} from "@/lib/tenant/storage-paths";
 
-/** Resize/compress in the browser before upload (keeps avatars small). */
+function liveDeploymentConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_MA5_TENANT_ID?.trim());
+}
+
 export async function fileToJpegBlob(
   file: File,
   maxEdge = 800,
@@ -70,13 +73,16 @@ export async function uploadJourneyPhotoFromBrowser(input: {
   try {
     const blob = await fileToJpegBlob(input.file, 1600, 0.88);
     const fileId = crypto.randomUUID();
-    const path = journeyPhotoPath(input.userId, fileId);
 
     if (!isSupabaseConfigured()) {
+      if (liveDeploymentConfigured()) {
+        return { error: "Supabase is not configured for journey uploads" };
+      }
       const dataUrl = await blobToDataUrl(blob);
-      return { path, demoDataUrl: dataUrl };
+      return { path: `demo:${fileId}`, demoDataUrl: dataUrl };
     }
 
+    const path = journeyPhotoPath(input.userId, fileId);
     const supabase = createClient();
     const { error } = await supabase.storage
       .from(JOURNEY_PHOTOS_BUCKET)
@@ -103,18 +109,25 @@ export async function uploadAvatarFromBrowser(input: {
 
   try {
     const blob = await fileToJpegBlob(input.file, 800);
-    const path = `avatars/${input.userId}/${crypto.randomUUID()}.jpg`;
+    const fileId = crypto.randomUUID();
 
     if (!isSupabaseConfigured()) {
+      if (liveDeploymentConfigured()) {
+        return { error: "Supabase is not configured for avatar uploads" };
+      }
       const dataUrl = await blobToDataUrl(blob);
       return { error: "demo", demoDataUrl: dataUrl };
     }
 
+    const path = brandAvatarPath(input.userId, fileId);
     const supabase = createClient();
     const { error } = await supabase.storage
       .from(BRAND_ASSETS_BUCKET)
       .upload(path, blob, { contentType: "image/jpeg", upsert: false });
     if (error) {
+      if (liveDeploymentConfigured()) {
+        return { error: error.message };
+      }
       const dataUrl = await blobToDataUrl(blob);
       return { error: error.message, demoDataUrl: dataUrl };
     }
@@ -140,18 +153,25 @@ export async function uploadLogoFromBrowser(input: {
 
   try {
     const blob = await fileToJpegBlob(input.file, 1200, 0.9);
-    const path = `logos/${crypto.randomUUID()}.jpg`;
+    const fileId = crypto.randomUUID();
 
     if (!isSupabaseConfigured()) {
+      if (liveDeploymentConfigured()) {
+        return { error: "Supabase is not configured for logo uploads" };
+      }
       const dataUrl = await blobToDataUrl(blob);
       return { error: "demo", demoDataUrl: dataUrl };
     }
 
+    const path = brandLogoPath(fileId);
     const supabase = createClient();
     const { error } = await supabase.storage
       .from(BRAND_ASSETS_BUCKET)
       .upload(path, blob, { contentType: "image/jpeg", upsert: false });
     if (error) {
+      if (liveDeploymentConfigured()) {
+        return { error: error.message };
+      }
       const dataUrl = await blobToDataUrl(blob);
       return { error: error.message, demoDataUrl: dataUrl };
     }
@@ -182,18 +202,24 @@ export async function uploadMarketingGalleryImageFromBrowser(input: {
   try {
     const blob = await fileToJpegBlob(input.file, 2000, 0.9);
     const fileId = crypto.randomUUID();
-    const path = marketingGalleryPath(input.section, fileId);
 
     if (!isSupabaseConfigured()) {
+      if (liveDeploymentConfigured()) {
+        return { error: "Supabase is not configured for gallery uploads" };
+      }
       const dataUrl = await blobToDataUrl(blob);
       return { path: `demo:${dataUrl}`, demoDataUrl: dataUrl };
     }
 
+    const path = marketingGalleryPath(input.section, fileId);
     const supabase = createClient();
     const { error } = await supabase.storage
       .from(BRAND_ASSETS_BUCKET)
       .upload(path, blob, { contentType: "image/jpeg", upsert: false });
     if (error) {
+      if (liveDeploymentConfigured()) {
+        return { error: error.message };
+      }
       const dataUrl = await blobToDataUrl(blob);
       return { error: error.message, demoDataUrl: dataUrl };
     }

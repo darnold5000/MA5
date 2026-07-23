@@ -24,9 +24,9 @@
 
 1. Tenant foundation + centralized resolver (**done**)
 2. Invites, auth, profiles, roles (**done**)
-3. Stripe checkout, webhook dedup, commerce writes (**done**)
+3. Stripe checkout, webhook dedup, commerce writes (**done** — apply **035** for retry-safe ledger)
 4. Facility settings → `ma5_locations` (**done**)
-5. Scheduling and bookings (**done**)
+5. Scheduling and bookings (**done** — admin session CRUD → `ma5_sessions`)
 6. Storage paths
 7. Programs, journey, messaging, community, push, marketing
 8. Generated types + integration tests
@@ -145,7 +145,7 @@
 | `POST /api/admin/coaches/invite` | Same | B | **Yes** | **Done** |
 | `GET/POST /api/admin/clients` | Tenant roster | B | **Yes** |
 | `GET/POST /api/admin/roster` | Tenant | B | **Yes** |
-| `GET/POST /api/admin/sessions` | `tenant_id` + `location_id` | B/D | **Yes** |
+| `GET/POST /api/admin/sessions` | `tenant_id` + `location_id` | B/D | **Yes** | **Done** |
 | `GET/POST /api/admin/programs` | Tenant scope | B | **Yes** |
 | `POST /api/admin/programs/workout-review` | Tenant | B | No |
 | `GET/POST /api/admin/offerings/*` | Products tenant | B | **Yes** |

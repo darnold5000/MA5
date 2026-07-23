@@ -10,7 +10,7 @@ import {
 import {
   createMarketingGalleryItem,
   deleteMarketingGalleryItem,
-  listMarketingGallery,
+  listMarketingGalleryWithStatus,
   updateMarketingGalleryItem,
 } from "@/features/marketing-gallery/queries";
 import type { MarketingGallerySection } from "@/features/marketing-gallery/types";
@@ -19,6 +19,8 @@ import { BRAND_ASSETS_BUCKET } from "@/lib/assets/constants";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { isTenantPrefixedStoragePath } from "@/lib/tenant/storage-paths";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 const sectionSchema = z.enum(["transformations", "community"]);
 const placementSchema = z.enum(COMMUNITY_PLACEMENT_IDS);
@@ -86,8 +88,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "section required" }, { status: 400 });
   }
 
-  const items = await listMarketingGallery(parsedSection.data);
-  return NextResponse.json({ items });
+  const items = await listMarketingGalleryWithStatus(parsedSection.data);
+  if (items.error) {
+    console.error("[api/admin/marketing/gallery]", items.error);
+    return NextResponse.json(
+      { items: [], error: items.error, warning: items.error },
+      { status: shouldUseMa5LiveData() ? 503 : 200 },
+    );
+  }
+  return NextResponse.json({ items: items.items });
 }
 
 export async function POST(request: Request) {
@@ -110,10 +119,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    !storagePath.startsWith(`marketing/${section}/`) &&
-    !storagePath.startsWith("demo:")
-  ) {
+  const legacyPath = storagePath.startsWith(`marketing/${section}/`);
+  const tenantPath =
+    storagePath.includes(`/brand/marketing/${section}/`) &&
+    isTenantPrefixedStoragePath(storagePath);
+  if (!legacyPath && !tenantPath && !storagePath.startsWith("demo:")) {
     return NextResponse.json({ error: "Invalid storage path" }, { status: 400 });
   }
 

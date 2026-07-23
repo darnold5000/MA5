@@ -48,6 +48,10 @@ Set `MA5_TENANT_ID` in MA5 deployment environment. Details: [docs/migration/RUNB
 | 032b | `032b_ma5_storage_policies_only.sql` | Applied (recovery; never with 032) |
 | 032c | `032c_ma5_storage_safe_uuid.sql` | Applied |
 | 034 | `034_ma5_rls_hardening.sql` | Applied |
+| 035 | `035_ma5_stripe_webhook_processing_state.sql` | Applied |
+
+Types: `npm run gen:types` (OpenAPI) or `npm run gen:types:cli` after `supabase login` + `npm run supabase:link`.
+
 | 033 | `033_ma5_staging_seed.sql` | Staging only — apply next |
 
 See [docs/migration/02-migration-sequence.md](../docs/migration/02-migration-sequence.md).

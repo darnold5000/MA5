@@ -17,6 +17,7 @@ import {
 } from "@/features/scheduling/queries";
 import { demoClient, resolveClientFirstName } from "@/content/demo-persona";
 import { getSessionUser } from "@/lib/auth/session";
+import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ function Chip({
 export default async function ClientDashboardPage() {
   const configured = isSupabasePublicConfigured();
   const session = configured ? await getSessionUser() : null;
-  const demoBookings = await readDemoBookings();
+  const demoBookings = useLiveBookingsOnly() ? [] : await readDemoBookings();
   const dbBookings = configured
     ? await listUserBookings(session?.id ?? null)
     : [];

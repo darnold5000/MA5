@@ -17,6 +17,10 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 const leadSchema = z.object({
   name: z.string().min(1).max(120),
@@ -127,6 +131,13 @@ export async function POST(request: Request) {
     Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   if (!supabaseReady) {
+    if (shouldUseMa5LiveData()) {
+      return NextResponse.json(
+        { error: "Lead capture is not configured for this deployment" },
+        { status: 503 },
+      );
+    }
+
     await sendStaffNotification({
       name,
       email: emailNorm,
@@ -148,54 +159,93 @@ export async function POST(request: Request) {
   }
 
   try {
-    const admin = createServiceClient();
+    const { supabase: admin, ctx } = isMa5DeploymentConfigured()
+      ? createMa5TenantServiceClient()
+      : { supabase: createServiceClient(), ctx: null };
 
     if (visitorId && firstTouch) {
-      const { data: existing } = await admin
+      let visitorQuery = admin
         .from(MA5_TABLES.visitorSessions)
         .select("visitor_id")
-        .eq("visitor_id", visitorId)
-        .maybeSingle();
+        .eq("visitor_id", visitorId);
+      if (ctx) visitorQuery = visitorQuery.eq("tenant_id", ctx.tenantId);
+
+      const { data: existing } = await visitorQuery.maybeSingle();
 
       if (!existing) {
-        await admin.from(MA5_TABLES.visitorSessions).insert({
-          visitor_id: visitorId,
-          first_seen: firstTouch.capturedAt,
-          last_seen: new Date().toISOString(),
-          landing_page: firstTouch.landingPage,
-          referrer: firstTouch.referrer,
-          utm_source: firstTouch.utmSource,
-          utm_medium: firstTouch.utmMedium,
-          utm_campaign: firstTouch.utmCampaign,
-          utm_term: firstTouch.utmTerm,
-          utm_content: firstTouch.utmContent,
-        });
+        const visitorRow = ctx
+          ? withTenantId(ctx, {
+              visitor_id: visitorId,
+              first_seen: firstTouch.capturedAt,
+              last_seen: new Date().toISOString(),
+              landing_page: firstTouch.landingPage,
+              referrer: firstTouch.referrer,
+              utm_source: firstTouch.utmSource,
+              utm_medium: firstTouch.utmMedium,
+              utm_campaign: firstTouch.utmCampaign,
+              utm_term: firstTouch.utmTerm,
+              utm_content: firstTouch.utmContent,
+            })
+          : {
+              visitor_id: visitorId,
+              first_seen: firstTouch.capturedAt,
+              last_seen: new Date().toISOString(),
+              landing_page: firstTouch.landingPage,
+              referrer: firstTouch.referrer,
+              utm_source: firstTouch.utmSource,
+              utm_medium: firstTouch.utmMedium,
+              utm_campaign: firstTouch.utmCampaign,
+              utm_term: firstTouch.utmTerm,
+              utm_content: firstTouch.utmContent,
+            };
+        await admin.from(MA5_TABLES.visitorSessions).insert(visitorRow);
       } else {
-        await admin
+        let updateQuery = admin
           .from(MA5_TABLES.visitorSessions)
           .update({ last_seen: new Date().toISOString() })
           .eq("visitor_id", visitorId);
+        if (ctx) updateQuery = updateQuery.eq("tenant_id", ctx.tenantId);
+        await updateQuery;
       }
     }
 
+    const leadRow = ctx
+      ? withTenantId(ctx, {
+          visitor_id: visitorId,
+          name,
+          email: emailNorm,
+          phone: parsed.data.phone?.trim() || null,
+          message: storedMessage,
+          utm_source: firstTouch?.utmSource ?? null,
+          utm_medium: firstTouch?.utmMedium ?? null,
+          utm_campaign: firstTouch?.utmCampaign ?? null,
+          utm_term: firstTouch?.utmTerm ?? null,
+          utm_content: firstTouch?.utmContent ?? null,
+          landing_page: firstTouch?.landingPage ?? null,
+          referrer: firstTouch?.referrer ?? null,
+          status: "new",
+          source_path: parsed.data.sourcePath ?? "/contact",
+        })
+      : {
+          visitor_id: visitorId,
+          name,
+          email: emailNorm,
+          phone: parsed.data.phone?.trim() || null,
+          message: storedMessage,
+          utm_source: firstTouch?.utmSource ?? null,
+          utm_medium: firstTouch?.utmMedium ?? null,
+          utm_campaign: firstTouch?.utmCampaign ?? null,
+          utm_term: firstTouch?.utmTerm ?? null,
+          utm_content: firstTouch?.utmContent ?? null,
+          landing_page: firstTouch?.landingPage ?? null,
+          referrer: firstTouch?.referrer ?? null,
+          status: "new",
+          source_path: parsed.data.sourcePath ?? "/contact",
+        };
+
     const { data: lead, error } = await admin
       .from(MA5_TABLES.leads)
-      .insert({
-        visitor_id: visitorId,
-        name,
-        email: emailNorm,
-        phone: parsed.data.phone?.trim() || null,
-        message: storedMessage,
-        utm_source: firstTouch?.utmSource ?? null,
-        utm_medium: firstTouch?.utmMedium ?? null,
-        utm_campaign: firstTouch?.utmCampaign ?? null,
-        utm_term: firstTouch?.utmTerm ?? null,
-        utm_content: firstTouch?.utmContent ?? null,
-        landing_page: firstTouch?.landingPage ?? null,
-        referrer: firstTouch?.referrer ?? null,
-        status: "new",
-        source_path: parsed.data.sourcePath ?? "/contact",
-      })
+      .insert(leadRow)
       .select("id")
       .single();
 

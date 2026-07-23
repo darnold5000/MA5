@@ -5,8 +5,17 @@ import type {
   DeliveryResult,
   NotificationDeliveryAdapter,
 } from "@/features/messaging/delivery";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 import { createServiceClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+
+function pushServiceClient() {
+  if (isMa5DeploymentConfigured()) {
+    return createMa5TenantServiceClient();
+  }
+  return { supabase: createServiceClient(), ctx: null };
+}
 
 export function isWebPushConfigured(): boolean {
   return Boolean(
@@ -61,11 +70,13 @@ export async function sendWebPushToSubscription(
         : 0;
     if (status === 404 || status === 410) {
       try {
-        const supabase = createServiceClient();
-        await supabase
+        const { supabase, ctx } = pushServiceClient();
+        let query = supabase
           .from(MA5_TABLES.pushSubscriptions)
           .delete()
           .eq("id", row.id);
+        if (ctx) query = query.eq("tenant_id", ctx.tenantId);
+        await query;
       } catch (cleanupErr) {
         console.error("[web-push] failed to remove expired subscription", cleanupErr);
       }
@@ -85,17 +96,22 @@ export async function sendWebPushToUser(
   }
 
   let supabase;
+  let tenantId: string | null = null;
   try {
-    supabase = createServiceClient();
+    const client = pushServiceClient();
+    supabase = client.supabase;
+    tenantId = client.ctx?.tenantId ?? null;
   } catch (err) {
     console.error("[web-push] service client unavailable", err);
     return { sent: 0, failed: 0 };
   }
 
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from(MA5_TABLES.pushSubscriptions)
     .select("id, endpoint, p256dh, auth")
     .eq("user_id", userId);
+  if (tenantId) query = query.eq("tenant_id", tenantId);
+  const { data: rows, error } = await query;
 
   if (error) {
     console.error("[web-push] load subscriptions", error);

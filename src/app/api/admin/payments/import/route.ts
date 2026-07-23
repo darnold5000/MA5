@@ -7,6 +7,8 @@ import {
   createServiceClient,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 const MAX_BYTES = 12 * 1024 * 1024;
 
@@ -64,9 +66,12 @@ export async function POST(request: Request) {
 
   try {
     const buffer = await file.arrayBuffer();
-    const admin = createServiceClient();
+    const { supabase: admin, ctx } = isMa5DeploymentConfigured()
+      ? createMa5TenantServiceClient()
+      : { supabase: createServiceClient(), ctx: null };
     const summary = await importMindbodyPaymentWorkbook(admin, buffer, {
       importBefore,
+      tenantId: ctx?.tenantId,
     });
 
     return NextResponse.json({ ok: true, ...summary });

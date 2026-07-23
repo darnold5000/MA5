@@ -6,6 +6,7 @@ import {
   isAllowedVideoType,
   MAX_VIDEO_BYTES,
 } from "@/lib/video/constants";
+import { exerciseVideoPath } from "@/lib/tenant/storage-paths";
 
 /** Upload straight to Supabase Storage (avoids Vercel 413 body limits). */
 export async function uploadExerciseVideoFromBrowser(input: {
@@ -19,10 +20,7 @@ export async function uploadExerciseVideoFromBrowser(input: {
     return { error: "Video must be 500MB or smaller." };
   }
 
-  const ext =
-    input.file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
-    "mp4";
-  const path = `exercises/${input.exerciseId}/${crypto.randomUUID()}.${ext}`;
+  const path = exerciseVideoPath(input.exerciseId, input.file.name);
 
   try {
     const supabase = createClient();

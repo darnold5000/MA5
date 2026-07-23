@@ -6,6 +6,7 @@ import { readDemoBookings } from "@/features/booking/demo-store";
 import type { BookingItem } from "@/features/scheduling/fallback-data";
 import { listUserBookings } from "@/features/scheduling/queries";
 import { getSessionUser } from "@/lib/auth/session";
+import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { isSupabasePublicConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -40,7 +41,7 @@ export default async function BookingsPage({ searchParams }: PageProps) {
   const stored = configured
     ? await listUserBookings(session?.id ?? null)
     : [];
-  const demoCookie = await readDemoBookings();
+  const demoCookie = useLiveBookingsOnly() ? [] : await readDemoBookings();
   const bookings = configured
     ? mergeBookings(
         stored.filter((b) => b.source === "database"),

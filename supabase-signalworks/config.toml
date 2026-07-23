@@ -1,0 +1,16 @@
+# Signal Works shared Supabase — MA5 destination migrations only.
+# Link: from MA5/, run `npm run supabase:link` (requires `supabase login` once).
+project_id = "gezdzzqnylloaxcmuzvm"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+major_version = 15
+
+[db.migrations]
+enabled = true
+schema_paths = ["./migrations/*.sql"]

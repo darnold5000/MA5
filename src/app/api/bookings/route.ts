@@ -9,6 +9,7 @@ import {
   serializeDemoBookings,
 } from "@/features/booking/demo-store";
 import { getSessionUser } from "@/lib/auth/session";
+import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { isSupabasePublicConfigured } from "@/lib/env";
 
 const bodySchema = z.object({
@@ -38,11 +39,11 @@ export async function POST(request: Request) {
     : null;
 
   try {
-    // Demo cookie path: block re-booking the same session.
+    const liveOnly = useLiveBookingsOnly();
     const jar = await cookies();
-    const existingDemo = parseDemoBookingsCookie(
-      jar.get(DEMO_BOOKINGS_COOKIE)?.value,
-    );
+    const existingDemo = liveOnly
+      ? []
+      : parseDemoBookingsCookie(jar.get(DEMO_BOOKINGS_COOKIE)?.value);
     const alreadyDemo = existingDemo.some(
       (b) =>
         b.sessionId === parsed.data.sessionId &&
@@ -67,6 +68,12 @@ export async function POST(request: Request) {
     const response = NextResponse.json(result);
 
     if (result.demo) {
+      if (liveOnly) {
+        return NextResponse.json(
+          { error: "Booking could not be saved to the database" },
+          { status: 503 },
+        );
+      }
       const next = [
         result.booking,
         ...existingDemo.filter((b) => b.id !== result.booking.id),

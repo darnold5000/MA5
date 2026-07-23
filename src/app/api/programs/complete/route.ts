@@ -15,6 +15,10 @@ import {
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
+import { requireMa5DeploymentContext } from "@/lib/tenant/deployment";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);
@@ -81,13 +85,18 @@ export async function POST(request: Request) {
         });
       }
 
+      const completionBase = {
+        calendar_entry_id: parsed.data.calendarEntryId,
+        client_user_id: clientUserId,
+        client_note: note,
+      };
+      const completionRow = isMa5DeploymentConfigured()
+        ? withTenantId(requireMa5DeploymentContext(), completionBase)
+        : completionBase;
+
       const { data, error } = await supabase
         .from(MA5_TABLES.workoutCompletions)
-        .insert({
-          calendar_entry_id: parsed.data.calendarEntryId,
-          client_user_id: clientUserId,
-          client_note: note,
-        })
+        .insert(completionRow)
         .select("*")
         .single();
       if (error) {
@@ -103,6 +112,13 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+  }
+
+  if (shouldUseMa5LiveData()) {
+    return NextResponse.json(
+      { error: "Workout completion requires Supabase on Signal Works deployment" },
+      { status: 503 },
+    );
   }
 
   // Cookie fallback (local demos without Supabase)

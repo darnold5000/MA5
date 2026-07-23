@@ -63,6 +63,9 @@ export type ActionNeededItem = {
 export type MarketingDashboard = {
   /** True when showing local demo fallback (Supabase not configured). */
   isDemo: boolean;
+  /** Live Signal Works deployment but metrics could not be loaded. */
+  unavailable?: boolean;
+  unavailableMessage?: string | null;
   rangeLabel: string;
 
   growthScore: GrowthScore;

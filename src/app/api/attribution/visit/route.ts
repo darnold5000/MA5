@@ -10,6 +10,10 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 const bodySchema = z.object({
   path: z.string().max(2000).optional(),
@@ -26,6 +30,12 @@ export async function POST(request: Request) {
     !isSupabaseConfigured() ||
     !process.env.SUPABASE_SERVICE_ROLE_KEY
   ) {
+    if (shouldUseMa5LiveData()) {
+      return NextResponse.json(
+        { error: "Attribution tracking is not configured" },
+        { status: 503 },
+      );
+    }
     return NextResponse.json({ ok: true, persisted: false });
   }
 
@@ -44,18 +54,20 @@ export async function POST(request: Request) {
   const isBot = isBotUserAgent(userAgent);
 
   try {
-    const admin = createServiceClient();
+    const { supabase: admin, ctx } = isMa5DeploymentConfigured()
+      ? createMa5TenantServiceClient()
+      : { supabase: createServiceClient(), ctx: null };
     const now = new Date().toISOString();
     const path = parsed.data.path?.slice(0, 2000) ?? firstTouch.landingPage;
 
-    const { data: existing } = await admin
+    let existingQuery = admin
       .from(MA5_TABLES.visitorSessions)
       .select("visitor_id, page_views, is_bot")
-      .eq("visitor_id", visitorId)
-      .maybeSingle();
+      .eq("visitor_id", visitorId);
+    if (ctx) existingQuery = existingQuery.eq("tenant_id", ctx.tenantId);
+    const { data: existing } = await existingQuery.maybeSingle();
 
     if (existing) {
-      // Update last-touch + page_views only — first-touch protected by DB trigger
       const patch: Record<string, unknown> = {
         last_seen: now,
         page_views: (existing.page_views ?? 1) + 1,
@@ -73,12 +85,14 @@ export async function POST(request: Request) {
         patch.last_utm_content = lastTouch.utmContent;
       }
 
-      await admin
+      let updateQuery = admin
         .from(MA5_TABLES.visitorSessions)
         .update(patch)
         .eq("visitor_id", visitorId);
+      if (ctx) updateQuery = updateQuery.eq("tenant_id", ctx.tenantId);
+      await updateQuery;
     } else {
-      await admin.from(MA5_TABLES.visitorSessions).insert({
+      const base = {
         visitor_id: visitorId,
         first_seen: firstTouch.capturedAt || now,
         last_seen: now,
@@ -99,10 +113,12 @@ export async function POST(request: Request) {
         page_views: 1,
         is_bot: isBot,
         user_agent: userAgent?.slice(0, 500) ?? null,
-      });
+      };
+      await admin
+        .from(MA5_TABLES.visitorSessions)
+        .insert(ctx ? withTenantId(ctx, base) : base);
     }
 
-    // Opportunistic retention cleanup (best-effort, once in a while)
     if (!isBot && Math.random() < 0.02) {
       void admin.rpc("ma5_purge_expired_anonymous_visitors", {
         retention_days: 90,
@@ -116,6 +132,12 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[api/attribution/visit]", err);
+    if (shouldUseMa5LiveData()) {
+      return NextResponse.json(
+        { error: "Could not persist visit" },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ ok: true, persisted: false });
   }
 }

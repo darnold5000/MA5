@@ -1,8 +1,9 @@
 import type { MarketingGallerySection } from "@/features/marketing-gallery/types";
+import { brandMarketingGalleryPath } from "@/lib/tenant/storage-paths";
 
 export function marketingGalleryPath(
   section: MarketingGallerySection,
   fileId: string,
 ) {
-  return `marketing/${section}/${fileId}.jpg`;
+  return brandMarketingGalleryPath(section, fileId);
 }

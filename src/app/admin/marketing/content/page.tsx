@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 
 import { MarketingGalleryManager } from "@/components/admin/marketing-gallery-manager";
 import { MarketingSubnav } from "@/components/marketing/marketing-subnav";
-import {
-  listMarketingGallery,
-} from "@/features/marketing-gallery/queries";
+import { listMarketingGalleryWithStatus } from "@/features/marketing-gallery/queries";
 
 export const metadata: Metadata = {
   title: "Website content · Growth",
@@ -12,10 +10,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminMarketingContentPage() {
-  const [transformations, community] = await Promise.all([
-    listMarketingGallery("transformations"),
-    listMarketingGallery("community"),
+  const [transformationsResult, communityResult] = await Promise.all([
+    listMarketingGalleryWithStatus("transformations"),
+    listMarketingGalleryWithStatus("community"),
   ]);
+  const galleryWarning =
+    transformationsResult.error ?? communityResult.error ?? null;
 
   return (
     <div className="space-y-8">
@@ -35,11 +35,17 @@ export default async function AdminMarketingContentPage() {
 
       <MarketingSubnav />
 
+      {galleryWarning ? (
+        <p className="border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Gallery load failed: {galleryWarning}
+        </p>
+      ) : null}
+
       <MarketingGalleryManager
         section="transformations"
         title="Transformations"
         description="Photos appear on /transformations and can be featured on the home page."
-        initialItems={transformations}
+        initialItems={transformationsResult.items}
         showClientName
         showFeatured
       />
@@ -48,7 +54,7 @@ export default async function AdminMarketingContentPage() {
         section="community"
         title="Our Community"
         description="Upload a photo and choose which section it appears next to on /our-community (Hero, Gatlinburg, Father's Heart, and so on). Replacing a slot overwrites the previous photo for that section when you assign the same placement."
-        initialItems={community}
+        initialItems={communityResult.items}
         showPlacement
       />
     </div>

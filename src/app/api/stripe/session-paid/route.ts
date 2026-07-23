@@ -6,6 +6,7 @@ import {
   parseDemoBookingsCookie,
   serializeDemoBookings,
 } from "@/features/booking/demo-store";
+import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { getSessionUser } from "@/lib/auth/session";
 import { env, isSupabasePublicConfigured } from "@/lib/env";
 import { syncPaidSessionBooking } from "@/lib/stripe/sync-session-booking";
@@ -41,7 +42,13 @@ export async function GET(request: Request) {
       }`,
     );
 
-    if (synced && "demo" in synced && synced.demo && synced.booking) {
+    if (
+      synced &&
+      "demo" in synced &&
+      synced.demo &&
+      synced.booking &&
+      !useLiveBookingsOnly()
+    ) {
       const jar = await cookies();
       const existing = parseDemoBookingsCookie(
         jar.get(DEMO_BOOKINGS_COOKIE)?.value,

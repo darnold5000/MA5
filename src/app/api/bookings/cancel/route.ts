@@ -7,6 +7,7 @@ import {
   parseDemoBookingsCookie,
   serializeDemoBookings,
 } from "@/features/booking/demo-store";
+import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
@@ -31,9 +32,9 @@ export async function POST(request: Request) {
   let cancelled = false;
 
   const jar = await cookies();
-  const existing = parseDemoBookingsCookie(
-    jar.get(DEMO_BOOKINGS_COOKIE)?.value,
-  );
+  const existing = useLiveBookingsOnly()
+    ? []
+    : parseDemoBookingsCookie(jar.get(DEMO_BOOKINGS_COOKIE)?.value);
   const match = existing.find(
     (b) => b.id === bookingId || b.confirmationNumber === bookingId,
   );

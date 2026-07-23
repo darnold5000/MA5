@@ -11,6 +11,10 @@ import { publicAssetUrl } from "@/lib/assets/constants";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
+import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
 
 type GalleryRow = {
   id: string;
@@ -44,12 +48,30 @@ function mapRow(row: GalleryRow): MarketingGalleryItem {
   };
 }
 
+export type MarketingGalleryListResult = {
+  items: MarketingGalleryItem[];
+  error?: string | null;
+};
+
 export async function listMarketingGallery(
   section: MarketingGallerySection,
 ): Promise<MarketingGalleryItem[]> {
+  const result = await listMarketingGalleryWithStatus(section);
+  return result.items;
+}
+
+export async function listMarketingGalleryWithStatus(
+  section: MarketingGallerySection,
+): Promise<MarketingGalleryListResult> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      return {
+        items: [],
+        error: "Supabase is not configured for marketing gallery.",
+      };
+    }
     const store = await readMarketingGalleryDemoStore();
-    return store[section];
+    return { items: store[section] };
   }
 
   try {
@@ -62,10 +84,16 @@ export async function listMarketingGallery(
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return (data as GalleryRow[]).map(mapRow);
-  } catch {
+    return { items: (data as GalleryRow[]).map(mapRow) };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not load marketing gallery";
+    console.error("[marketing-gallery/list]", section, err);
+    if (shouldUseMa5LiveData()) {
+      return { items: [], error: message };
+    }
     const store = await readMarketingGalleryDemoStore();
-    return store[section];
+    return { items: store[section] };
   }
 }
 
@@ -78,6 +106,9 @@ export async function createMarketingGalleryItem(input: {
   placement?: CommunityPlacementId | null;
 }): Promise<MarketingGalleryItem> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      throw new Error("Marketing gallery requires Supabase");
+    }
     const store = await readMarketingGalleryDemoStore();
     const item: MarketingGalleryItem = {
       id: crypto.randomUUID(),
@@ -97,17 +128,22 @@ export async function createMarketingGalleryItem(input: {
   }
 
   const supabase = await createClient();
+  const baseRow = {
+    section: input.section,
+    storage_path: input.storagePath,
+    alt_text: input.altText ?? "",
+    client_name: input.clientName ?? null,
+    featured: input.featured ?? false,
+    placement: input.placement ?? null,
+    sort_order: 0,
+  };
+  const insertRow = isMa5DeploymentConfigured()
+    ? withTenantId(createMa5TenantServiceClient().ctx, baseRow)
+    : baseRow;
+
   const { data, error } = await supabase
     .from(MA5_TABLES.marketingGallery)
-    .insert({
-      section: input.section,
-      storage_path: input.storagePath,
-      alt_text: input.altText ?? "",
-      client_name: input.clientName ?? null,
-      featured: input.featured ?? false,
-      placement: input.placement ?? null,
-      sort_order: 0,
-    })
+    .insert(insertRow)
     .select("*")
     .single();
 
@@ -127,6 +163,9 @@ export async function updateMarketingGalleryItem(input: {
   altText?: string;
 }): Promise<MarketingGalleryItem | null> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      throw new Error("Marketing gallery requires Supabase");
+    }
     const store = await readMarketingGalleryDemoStore();
     for (const section of ["transformations", "community"] as const) {
       const index = store[section].findIndex((item) => item.id === input.id);
@@ -172,6 +211,9 @@ export async function deleteMarketingGalleryItem(id: string): Promise<{
   storagePath: string | null;
 }> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    if (shouldUseMa5LiveData()) {
+      throw new Error("Marketing gallery requires Supabase");
+    }
     const store = await readMarketingGalleryDemoStore();
     for (const section of ["transformations", "community"] as const) {
       const index = store[section].findIndex((item) => item.id === id);

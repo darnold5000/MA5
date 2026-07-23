@@ -22,6 +22,8 @@ import type {
   WorkoutCompletion,
   WorkoutSetLog,
 } from "@/features/programs/types";
+import type { Ma5DeploymentContext } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
 type DbClient = SupabaseClient;
@@ -151,7 +153,15 @@ export function mapSetLogRow(row: Record<string, unknown>): WorkoutSetLog {
 
 export async function loadProgramsStateFromSupabase(
   supabase: DbClient,
+  options?: { tenantId?: string },
 ): Promise<ProgramsState> {
+  const tenantId = options?.tenantId;
+  const from = (table: string) => {
+    let q = supabase.from(table).select("*");
+    if (tenantId) q = q.eq("tenant_id", tenantId);
+    return q;
+  };
+
   const [
     exercisesRes,
     workoutsRes,
@@ -165,17 +175,17 @@ export async function loadProgramsStateFromSupabase(
     calendarRes,
     completionsRes,
   ] = await Promise.all([
-    supabase.from(MA5_TABLES.exercises).select("*").order("created_at", { ascending: false }),
-    supabase.from(MA5_TABLES.workouts).select("*").order("created_at", { ascending: false }),
+    from(MA5_TABLES.exercises).order("created_at", { ascending: false }),
+    from(MA5_TABLES.workouts).order("created_at", { ascending: false }),
     supabase.from(MA5_TABLES.workoutBlocks).select("*").order("sort_order", { ascending: true }),
     supabase.from(MA5_TABLES.workoutBlockSets).select("*").order("set_number", { ascending: true }),
-    supabase.from(MA5_TABLES.programs).select("*").order("created_at", { ascending: false }),
+    from(MA5_TABLES.programs).order("created_at", { ascending: false }),
     supabase.from(MA5_TABLES.programDays).select("*"),
-    supabase.from(MA5_TABLES.teams).select("*").order("created_at", { ascending: false }),
+    from(MA5_TABLES.teams).order("created_at", { ascending: false }),
     supabase.from(MA5_TABLES.teamMembers).select("*"),
-    supabase.from(MA5_TABLES.programAssignments).select("*").order("created_at", { ascending: false }),
-    supabase.from(MA5_TABLES.calendarEntries).select("*").order("entry_date", { ascending: true }),
-    supabase.from(MA5_TABLES.workoutCompletions).select("*"),
+    from(MA5_TABLES.programAssignments).order("created_at", { ascending: false }),
+    from(MA5_TABLES.calendarEntries).order("entry_date", { ascending: true }),
+    from(MA5_TABLES.workoutCompletions).select("*"),
   ]);
 
   const firstError =
@@ -222,10 +232,12 @@ export async function loadProgramsStateFromSupabase(
   ];
   const nameByUserId = new Map<string, string>();
   if (memberUserIds.length > 0) {
-    const { data: profiles } = await supabase
+    let profileQuery = supabase
       .from(MA5_TABLES.profiles)
       .select("id, full_name, email")
       .in("id", memberUserIds);
+    if (tenantId) profileQuery = profileQuery.eq("tenant_id", tenantId);
+    const { data: profiles } = await profileQuery;
     for (const p of profiles ?? []) {
       nameByUserId.set(
         String(p.id),
@@ -314,6 +326,7 @@ export async function materializeProgramDaysToDb(input: {
   publish?: boolean;
   programDays: ProgramDay[];
   workoutsById: Map<string, Workout>;
+  ctx?: Ma5DeploymentContext | null;
 }): Promise<CalendarEntry[]> {
   const days = input.programDays.filter(
     (d) => d.programId === input.programId && d.workoutId,
@@ -323,7 +336,7 @@ export async function materializeProgramDaysToDb(input: {
     const workout = day.workoutId
       ? input.workoutsById.get(day.workoutId)
       : null;
-    return {
+    const base = {
       entry_date: addDaysIso(input.startDate, offset),
       workout_id: day.workoutId,
       title: workout?.title ?? "Workout",
@@ -333,6 +346,7 @@ export async function materializeProgramDaysToDb(input: {
       team_id: input.teamId ?? null,
       program_assignment_id: input.assignmentId,
     };
+    return input.ctx ? withTenantId(input.ctx, base) : base;
   });
 
   if (rows.length === 0) return [];

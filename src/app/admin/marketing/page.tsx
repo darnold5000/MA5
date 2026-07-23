@@ -77,6 +77,13 @@ export default async function AdminMarketingDashboardPage({
         </p>
       ) : null}
 
+      {data.unavailable ? (
+        <p className="border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          {data.unavailableMessage ??
+            "Marketing metrics are temporarily unavailable. Check Supabase configuration and try again."}
+        </p>
+      ) : null}
+
       <Suspense fallback={null}>
         <GrowthFilters
           sources={data.filterSources}
