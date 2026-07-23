@@ -2,6 +2,10 @@ import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 import { createMa5TenantServiceClient } from "@/lib/tenant/service";
+import {
+  asClientStatus,
+  deriveClientStatusFromLegacy,
+} from "@/lib/auth/client-lifecycle";
 
 import type { InvitationStatus, MemberDirectoryRow } from "./types";
 
@@ -14,8 +18,14 @@ type ProfileRow = {
   invitation_status: string | null;
   invited_at: string | null;
   invitation_accepted_at: string | null;
+  activated_at: string | null;
   last_login_at: string | null;
   access_revoked_at: string | null;
+  invite_revoked_at: string | null;
+  paused_at: string | null;
+  deleted_at: string | null;
+  status_before_delete: string | null;
+  client_status: string | null;
   admin_notes: string | null;
 };
 
@@ -35,7 +45,13 @@ function asInvitationStatus(value: string | null | undefined): InvitationStatus 
   return "none";
 }
 
-export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
+export type ListDirectoryMembersOptions = {
+  includeDeleted?: boolean;
+};
+
+export async function listDirectoryMembers(
+  options: ListDirectoryMembersOptions = {},
+): Promise<MemberDirectoryRow[]> {
   if (
     !isSupabaseConfigured() ||
     !process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -79,7 +95,7 @@ export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
   const { data: profiles, error: profileError } = await admin
     .from(MA5_TABLES.profiles)
     .select(
-      "id, email, full_name, phone, active, invitation_status, invited_at, invitation_accepted_at, last_login_at, access_revoked_at, admin_notes",
+      "id, email, full_name, phone, active, invitation_status, invited_at, invitation_accepted_at, activated_at, last_login_at, access_revoked_at, invite_revoked_at, paused_at, deleted_at, status_before_delete, client_status, admin_notes",
     )
     .eq("tenant_id", ctx.tenantId)
     .in("id", ids)
@@ -90,20 +106,35 @@ export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
     return [];
   }
 
-  return ((profiles ?? []) as ProfileRow[]).map((p) => ({
-    id: p.id,
-    fullName: p.full_name?.trim() || p.email,
-    email: p.email,
-    phone: p.phone ?? "",
-    role: roleByUser.get(p.id) ?? "client",
-    active: p.active,
-    invitationStatus: asInvitationStatus(p.invitation_status),
-    invitedAt: p.invited_at,
-    invitationAcceptedAt: p.invitation_accepted_at,
-    lastLoginAt: p.last_login_at,
-    accessRevokedAt: p.access_revoked_at,
-    notes: p.admin_notes ?? "",
-  }));
+  return ((profiles ?? []) as ProfileRow[])
+    .map((p) => {
+      const clientStatus = deriveClientStatusFromLegacy(p);
+      return {
+        id: p.id,
+        fullName: p.full_name?.trim() || p.email,
+        email: p.email,
+        phone: p.phone ?? "",
+        role: roleByUser.get(p.id) ?? "client",
+        active: p.active,
+        clientStatus,
+        invitationStatus: asInvitationStatus(p.invitation_status),
+        invitedAt: p.invited_at,
+        invitationAcceptedAt: p.invitation_accepted_at,
+        activatedAt: p.activated_at,
+        lastLoginAt: p.last_login_at,
+        accessRevokedAt: p.access_revoked_at,
+        inviteRevokedAt: p.invite_revoked_at,
+        pausedAt: p.paused_at,
+        deletedAt: p.deleted_at,
+        statusBeforeDelete: p.status_before_delete
+          ? asClientStatus(p.status_before_delete)
+          : null,
+        notes: p.admin_notes ?? "",
+      };
+    })
+    .filter((member) =>
+      options.includeDeleted ? true : member.clientStatus !== "deleted",
+    );
 }
 
 export function inviteRedirectUrl(siteUrl: string) {

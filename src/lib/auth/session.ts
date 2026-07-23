@@ -4,8 +4,10 @@ import {
   accessDeniedResponse,
   isActiveAccess,
   resolveAccessState,
+  resolveClientStatus,
   type AccessState,
 } from "@/lib/auth/access";
+import { portalStatusMessage } from "@/lib/auth/client-lifecycle";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import {
@@ -23,10 +25,12 @@ export type Ma5Profile = {
   stripe_customer_id: string | null;
   tenant_id?: string | null;
   invitation_status?: string | null;
+  client_status?: string | null;
   invited_at?: string | null;
   invitation_accepted_at?: string | null;
   last_login_at?: string | null;
   access_revoked_at?: string | null;
+  deleted_at?: string | null;
 };
 
 export type SessionUser = {
@@ -61,7 +65,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
         supabase
           .from(MA5_TABLES.profiles)
           .select(
-            "id, email, full_name, phone, active, stripe_customer_id, tenant_id, invitation_status, invited_at, invitation_accepted_at, last_login_at, access_revoked_at",
+            "id, email, full_name, phone, active, stripe_customer_id, tenant_id, invitation_status, client_status, invited_at, invitation_accepted_at, last_login_at, access_revoked_at, deleted_at",
           )
           .eq("id", user.id)
           .maybeSingle(),
@@ -160,4 +164,4 @@ export async function requireAdminSessionOrResponse(): Promise<
   return session;
 }
 
-export { resolveAccessState, isActiveAccess, accessDeniedResponse };
+export { resolveAccessState, isActiveAccess, accessDeniedResponse, resolveClientStatus, portalStatusMessage };

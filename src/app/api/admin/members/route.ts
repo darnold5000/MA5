@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { listDirectoryMembers } from "@/features/auth/members";
-import { updateMemberAccess } from "@/lib/auth/tenant-data";
+import { asClientStatus } from "@/lib/auth/client-lifecycle";
+import { applyMemberLifecycleAction } from "@/lib/auth/tenant-data";
 import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
@@ -10,10 +11,17 @@ import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 
 const patchSchema = z.object({
   memberId: z.string().uuid(),
-  action: z.enum(["revoke", "reactivate"]),
+  action: z.enum([
+    "revoke_invite",
+    "restore_invitation",
+    "pause_access",
+    "restore_access",
+    "delete",
+    "restore_deleted",
+  ]),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
     return NextResponse.json({ members: [] });
   }
@@ -21,7 +29,9 @@ export async function GET() {
   const auth = await requireAdminSessionOrResponse();
   if (auth instanceof NextResponse) return auth;
 
-  const members = await listDirectoryMembers();
+  const includeDeleted =
+    new URL(request.url).searchParams.get("includeDeleted") === "1";
+  const members = await listDirectoryMembers({ includeDeleted });
   return NextResponse.json({ members });
 }
 
@@ -60,20 +70,25 @@ export async function PATCH(request: Request) {
   }
 
   if (
-    parsed.data.action === "revoke" &&
+    (parsed.data.action === "pause_access" ||
+      parsed.data.action === "revoke_invite" ||
+      parsed.data.action === "delete") &&
     parsed.data.memberId === auth.id
   ) {
     return NextResponse.json(
-      { error: "You cannot revoke your own access" },
+      { error: "You cannot perform this action on your own account" },
       { status: 400 },
     );
   }
 
   try {
-    await updateMemberAccess(parsed.data.memberId, parsed.data.action);
+    const status = await applyMemberLifecycleAction(
+      parsed.data.memberId,
+      parsed.data.action,
+    );
     return NextResponse.json({
       ok: true,
-      status: parsed.data.action === "revoke" ? "revoked" : "active",
+      status: asClientStatus(status),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Update failed";

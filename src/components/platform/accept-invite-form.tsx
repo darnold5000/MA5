@@ -4,54 +4,54 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { SignOutButton } from "@/components/platform/sign-out-button";
+
+type InviteContext =
+  | {
+      ok: true;
+      email: string;
+      fullName: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      code?: string;
+    };
 
 export function AcceptInviteForm() {
-  const [email, setEmail] = useState<string | null>(null);
+  const [context, setContext] = useState<InviteContext | null>(null);
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [pending, setPending] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [sessionError, setSessionError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function establishSession() {
-      if (!isSupabaseConfigured()) {
-        if (!cancelled) {
-          setSessionError("Invitations are not configured.");
-        }
-        return;
-      }
-
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+    async function loadInviteContext() {
+      const res = await fetch("/api/auth/invite-context", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = (await res.json().catch(() => ({}))) as InviteContext;
       if (cancelled) return;
 
-      if (!session?.user) {
-        setSessionError(
-          "This invitation link is invalid or has expired. Ask MA5 staff to resend your invite.",
-        );
+      if (!data.ok) {
+        setContext(data);
         return;
       }
 
-      setEmail(session.user.email ?? null);
-      const metaName = session.user.user_metadata?.full_name;
-      if (typeof metaName === "string" && metaName.trim()) {
-        setFullName(metaName.trim());
+      setContext(data);
+      if (data.fullName) {
+        setFullName(data.fullName);
       }
-      setReady(true);
     }
 
-    void establishSession();
+    void loadInviteContext();
     return () => {
       cancelled = true;
     };
@@ -101,23 +101,7 @@ export function AcceptInviteForm() {
     }
   }
 
-  if (sessionError) {
-    return (
-      <AuthCard title="Accept invitation" description="Unable to continue.">
-        <p className="text-sm text-brand" role="alert">
-          {sessionError}
-        </p>
-        <Link
-          href="/login"
-          className="mt-4 inline-flex min-h-10 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-        >
-          Go to sign in
-        </Link>
-      </AuthCard>
-    );
-  }
-
-  if (!ready) {
+  if (!context) {
     return (
       <AuthCard
         title="Accept invitation"
@@ -128,20 +112,50 @@ export function AcceptInviteForm() {
     );
   }
 
+  if (!context.ok) {
+    const showSignOut =
+      context.code === "email_mismatch" ||
+      context.code === "already_active" ||
+      context.code === "invite_revoked" ||
+      context.code === "paused";
+
+    return (
+      <AuthCard title="Accept invitation" description="Unable to continue.">
+        <p className="text-sm text-brand" role="alert">
+          {context.message}
+        </p>
+        <div className="mt-4 flex flex-col gap-3">
+          {showSignOut ? (
+            <SignOutButton className="inline-flex min-h-10 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase" />
+          ) : null}
+          <Link
+            href="/login"
+            className="inline-flex min-h-10 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
+          >
+            Go to sign in
+          </Link>
+        </div>
+      </AuthCard>
+    );
+  }
+
   return (
     <AuthCard
       title="Activate your account"
-      description="Set your password to finish activating your MA5 member access. If you already had an account, this step updates your password and turns on platform access — it is not a forgotten-password notice."
+      description="Set your password to finish activating your MA5 member access."
     >
       <form className="space-y-3 sm:space-y-4" onSubmit={onSubmit}>
         <label className="block space-y-1.5 text-sm sm:space-y-2">
           <span className="font-semibold tracking-wide uppercase">Email</span>
           <input
             type="email"
-            value={email ?? ""}
+            value={context.email}
             readOnly
             className="min-h-10 w-full border border-border bg-background/60 px-3 text-muted outline-none sm:min-h-11"
           />
+          <span className="block text-xs text-muted">
+            This email is linked to your MA5 invitation and cannot be changed.
+          </span>
         </label>
         <label className="block space-y-1.5 text-sm sm:space-y-2">
           <span className="font-semibold tracking-wide uppercase">

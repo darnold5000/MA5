@@ -1,12 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { resolveAccessState, type AccessState } from "@/lib/auth/access";
+import { resolveAccessState, resolveClientStatus, type AccessState } from "@/lib/auth/access";
 import { applyAttributionCookies } from "@/lib/attribution/middleware";
 import { canAccessAdmin, type PlatformRole } from "@/lib/permissions/roles";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
-/** Auth / public APIs that must work without an active MA5 profile. */
 function isPublicApiPath(pathname: string): boolean {
   return (
     pathname.startsWith("/api/auth/") ||
@@ -31,6 +30,7 @@ export async function updateSession(request: NextRequest) {
   let user: { id: string } | null = null;
   let roles: PlatformRole[] = [];
   let access: AccessState = "active";
+  let clientStatus = "active" as string;
 
   if (url && anonKey) {
     const supabase = createServerClient(url, anonKey, {
@@ -67,7 +67,7 @@ export async function updateSession(request: NextRequest) {
           .eq("user_id", user.id),
         supabase
           .from(MA5_TABLES.profiles)
-          .select("active, invitation_status, access_revoked_at")
+          .select("active, invitation_status, access_revoked_at, client_status, deleted_at, invitation_accepted_at")
           .eq("id", user.id)
           .maybeSingle(),
       ]);
@@ -86,6 +86,7 @@ export async function updateSession(request: NextRequest) {
         access = basic?.active === false ? "disabled" : "active";
       } else {
         access = resolveAccessState(profileResult.data);
+        clientStatus = resolveClientStatus(profileResult.data);
       }
     }
   }
@@ -131,6 +132,7 @@ export async function updateSession(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/access-disabled";
       redirectUrl.search = "";
+      redirectUrl.searchParams.set("status", clientStatus);
       return NextResponse.redirect(redirectUrl);
     }
   }
@@ -202,6 +204,7 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/access-disabled";
     redirectUrl.search = "";
+    redirectUrl.searchParams.set("status", clientStatus);
     return NextResponse.redirect(redirectUrl);
   }
 

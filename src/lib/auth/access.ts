@@ -1,38 +1,45 @@
 import { NextResponse } from "next/server";
 
 import type { Ma5Profile, SessionUser } from "@/lib/auth/session";
+import {
+  accessStateForClientStatus,
+  asClientStatus,
+  deriveClientStatusFromLegacy,
+  type ClientStatus,
+} from "@/lib/auth/client-lifecycle";
 
 export type AccessState = "active" | "pending_invite" | "disabled";
 
-export function resolveAccessState(
-  profile: Pick<
-    Ma5Profile,
-    "active" | "invitation_status" | "access_revoked_at"
-  > | null,
-): AccessState {
+export type ProfileAccessInput = Pick<
+  Ma5Profile,
+  | "active"
+  | "invitation_status"
+  | "access_revoked_at"
+  | "client_status"
+  | "invitation_accepted_at"
+  | "deleted_at"
+>;
+
+export function resolveClientStatus(
+  profile: ProfileAccessInput | null,
+): ClientStatus {
   if (!profile) return "active";
-  if (
-    profile.invitation_status === "revoked" ||
-    Boolean(profile.access_revoked_at)
-  ) {
-    return "disabled";
-  }
-  if (
-    profile.invitation_status === "sent" ||
-    profile.invitation_status === "pending"
-  ) {
-    return "pending_invite";
-  }
-  if (profile.active === false) return "disabled";
-  return "active";
+  return deriveClientStatusFromLegacy(profile);
+}
+
+export function resolveAccessState(profile: ProfileAccessInput | null): AccessState {
+  if (!profile) return "active";
+  return accessStateForClientStatus(resolveClientStatus(profile));
 }
 
 export function isActiveAccess(session: SessionUser): boolean {
   return resolveAccessState(session.profile) === "active";
 }
 
-/** JSON 403 for revoked / pending-invite callers on protected APIs. */
-export function accessDeniedResponse(access: AccessState): NextResponse {
+export function accessDeniedResponse(
+  access: AccessState,
+  clientStatus?: ClientStatus,
+): NextResponse {
   if (access === "pending_invite") {
     return NextResponse.json(
       {
@@ -42,11 +49,27 @@ export function accessDeniedResponse(access: AccessState): NextResponse {
       { status: 403 },
     );
   }
+
+  const code =
+    clientStatus === "paused"
+      ? "access_paused"
+      : clientStatus === "invite_revoked"
+        ? "invite_revoked"
+        : clientStatus === "deleted"
+          ? "account_deleted"
+          : "access_disabled";
+
   return NextResponse.json(
     {
       error: "Your access has been disabled",
-      code: "access_disabled",
+      code,
     },
     { status: 403 },
   );
+}
+
+export function accessStateLabel(access: AccessState, status?: ClientStatus): string {
+  if (access === "active") return "active";
+  if (access === "pending_invite") return "invited";
+  return asClientStatus(status);
 }

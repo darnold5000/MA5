@@ -4,12 +4,23 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import {
+  CUSTOM_OFFERING_CATEGORY,
+  formatOfferingCategory,
+  isPresetOfferingCategory,
+  normalizeOfferingCategory,
+  OFFERING_CATEGORY_PRESETS,
+} from "@/lib/billing/offering-categories";
+import {
   OFFERING_LIFECYCLE_CONFIRM,
   offeringStatusLabel,
   type OfferingLifecycleAction,
 } from "@/lib/billing/offering-lifecycle";
 import type { Offering, PaymentType, ProductType } from "@/lib/billing/types";
+import { PRODUCT_TYPE_LABELS } from "@/lib/billing/types";
 import { cn } from "@/lib/utils";
+
+const selectClassName =
+  "ma5-select mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70";
 
 function formatMoney(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -21,10 +32,10 @@ function formatMoney(cents: number) {
 
 type FormState = {
   name: string;
-  slug: string;
   description: string;
   productType: ProductType;
-  category: string;
+  categorySelect: string;
+  categoryCustom: string;
   paymentType: PaymentType;
   priceDollars: string;
   billingInterval: "month" | "one_time";
@@ -36,10 +47,10 @@ type ListTab = "active" | "archived";
 
 const emptyForm = (): FormState => ({
   name: "",
-  slug: "",
   description: "",
   productType: "membership",
-  category: "small_group",
+  categorySelect: "small_group",
+  categoryCustom: "",
   paymentType: "subscription",
   priceDollars: "",
   billingInterval: "month",
@@ -47,13 +58,33 @@ const emptyForm = (): FormState => ({
   displayOrder: "0",
 });
 
+function categoryToForm(category: string | null): Pick<FormState, "categorySelect" | "categoryCustom"> {
+  if (!category || isPresetOfferingCategory(category)) {
+    return {
+      categorySelect: category || "small_group",
+      categoryCustom: "",
+    };
+  }
+  return {
+    categorySelect: CUSTOM_OFFERING_CATEGORY,
+    categoryCustom: formatOfferingCategory(category),
+  };
+}
+
+function categoryFromForm(form: FormState): string | null {
+  if (form.categorySelect === CUSTOM_OFFERING_CATEGORY) {
+    const normalized = normalizeOfferingCategory(form.categoryCustom);
+    return normalized || null;
+  }
+  return form.categorySelect;
+}
+
 function offeringToForm(o: Offering): FormState {
   return {
     name: o.name,
-    slug: o.slug,
     description: o.description ?? "",
     productType: o.productType,
-    category: o.category ?? "",
+    ...categoryToForm(o.category),
     paymentType: o.paymentType,
     priceDollars: (o.priceCents / 100).toFixed(o.priceCents % 100 === 0 ? 0 : 2),
     billingInterval: o.billingInterval === "one_time" ? "one_time" : "month",
@@ -70,12 +101,17 @@ function formToPayload(form: FormState) {
   if (Number.isNaN(dollars) || dollars < 0) {
     throw new Error("Enter a valid price");
   }
+  if (
+    form.categorySelect === CUSTOM_OFFERING_CATEGORY &&
+    !form.categoryCustom.trim()
+  ) {
+    throw new Error("Enter a name for the new category");
+  }
   return {
     name: form.name.trim(),
-    slug: form.slug.trim() || undefined,
     description: form.description.trim() || null,
     productType: form.productType,
-    category: form.category.trim() || null,
+    category: categoryFromForm(form),
     paymentType: form.paymentType,
     priceCents: Math.round(dollars * 100),
     billingInterval:
@@ -433,7 +469,7 @@ export function OfferingsManager({
                 : "Edit offering"}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
+            <label className="block text-sm sm:col-span-2">
               <span className="text-xs tracking-wide text-muted uppercase">
                 Name
               </span>
@@ -443,18 +479,11 @@ export function OfferingsManager({
                 disabled={readOnly}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
-            </label>
-            <label className="block text-sm">
-              <span className="text-xs tracking-wide text-muted uppercase">
-                Slug
-              </span>
-              <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
-                value={form.slug}
-                disabled={readOnly}
-                placeholder="auto from name"
-                onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))}
-              />
+              {!readOnly ? (
+                <span className="mt-1 block text-xs text-muted">
+                  Shown to customers on checkout and your pricing page.
+                </span>
+              ) : null}
             </label>
             <label className="block text-sm sm:col-span-2">
               <span className="text-xs tracking-wide text-muted uppercase">
@@ -475,7 +504,7 @@ export function OfferingsManager({
                 Type
               </span>
               <select
-                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                className={selectClassName}
                 disabled={readOnly}
                 value={form.productType}
                 onChange={(e) =>
@@ -485,31 +514,53 @@ export function OfferingsManager({
                   }))
                 }
               >
-                <option value="membership">Membership</option>
-                <option value="package">Package</option>
-                <option value="drop_in">Drop-in</option>
-                <option value="addon">Add-on</option>
+                {(Object.keys(PRODUCT_TYPE_LABELS) as ProductType[]).map((type) => (
+                  <option key={type} value={type}>
+                    {PRODUCT_TYPE_LABELS[type]}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="block text-sm">
               <span className="text-xs tracking-wide text-muted uppercase">
                 Category
               </span>
-              <input
-                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+              <select
+                className={selectClassName}
                 disabled={readOnly}
-                value={form.category}
+                value={form.categorySelect}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, category: e.target.value }))
+                  setForm((f) => ({ ...f, categorySelect: e.target.value }))
                 }
-              />
+              >
+                {OFFERING_CATEGORY_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>
+                    {preset.label}
+                  </option>
+                ))}
+                <option value={CUSTOM_OFFERING_CATEGORY}>Add category…</option>
+              </select>
+              {form.categorySelect === CUSTOM_OFFERING_CATEGORY ? (
+                <input
+                  className="mt-2 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                  disabled={readOnly}
+                  placeholder="e.g. Youth training"
+                  value={form.categoryCustom}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, categoryCustom: e.target.value }))
+                  }
+                />
+              ) : null}
+              <span className="mt-1 block text-xs text-muted">
+                Groups this offering on your public pricing page.
+              </span>
             </label>
             <label className="block text-sm">
               <span className="text-xs tracking-wide text-muted uppercase">
                 Payment
               </span>
               <select
-                className="mt-1 w-full border border-border bg-background px-3 py-2 disabled:opacity-70"
+                className={selectClassName}
                 disabled={readOnly}
                 value={form.paymentType}
                 onChange={(e) => {
@@ -619,11 +670,15 @@ export function OfferingsManager({
               <tr key={o.id} className="border-t border-border">
                 <td className="px-4 py-3">
                   <div className="font-medium">{o.name}</div>
-                  <div className="text-xs text-muted">{o.slug}</div>
+                  {o.category ? (
+                    <div className="text-xs text-muted">
+                      {formatOfferingCategory(o.category)}
+                    </div>
+                  ) : null}
                 </td>
-                <td className="px-4 py-3 uppercase">
-                  {o.productType}
-                  <div className="text-xs text-muted normal-case">
+                <td className="px-4 py-3">
+                  {PRODUCT_TYPE_LABELS[o.productType]}
+                  <div className="text-xs text-muted">
                     {o.paymentType === "subscription" ? "Recurring" : "One-time"}
                   </div>
                 </td>

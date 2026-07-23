@@ -14,6 +14,17 @@ import {
   type Ma5TenantServiceClient,
 } from "@/lib/tenant/service";
 
+import {
+  applyLifecycleTransition,
+  asClientStatus,
+  deriveClientStatusFromLegacy,
+  patchForActivated,
+  patchForInvited,
+  type ClientStatus,
+  type MemberLifecycleAction,
+  type ProfileLifecycleRow,
+} from "./client-lifecycle";
+
 export type InvitedProfileInput = {
   userId: string;
   emailNorm: string;
@@ -24,14 +35,14 @@ export type InvitedProfileInput = {
   now: string;
 };
 
-type ProfileSummary = {
+type ProfileSummary = ProfileLifecycleRow & {
   id: string;
   email: string;
   full_name: string | null;
-  active: boolean;
-  invitation_status: string | null;
-  access_revoked_at: string | null;
 };
+
+const PROFILE_SUMMARY_COLS =
+  "id, email, full_name, active, invitation_status, invitation_accepted_at, access_revoked_at, client_status, status_before_delete, invite_revoked_at, activated_at, paused_at, deleted_at, invited_at";
 
 function clientOrCreate(
   existing?: Ma5TenantServiceClient,
@@ -46,11 +57,25 @@ export async function findProfileByEmailInTenant(
   const { supabase, ctx } = clientOrCreate(client);
   const { data, error } = await supabase
     .from(MA5_TABLES.profiles)
-    .select(
-      "id, email, full_name, active, invitation_status, access_revoked_at",
-    )
+    .select(PROFILE_SUMMARY_COLS)
     .eq("tenant_id", ctx.tenantId)
     .ilike("email", emailNorm)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as ProfileSummary | null) ?? null;
+}
+
+export async function findProfileByIdInTenant(
+  memberId: string,
+  client?: Ma5TenantServiceClient,
+): Promise<ProfileSummary | null> {
+  const { supabase, ctx } = clientOrCreate(client);
+  const { data, error } = await supabase
+    .from(MA5_TABLES.profiles)
+    .select(PROFILE_SUMMARY_COLS)
+    .eq("tenant_id", ctx.tenantId)
+    .eq("id", memberId)
     .maybeSingle();
 
   if (error) throw error;
@@ -70,10 +95,7 @@ export async function upsertInvitedProfile(
       full_name: input.fullName,
       phone: input.phone?.trim() || null,
       admin_notes: input.notes?.trim() || null,
-      active: false,
-      invitation_status: "sent",
-      invited_at: input.now,
-      access_revoked_at: null,
+      ...patchForInvited(input.now),
     }),
     { onConflict: "id" },
   );
@@ -96,32 +118,94 @@ export async function upsertMemberRole(
   if (error) throw error;
 }
 
-export async function updateMemberAccess(
+export async function applyMemberLifecycleAction(
   memberId: string,
-  action: "revoke" | "reactivate",
+  action: MemberLifecycleAction,
   client?: Ma5TenantServiceClient,
-): Promise<void> {
-  const { supabase, ctx } = clientOrCreate(client);
-  const now = new Date().toISOString();
+): Promise<ClientStatus> {
+  const scoped = clientOrCreate(client);
+  const { supabase, ctx } = scoped;
+  const existing = await findProfileByIdInTenant(memberId, scoped);
+  if (!existing) {
+    throw new Error("Member not found");
+  }
 
-  const patch =
-    action === "revoke"
-      ? {
-          active: false,
-          invitation_status: "revoked",
-          access_revoked_at: now,
-        }
-      : {
-          active: true,
-          invitation_status: "accepted",
-          access_revoked_at: null,
-        };
+  const currentStatus = deriveClientStatusFromLegacy(existing);
+  const now = new Date().toISOString();
+  const patch = applyLifecycleTransition(
+    { ...existing, client_status: currentStatus },
+    action,
+    now,
+  );
 
   const { error } = await supabase
     .from(MA5_TABLES.profiles)
     .update(patch)
     .eq("tenant_id", ctx.tenantId)
     .eq("id", memberId);
+
+  if (error) throw error;
+  return asClientStatus(patch.client_status as string);
+}
+
+/** @deprecated Use applyMemberLifecycleAction */
+export async function updateMemberAccess(
+  memberId: string,
+  action: "revoke" | "reactivate",
+  client?: Ma5TenantServiceClient,
+): Promise<void> {
+  const scoped = clientOrCreate(client);
+  const existing = await findProfileByIdInTenant(memberId, scoped);
+  if (!existing) throw new Error("Member not found");
+
+  const status = deriveClientStatusFromLegacy(existing);
+  const mapped: MemberLifecycleAction =
+    action === "revoke"
+      ? status === "invited"
+        ? "revoke_invite"
+        : "pause_access"
+      : status === "invite_revoked"
+        ? "restore_invitation"
+        : "restore_access";
+
+  await applyMemberLifecycleAction(memberId, mapped, scoped);
+}
+
+export async function activateMemberProfile(
+  userId: string,
+  input: { fullName: string; now?: string },
+  client?: Ma5TenantServiceClient,
+): Promise<void> {
+  const { supabase, ctx } = clientOrCreate(client);
+  const now = input.now ?? new Date().toISOString();
+  const existing = await findProfileByIdInTenant(userId, client);
+  if (!existing) {
+    throw new Error("No MA5 profile found for this invitation");
+  }
+
+  const status = deriveClientStatusFromLegacy(existing);
+  if (status === "deleted" || status === "invite_revoked") {
+    throw new Error("This invitation is no longer active");
+  }
+  if (status === "paused") {
+    throw new Error("Your account access is paused");
+  }
+  if (status === "active") {
+    return;
+  }
+  if (status !== "invited") {
+    throw new Error("Invitation is not eligible for activation");
+  }
+
+  const { error } = await supabase
+    .from(MA5_TABLES.profiles)
+    .update({
+      full_name: input.fullName.trim(),
+      ...patchForActivated(now),
+    })
+    .eq("tenant_id", ctx.tenantId)
+    .eq("id", userId)
+    .eq("client_status", "invited");
 
   if (error) throw error;
 }

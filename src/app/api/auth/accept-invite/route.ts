@@ -4,12 +4,19 @@ import { z } from "zod";
 import { applyAttributionToMember } from "@/features/marketing";
 import { readAttributionFromCookies } from "@/lib/attribution/cookies";
 import {
+  deriveClientStatusFromLegacy,
+  normalizeEmail,
+} from "@/lib/auth/client-lifecycle";
+import { activateMemberProfile } from "@/lib/auth/tenant-data";
+import {
   canAccessAdmin,
   PLATFORM_ROLES,
   type PlatformRole,
 } from "@/lib/permissions/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 const bodySchema = z.object({
   password: z.string().min(8).max(128),
@@ -21,7 +28,7 @@ function isPlatformRole(value: string): value is PlatformRole {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !isMa5DeploymentConfigured()) {
     return NextResponse.json(
       { error: "Authentication is not configured" },
       { status: 503 },
@@ -44,10 +51,56 @@ export async function POST(request: Request) {
       error: userError,
     } = await supabase.auth.getUser();
 
-    if (userError || !user) {
+    if (userError || !user?.email) {
       return NextResponse.json(
         { error: "Invitation session expired. Request a new invite." },
         { status: 401 },
+      );
+    }
+
+    const authEmail = normalizeEmail(user.email);
+    const tenantId = process.env.MA5_TENANT_ID?.trim();
+
+    const { data: profile, error: profileLookupError } = await supabase
+      .from(MA5_TABLES.profiles)
+      .select(
+        "id, email, client_status, invitation_status, invitation_accepted_at, active, access_revoked_at, deleted_at",
+      )
+      .eq("id", user.id)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+
+    if (profileLookupError || !profile) {
+      return NextResponse.json(
+        { error: "No MA5 profile found for this invitation" },
+        { status: 403 },
+      );
+    }
+
+    if (normalizeEmail(profile.email ?? "") !== authEmail) {
+      return NextResponse.json(
+        {
+          error:
+            "This invitation was issued to a different email address. Sign out and reopen the invitation using the correct account.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const clientStatus = deriveClientStatusFromLegacy(profile);
+    if (clientStatus !== "invited") {
+      return NextResponse.json(
+        {
+          error:
+            clientStatus === "invite_revoked"
+              ? "This invitation is no longer active. Contact MA5 Performance if you need a new invitation."
+              : clientStatus === "deleted"
+                ? "This account is no longer available."
+                : clientStatus === "paused"
+                  ? "Your MA5 client portal access is currently paused. Contact MA5 Performance for assistance."
+                  : "This invitation has already been used.",
+        },
+        { status: 403 },
       );
     }
 
@@ -67,32 +120,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from(MA5_TABLES.profiles)
-      .update({
-        full_name: parsed.data.fullName.trim(),
-        active: true,
-        invitation_status: "accepted",
-        invitation_accepted_at: new Date().toISOString(),
-        access_revoked_at: null,
-      })
-      .eq("id", user.id)
-      .select("id")
-      .maybeSingle();
-
-    if (profileError) {
-      console.error("[api/auth/accept-invite] profile", profileError);
-      return NextResponse.json(
-        { error: "Could not activate your profile" },
-        { status: 500 },
+    const serviceClient = createMa5TenantServiceClient();
+    try {
+      await activateMemberProfile(
+        user.id,
+        { fullName: parsed.data.fullName.trim() },
+        serviceClient,
       );
-    }
-
-    if (!profile) {
-      return NextResponse.json(
-        { error: "No MA5 profile found for this invitation" },
-        { status: 403 },
-      );
+    } catch (activationError) {
+      const message =
+        activationError instanceof Error
+          ? activationError.message
+          : "Could not activate your profile";
+      return NextResponse.json({ error: message }, { status: 403 });
     }
 
     const { data: roleRows } = await supabase

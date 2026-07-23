@@ -3,6 +3,13 @@ export type OfferingStatus = "draft" | "active" | "inactive" | "archived";
 export type ProductType = "membership" | "package" | "drop_in" | "addon";
 export type BillingInterval = "month" | "one_time";
 
+export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
+  membership: "Membership",
+  package: "Package",
+  drop_in: "Drop-in",
+  addon: "Add-on",
+};
+
 export type Offering = {
   id: string;
   slug: string;

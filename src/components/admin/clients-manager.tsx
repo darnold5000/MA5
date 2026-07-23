@@ -1,12 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import type { MemberDirectoryRow } from "@/features/auth/types";
+import {
+  allowedActionsForStatus,
+  clientStatusLabel,
+  type MemberLifecycleAction,
+} from "@/lib/auth/client-lifecycle";
 
 type AdminClientsManagerProps = {
   members: MemberDirectoryRow[];
+  showDeleted?: boolean;
+};
+
+const ACTION_LABELS: Record<MemberLifecycleAction, string> = {
+  revoke_invite: "Revoke invitation",
+  restore_invitation: "Restore invitation",
+  pause_access: "Pause access",
+  restore_access: "Restore access",
+  delete: "Delete",
+  restore_deleted: "Restore client",
+};
+
+const CONFIRM_MESSAGES: Partial<Record<MemberLifecycleAction, string>> = {
+  revoke_invite:
+    "Revoke this invitation?\n\nThe current invitation will no longer work. The client will not be given portal access. You can restore the invitation later and send a new one.",
+  pause_access:
+    "Pause this client’s access?\n\nThey will temporarily lose access to the client portal, but their records and history will remain available.",
+  delete:
+    "Delete this client?\n\nThe client will be removed from the active client list and will lose portal access. Their historical records will be retained.",
+  restore_invitation:
+    "Restore this invitation?\n\nThe client will return to invited status. Send a new invitation email after restoring.",
+  restore_access:
+    "Restore this client’s portal access?\n\nThey will be able to sign in again immediately.",
+  restore_deleted:
+    "Restore this deleted client?\n\nThey will return to their previous lifecycle status.",
 };
 
 function formatDate(value: string | null) {
@@ -22,7 +52,27 @@ function formatDate(value: string | null) {
   }
 }
 
-export function AdminClientsManager({ members }: AdminClientsManagerProps) {
+function statusBadgeClass(status: MemberDirectoryRow["clientStatus"]): string {
+  switch (status) {
+    case "active":
+      return "bg-emerald-500/10 text-emerald-700";
+    case "invited":
+      return "bg-sky-500/10 text-sky-700";
+    case "paused":
+      return "bg-amber-500/10 text-amber-800";
+    case "invite_revoked":
+      return "bg-rose-500/10 text-rose-700";
+    case "deleted":
+      return "bg-muted/20 text-muted";
+    default:
+      return "bg-muted/20 text-muted";
+  }
+}
+
+export function AdminClientsManager({
+  members,
+  showDeleted = false,
+}: AdminClientsManagerProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +83,14 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [role, setRole] = useState<"client" | "coach">("client");
+
+  const visibleMembers = useMemo(
+    () =>
+      showDeleted
+        ? members
+        : members.filter((member) => member.clientStatus !== "deleted"),
+    [members, showDeleted],
+  );
 
   async function sendInvite(resendEmail?: string, resendName?: string) {
     setPending(true);
@@ -82,15 +140,12 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
     router.refresh();
   }
 
-  async function setAccess(
+  async function runLifecycleAction(
     memberId: string,
-    action: "revoke" | "reactivate",
+    action: MemberLifecycleAction,
   ) {
-    const confirmed =
-      action === "revoke"
-        ? window.confirm("Revoke this member’s platform access?")
-        : window.confirm("Restore this member’s platform access?");
-    if (!confirmed) return;
+    const confirmMessage = CONFIRM_MESSAGES[action];
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
 
     setPending(true);
     setError(null);
@@ -106,8 +161,60 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
       setError(data.error ?? "Update failed");
       return;
     }
-    setMessage(action === "revoke" ? "Access revoked" : "Access restored");
+
+    if (action === "restore_invitation") {
+      setMessage("Invitation restored — send a new invite email when ready.");
+    } else if (action === "restore_access") {
+      setMessage("Client access restored.");
+    } else if (action === "restore_deleted") {
+      setMessage("Client restored.");
+    } else if (action === "revoke_invite") {
+      setMessage("Invitation revoked.");
+    } else if (action === "pause_access") {
+      setMessage("Client access paused.");
+    } else if (action === "delete") {
+      setMessage("Client deleted.");
+    } else {
+      setMessage("Updated.");
+    }
     router.refresh();
+  }
+
+  function renderActions(member: MemberDirectoryRow) {
+    const actions = allowedActionsForStatus(member.clientStatus);
+    const buttons: ReactNode[] = [];
+
+    if (
+      member.clientStatus === "invited"
+    ) {
+      buttons.push(
+        <button
+          key="resend"
+          type="button"
+          disabled={pending}
+          onClick={() => void sendInvite(member.email, member.fullName)}
+          className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
+        >
+          Resend invite
+        </button>,
+      );
+    }
+
+    for (const action of actions) {
+      buttons.push(
+        <button
+          key={action}
+          type="button"
+          disabled={pending}
+          onClick={() => void runLifecycleAction(member.id, action)}
+          className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
+        >
+          {ACTION_LABELS[action]}
+        </button>,
+      );
+    }
+
+    return buttons;
   }
 
   return (
@@ -115,14 +222,17 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           Invite members by email. New accounts are invitation-only.
+          {showDeleted ? " Showing deleted clients." : null}
         </p>
-        <button
-          type="button"
-          onClick={() => setShowNewClient((open) => !open)}
-          className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-        >
-          {showNewClient ? "Close" : "New client"}
-        </button>
+        {!showDeleted ? (
+          <button
+            type="button"
+            onClick={() => setShowNewClient((open) => !open)}
+            className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+          >
+            {showNewClient ? "Close" : "New client"}
+          </button>
+        ) : null}
       </div>
 
       {showNewClient ? (
@@ -210,7 +320,6 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
               <th className="px-4 py-3 font-semibold">Name</th>
               <th className="px-4 py-3 font-semibold">Email</th>
               <th className="px-4 py-3 font-semibold">Role</th>
-              <th className="px-4 py-3 font-semibold">Invite</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 font-semibold">Invited</th>
               <th className="px-4 py-3 font-semibold">Last login</th>
@@ -218,90 +327,43 @@ export function AdminClientsManager({ members }: AdminClientsManagerProps) {
             </tr>
           </thead>
           <tbody>
-            {members.length === 0 ? (
+            {visibleMembers.length === 0 ? (
               <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-8 text-center text-muted"
-                >
-                  No members yet. Send an invitation to add the first account.
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">
+                  {showDeleted
+                    ? "No deleted clients."
+                    : "No members yet. Send an invitation to add the first account."}
                 </td>
               </tr>
             ) : (
-              members.map((member) => {
-                const accountLabel = member.accessRevokedAt
-                  ? "revoked"
-                  : member.active
-                    ? "active"
-                    : member.invitationStatus === "sent" ||
-                        member.invitationStatus === "pending"
-                      ? "invited"
-                      : "inactive";
-                const canResend =
-                  member.invitationStatus === "sent" ||
-                  member.invitationStatus === "pending" ||
-                  member.invitationStatus === "expired" ||
-                  member.invitationStatus === "failed";
-
-                return (
-                  <tr
-                    key={member.id}
-                    className="border-b border-border last:border-b-0"
-                  >
-                    <td className="px-4 py-3 font-medium">{member.fullName}</td>
-                    <td className="px-4 py-3 text-muted">{member.email}</td>
-                    <td className="px-4 py-3 text-muted">{member.role}</td>
-                    <td className="px-4 py-3 text-muted">
-                      {member.invitationStatus}
-                    </td>
-                    <td className="px-4 py-3 text-muted">{accountLabel}</td>
-                    <td className="px-4 py-3 text-muted">
-                      {formatDate(member.invitedAt)}
-                    </td>
-                    <td className="px-4 py-3 text-muted">
-                      {formatDate(member.lastLoginAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        {canResend ? (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() =>
-                              void sendInvite(member.email, member.fullName)
-                            }
-                            className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
-                          >
-                            Resend
-                          </button>
-                        ) : null}
-                        {accountLabel === "revoked" ||
-                        accountLabel === "inactive" ? (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() =>
-                              void setAccess(member.id, "reactivate")
-                            }
-                            className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
-                          >
-                            Restore
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() => void setAccess(member.id, "revoke")}
-                            className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+              visibleMembers.map((member) => (
+                <tr
+                  key={member.id}
+                  className="border-b border-border last:border-b-0"
+                >
+                  <td className="px-4 py-3 font-medium">{member.fullName}</td>
+                  <td className="px-4 py-3 text-muted">{member.email}</td>
+                  <td className="px-4 py-3 text-muted">{member.role}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded px-2 py-0.5 text-xs font-semibold tracking-wide uppercase ${statusBadgeClass(member.clientStatus)}`}
+                    >
+                      {clientStatusLabel(member.clientStatus)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {formatDate(member.invitedAt)}
+                  </td>
+                  <td className="px-4 py-3 text-muted">
+                    {formatDate(member.lastLoginAt)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {renderActions(member)}
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

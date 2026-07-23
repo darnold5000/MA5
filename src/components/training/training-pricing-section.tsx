@@ -1,7 +1,9 @@
 import { ButtonLink } from "@/components/shared/button-link";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getBookingHref } from "@/content/booking";
+import { formatOfferingCategory } from "@/lib/billing/offering-categories";
 import { listActiveOfferings } from "@/lib/billing/catalog";
+import { PRODUCT_TYPE_LABELS } from "@/lib/billing/types";
 import { formatMoney } from "@/features/scheduling/format";
 
 export async function TrainingPricingSection() {
@@ -9,7 +11,10 @@ export async function TrainingPricingSection() {
 
   const groups = new Map<string, typeof offerings>();
   for (const offering of offerings) {
-    const key = offering.category || offering.productType;
+    const key =
+      offering.category ||
+      PRODUCT_TYPE_LABELS[offering.productType] ||
+      offering.productType;
     const list = groups.get(key) ?? [];
     list.push(offering);
     groups.set(key, list);
@@ -35,7 +40,7 @@ export async function TrainingPricingSection() {
           ordered.map(([category, items]) => (
             <div key={category}>
               <h3 className="font-display text-2xl tracking-wide uppercase">
-                {category.replace(/_/g, " ")}
+                {formatOfferingCategory(category)}
               </h3>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {items.map((item) => (

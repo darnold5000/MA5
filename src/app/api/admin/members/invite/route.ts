@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { inviteRedirectUrl } from "@/features/auth/members";
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
+import { deriveClientStatusFromLegacy } from "@/lib/auth/client-lifecycle";
 import { sendExistingUserActivationEmail } from "@/lib/auth/activation-email";
 import {
   findProfileByEmailInTenant,
@@ -99,11 +100,11 @@ export async function POST(request: Request) {
 
     const existingProfile = await findProfileByEmailInTenant(emailNorm, client);
 
-    if (
-      existingProfile &&
-      existingProfile.active &&
-      existingProfile.invitation_status === "accepted"
-    ) {
+    const existingStatus = existingProfile
+      ? deriveClientStatusFromLegacy(existingProfile)
+      : null;
+
+    if (existingProfile && existingStatus === "active") {
       await upsertMemberRole(existingProfile.id, role, client);
 
       await attachLeadOnInvite({
@@ -127,6 +128,25 @@ export async function POST(request: Request) {
           ? "Member is already active — no new invitation needed"
           : "Existing member already active — role ensured",
       });
+    }
+
+    if (
+      existingProfile &&
+      (existingStatus === "invite_revoked" ||
+        existingStatus === "deleted" ||
+        existingStatus === "paused")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            existingStatus === "invite_revoked"
+              ? "Restore the invitation before sending a new invite."
+              : existingStatus === "deleted"
+                ? "Restore the deleted client before sending a new invite."
+                : "Restore client access before sending a new invite.",
+        },
+        { status: 400 },
+      );
     }
 
     const { data: invited, error: inviteError } =
