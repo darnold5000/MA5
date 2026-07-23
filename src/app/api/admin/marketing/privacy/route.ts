@@ -9,10 +9,9 @@ import {
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
-import {
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({
@@ -41,6 +40,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!isMa5DeploymentConfigured()) {
+    return NextResponse.json(
+      { error: "MA5 tenant deployment is not configured" },
+      { status: 503 },
+    );
+  }
+
   const session = await getSessionUser();
   if (!session) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
@@ -49,39 +55,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY is required" },
-      { status: 503 },
-    );
-  }
-
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const admin = createServiceClient();
+  const { supabase: admin, ctx } = createMa5TenantServiceClient();
+  const scope = { admin, tenantId: ctx.tenantId };
 
   if (parsed.data.action === "delete_visitor") {
-    const result = await deleteAnonymousVisitor(admin, parsed.data.visitorId);
+    const result = await deleteAnonymousVisitor(scope, parsed.data.visitorId);
     if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: 409 });
+      const status = result.error === "Visitor session not found" ? 404 : 409;
+      return NextResponse.json({ error: result.error }, { status });
     }
     return NextResponse.json({ ok: true });
   }
 
   if (parsed.data.action === "delete_lead") {
-    const result = await deleteUnconvertedLead(admin, parsed.data.leadId);
+    const result = await deleteUnconvertedLead(scope, parsed.data.leadId);
     if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: 409 });
+      const status = result.error === "Lead not found" ? 404 : 409;
+      return NextResponse.json({ error: result.error }, { status });
     }
     return NextResponse.json({ ok: true });
   }
 
   const deleted = await purgeExpiredAnonymousVisitors(
-    admin,
+    scope,
     parsed.data.retentionDays ?? 90,
   );
   return NextResponse.json({ ok: true, deleted });

@@ -2,15 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { listMarketingLeads } from "@/features/marketing";
+import { updateLeadStatus } from "@/features/marketing/privacy";
 import type { LeadStatus } from "@/features/marketing/types";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
-import {
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
-import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 const patchSchema = z.object({
   leadId: z.string().uuid(),
@@ -47,6 +46,13 @@ export async function PATCH(request: Request) {
     );
   }
 
+  if (!isMa5DeploymentConfigured()) {
+    return NextResponse.json(
+      { error: "MA5 tenant deployment is not configured" },
+      { status: 503 },
+    );
+  }
+
   const session = await getSessionUser();
   if (!session) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
@@ -55,27 +61,22 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json(
-      { error: "SUPABASE_SERVICE_ROLE_KEY is required" },
-      { status: 503 },
-    );
-  }
-
   const json = await request.json().catch(() => null);
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid update" }, { status: 400 });
   }
 
-  const admin = createServiceClient();
-  const { error } = await admin
-    .from(MA5_TABLES.leads)
-    .update({ status: parsed.data.status })
-    .eq("id", parsed.data.leadId);
+  const { supabase: admin, ctx } = createMa5TenantServiceClient();
+  const result = await updateLeadStatus(
+    { admin, tenantId: ctx.tenantId },
+    parsed.data.leadId,
+    parsed.data.status,
+  );
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!result.ok) {
+    const status = result.error === "Lead not found" ? 404 : 400;
+    return NextResponse.json({ error: result.error }, { status });
   }
 
   return NextResponse.json({ ok: true });
