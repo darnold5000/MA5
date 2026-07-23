@@ -7,6 +7,7 @@ import {
   normalizeEmail,
   patchForActivated,
   patchForInvited,
+  patchForReenroll,
   profileNeedsInviteActivationLink,
 } from "@/lib/auth/client-lifecycle";
 
@@ -90,6 +91,15 @@ describe("client lifecycle", () => {
     );
     expect(patch.client_status).toBe("deleted");
     expect(patch.status_before_delete).toBe("invited");
+  });
+
+  it("patchForReenroll restores active former members", () => {
+    expect(patchForReenroll(3)).toMatchObject({
+      client_status: "active",
+      active: true,
+      deleted_at: null,
+      invite_generation: 3,
+    });
   });
 
   it("deleted clients cannot be restored from the admin directory", () => {

@@ -20,6 +20,7 @@ import {
   deriveClientStatusFromLegacy,
   patchForActivated,
   patchForInvited,
+  patchForReenroll,
   type ClientStatus,
   type MemberLifecycleAction,
   type ProfileLifecycleRow,
@@ -118,6 +119,50 @@ export async function upsertMemberRole(
     { onConflict: tenantOnConflict(ctx, "user_id,role") },
   );
   if (error) throw error;
+}
+
+export type ReenrollFormerMemberInput = {
+  userId: string;
+  emailNorm: string;
+  fullName: string;
+  phone?: string;
+  notes?: string;
+  role: Extract<PlatformRole, "client" | "coach">;
+  inviteGeneration: number;
+};
+
+/** Re-open a deleted former member on their existing profile (same email + history). */
+export async function reenrollFormerMember(
+  input: ReenrollFormerMemberInput,
+  client?: Ma5TenantServiceClient,
+): Promise<Ma5DeploymentContext> {
+  const { supabase, ctx } = clientOrCreate(client);
+  const existing = await findProfileByIdInTenant(input.userId, client);
+  if (!existing) {
+    throw new Error("Former member profile not found");
+  }
+  if (deriveClientStatusFromLegacy(existing) !== "deleted") {
+    throw new Error("Only deleted members can be re-enrolled through this flow");
+  }
+
+  const { error: profileError } = await supabase
+    .from(MA5_TABLES.profiles)
+    .update(
+      withTenantId(ctx, {
+        email: input.emailNorm,
+        full_name: input.fullName,
+        phone: input.phone?.trim() || null,
+        admin_notes: input.notes?.trim() || null,
+        ...patchForReenroll(input.inviteGeneration),
+      }),
+    )
+    .eq("tenant_id", ctx.tenantId)
+    .eq("id", input.userId);
+
+  if (profileError) throw profileError;
+
+  await upsertMemberRole(input.userId, input.role, client);
+  return ctx;
 }
 
 export async function applyMemberLifecycleAction(

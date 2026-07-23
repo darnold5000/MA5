@@ -29,7 +29,7 @@ const CONFIRM_MESSAGES: Partial<Record<MemberLifecycleAction, string>> = {
   pause_access:
     "Pause this client’s access?\n\nThey will temporarily lose access to the client portal, but their records and history will remain available.",
   delete:
-    "Remove this client from the directory?\n\nThey will lose portal access and disappear from this list. Billing and attendance history is kept for reporting. You can invite the same email again later if they never finished signing up.",
+    "Remove this client from the directory?\n\nThey will lose portal access and disappear from this list. Their billing and attendance history is kept.\n\nTo bring them back later, invite the same email again — their history will stay linked.",
   restore_invitation:
     "Restore this invitation?\n\nThe client will return to invited status. Send a new invitation email after restoring.",
   restore_access:

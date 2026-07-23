@@ -147,3 +147,8 @@ export function inviteRedirectUrl(siteUrl: string, inviteGeneration = 1) {
   const next = `/auth/accept-invite?igen=${inviteGeneration}`;
   return `${siteUrl.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(next)}`;
 }
+
+export function memberReenrollRedirectUrl(siteUrl: string) {
+  const next = "/auth/reset-password";
+  return `${siteUrl.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(next)}`;
+}

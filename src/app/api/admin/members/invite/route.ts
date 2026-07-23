@@ -7,10 +7,11 @@ import {
   deriveClientStatusFromLegacy,
   nextInviteGeneration,
 } from "@/lib/auth/client-lifecycle";
-import { sendExistingUserActivationEmail } from "@/lib/auth/activation-email";
+import { sendExistingUserActivationEmail, sendFormerMemberReenrollEmail } from "@/lib/auth/activation-email";
 import {
   findProfileByEmailInTenant,
   inviteUserMetadata,
+  reenrollFormerMember,
   upsertInvitedProfile,
   upsertMemberRole,
 } from "@/lib/auth/tenant-data";
@@ -141,13 +142,55 @@ export async function POST(request: Request) {
 
     if (existingProfile && existingStatus === "deleted") {
       if (profileWasActivated(existingProfile)) {
-        return NextResponse.json(
-          {
-            error:
-              "This email belonged to a former member. Use a different email or contact support to restore their records.",
-          },
-          { status: 400 },
+        const inviteGeneration = nextInviteGeneration(
+          existingProfile.invite_generation ?? null,
         );
+
+        await reenrollFormerMember(
+          {
+            userId: existingProfile.id,
+            emailNorm,
+            fullName,
+            phone: parsed.data.phone,
+            notes: parsed.data.notes,
+            role,
+            inviteGeneration,
+          },
+          client,
+        );
+
+        await admin.auth.admin.updateUserById(existingProfile.id, {
+          user_metadata: {
+            ma5_invite_generation: inviteGeneration,
+          },
+        });
+
+        await sendFormerMemberReenrollEmail({
+          admin,
+          email: emailNorm,
+          fullName,
+        });
+
+        await attachLeadOnInvite({
+          client,
+          profileId: existingProfile.id,
+          email: emailNorm,
+          leadId: leadIdOpt,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          member: {
+            id: existingProfile.id,
+            fullName,
+            email: emailNorm,
+            role,
+            invitationStatus: "accepted",
+            active: true,
+          },
+          message:
+            "Former member re-enrolled — welcome back email sent. They appear in the directory again.",
+        });
       }
     }
 

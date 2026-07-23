@@ -173,6 +173,26 @@ export function nextInviteGeneration(current: number | null | undefined): number
   return base + 1;
 }
 
+/**
+ * Bring a former member back on the same profile + auth user.
+ * Preserves activation history; clears deleted/pause/revoke flags.
+ */
+export function patchForReenroll(
+  inviteGeneration: number,
+): Record<string, unknown> {
+  return {
+    client_status: "active",
+    status_before_delete: null,
+    active: true,
+    invitation_status: "accepted",
+    access_revoked_at: null,
+    invite_revoked_at: null,
+    paused_at: null,
+    deleted_at: null,
+    invite_generation: inviteGeneration,
+  };
+}
+
 /** Profile patch after genuine account activation. */
 export function patchForActivated(now: string): Record<string, unknown> {
   return {
