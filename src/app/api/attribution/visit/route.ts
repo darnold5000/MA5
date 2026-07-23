@@ -4,6 +4,7 @@ import { z } from "zod";
 import { isBotUserAgent } from "@/lib/attribution/bots";
 import { readAttributionFromCookies } from "@/lib/attribution/cookies";
 import { isValidVisitorId } from "@/lib/attribution/parse";
+import { maybeSampledTenantVisitorPurge } from "@/lib/attribution/sampled-purge";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import {
   createServiceClient,
@@ -119,10 +120,10 @@ export async function POST(request: Request) {
         .insert(ctx ? withTenantId(ctx, base) : base);
     }
 
-    if (!isBot && Math.random() < 0.02) {
-      void admin.rpc("ma5_purge_expired_anonymous_visitors", {
-        retention_days: 90,
-      });
+    if (!isBot) {
+      maybeSampledTenantVisitorPurge(
+        ctx ? { admin, tenantId: ctx.tenantId } : null,
+      );
     }
 
     return NextResponse.json({
