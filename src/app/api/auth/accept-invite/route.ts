@@ -4,9 +4,9 @@ import { z } from "zod";
 import { applyAttributionToMember } from "@/features/marketing";
 import { readAttributionFromCookies } from "@/lib/attribution/cookies";
 import {
-  deriveClientStatusFromLegacy,
-  normalizeEmail,
-} from "@/lib/auth/client-lifecycle";
+  readValidatedInviteGeneration,
+  resolveInviteAccess,
+} from "@/lib/auth/invite-access";
 import { activateMemberProfile } from "@/lib/auth/tenant-data";
 import {
   canAccessAdmin,
@@ -45,6 +45,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    const inviteGeneration = await readValidatedInviteGeneration();
+    const access = await resolveInviteAccess(inviteGeneration);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.message }, { status: 403 });
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -55,52 +61,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Invitation session expired. Request a new invite." },
         { status: 401 },
-      );
-    }
-
-    const authEmail = normalizeEmail(user.email);
-    const tenantId = process.env.MA5_TENANT_ID?.trim();
-
-    const { data: profile, error: profileLookupError } = await supabase
-      .from(MA5_TABLES.profiles)
-      .select(
-        "id, email, client_status, invitation_status, invitation_accepted_at, active, access_revoked_at, deleted_at",
-      )
-      .eq("id", user.id)
-      .eq("tenant_id", tenantId)
-      .maybeSingle();
-
-    if (profileLookupError || !profile) {
-      return NextResponse.json(
-        { error: "No MA5 profile found for this invitation" },
-        { status: 403 },
-      );
-    }
-
-    if (normalizeEmail(profile.email ?? "") !== authEmail) {
-      return NextResponse.json(
-        {
-          error:
-            "This invitation was issued to a different email address. Sign out and reopen the invitation using the correct account.",
-        },
-        { status: 403 },
-      );
-    }
-
-    const clientStatus = deriveClientStatusFromLegacy(profile);
-    if (clientStatus !== "invited") {
-      return NextResponse.json(
-        {
-          error:
-            clientStatus === "invite_revoked"
-              ? "This invitation is no longer active. Contact MA5 Performance if you need a new invitation."
-              : clientStatus === "deleted"
-                ? "This account is no longer available."
-                : clientStatus === "paused"
-                  ? "Your MA5 client portal access is currently paused. Contact MA5 Performance for assistance."
-                  : "This invitation has already been used.",
-        },
-        { status: 403 },
       );
     }
 
@@ -124,7 +84,10 @@ export async function POST(request: Request) {
     try {
       await activateMemberProfile(
         user.id,
-        { fullName: parsed.data.fullName.trim() },
+        {
+          fullName: parsed.data.fullName.trim(),
+          inviteGeneration: access.inviteGeneration,
+        },
         serviceClient,
       );
     } catch (activationError) {

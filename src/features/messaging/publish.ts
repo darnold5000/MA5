@@ -1,4 +1,8 @@
 import { deliverExternalSafely } from "@/features/messaging/delivery";
+import {
+  applyActiveClientFilter,
+  filterToActiveClientIds,
+} from "@/lib/auth/member-filters";
 import { createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
@@ -21,32 +25,32 @@ export async function publishAnnouncementRecipients(
       .eq("role", "client");
     const ids = [...new Set((roles ?? []).map((r) => String(r.user_id)))];
     if (ids.length) {
-      const { data: profiles } = await supabase
-        .from(MA5_TABLES.profiles)
-        .select("id")
-        .in("id", ids)
-        .eq("active", true);
+      const { data: profiles } = await applyActiveClientFilter(
+        supabase.from(MA5_TABLES.profiles).select("id").in("id", ids),
+      );
       clientIds = (profiles ?? []).map((p) => String(p.id));
     }
   } else if (audienceType === "selected_clients") {
     const selected = audienceFilter?.clientIds;
     if (Array.isArray(selected)) {
-      clientIds = selected.map(String);
+      clientIds = await filterToActiveClientIds(supabase, selected.map(String));
     }
   } else if (audienceType === "team" && audienceFilter?.teamId) {
     const { data: members } = await supabase
       .from(MA5_TABLES.teamMembers)
       .select("user_id")
       .eq("team_id", String(audienceFilter.teamId));
-    clientIds = (members ?? []).map((m) => String(m.user_id));
+    const memberIds = (members ?? []).map((m) => String(m.user_id));
+    clientIds = await filterToActiveClientIds(supabase, memberIds);
   } else if (audienceType === "program" && audienceFilter?.programId) {
     const { data: assigns } = await supabase
       .from(MA5_TABLES.programAssignments)
       .select("client_user_id")
       .eq("program_id", String(audienceFilter.programId));
-    clientIds = [
+    const assigneeIds = [
       ...new Set((assigns ?? []).map((a) => String(a.client_user_id))),
     ];
+    clientIds = await filterToActiveClientIds(supabase, assigneeIds);
   }
 
   const now = new Date().toISOString();
@@ -76,10 +80,12 @@ export async function publishAnnouncementRecipients(
 
   await supabase.from(MA5_TABLES.notifications).insert(notifs);
 
-  const { data: prefs } = await supabase
-    .from(MA5_TABLES.profiles)
-    .select("id, email, notify_coach_messages")
-    .in("id", clientIds);
+  const { data: prefs } = await applyActiveClientFilter(
+    supabase
+      .from(MA5_TABLES.profiles)
+      .select("id, email, notify_coach_messages")
+      .in("id", clientIds),
+  );
 
   for (const p of prefs ?? []) {
     void deliverExternalSafely({

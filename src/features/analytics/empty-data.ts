@@ -14,6 +14,7 @@ export const EMPTY_FEES: FeeSnapshot = {
 
 const ZERO_MEMBERSHIPS = {
   active: 0,
+  activeClients: 0,
   newThisMonth: 0,
   cancelled: 0,
   netGrowth: 0,

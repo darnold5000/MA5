@@ -9,6 +9,7 @@ import {
   PLATFORM_ROLES,
   type PlatformRole,
 } from "@/lib/permissions/roles";
+import { resolveAccessState } from "@/lib/auth/access";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
 const bodySchema = z.object({
@@ -97,26 +98,22 @@ export async function POST(request: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from(MA5_TABLES.profiles)
-      .select("active, invitation_status, access_revoked_at")
+      .select(
+        "active, invitation_status, access_revoked_at, client_status, deleted_at, invitation_accepted_at",
+      )
       .eq("id", userId)
       .maybeSingle();
 
     if (profileError) {
       const { data: basic } = await supabase
         .from(MA5_TABLES.profiles)
-        .select("active")
+        .select("active, client_status, deleted_at")
         .eq("id", userId)
         .maybeSingle();
-      profileActive = basic?.active !== false;
+      profileActive =
+        resolveAccessState(basic) === "active";
     } else if (profile) {
-      const revoked =
-        profile.active === false ||
-        profile.invitation_status === "revoked" ||
-        Boolean(profile.access_revoked_at);
-      const pendingInvite =
-        profile.invitation_status === "sent" ||
-        profile.invitation_status === "pending";
-      profileActive = !revoked && !pendingInvite;
+      profileActive = resolveAccessState(profile) === "active";
     }
 
     if (!profileActive) {

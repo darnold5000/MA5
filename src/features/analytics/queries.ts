@@ -34,6 +34,7 @@ import {
 } from "@/features/analytics/time";
 import { countStaffUnreadReplies } from "@/features/messaging/defaults";
 import { loadCommunicationState } from "@/features/messaging/queries";
+import { applyActiveClientFilter } from "@/lib/auth/member-filters";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -206,12 +207,31 @@ async function fetchMembershipSnapshot() {
   const monthStart = startOfMonth();
   const now = new Date();
 
+  const { data: clientRoles } = await supabase
+    .from(MA5_TABLES.userRoles)
+    .select("user_id")
+    .eq("role", "client");
+  const clientIds = [
+    ...new Set((clientRoles ?? []).map((r) => String(r.user_id))),
+  ];
+
+  const activeClientsPromise =
+    clientIds.length === 0
+      ? Promise.resolve({ count: 0 })
+      : applyActiveClientFilter(
+          supabase
+            .from(MA5_TABLES.profiles)
+            .select("id", { count: "exact", head: true })
+            .in("id", clientIds),
+        );
+
   const [
     { count: active },
     { count: newThisMonth },
     { count: cancelled },
     { count: atRisk },
     { count: expired },
+    { count: activeClients },
   ] = await Promise.all([
     supabase
       .from(MA5_TABLES.subscriptions)
@@ -236,6 +256,7 @@ async function fetchMembershipSnapshot() {
       .select("id", { count: "exact", head: true })
       .eq("status", "canceled")
       .gte("canceled_at", addDays(now, -30).toISOString()),
+    activeClientsPromise,
   ]);
 
   const activeN = active ?? 0;
@@ -244,6 +265,7 @@ async function fetchMembershipSnapshot() {
 
   return {
     active: activeN,
+    activeClients: activeClients ?? 0,
     newThisMonth: newN,
     cancelled: cancelledN,
     netGrowth: newN - cancelledN,
@@ -829,7 +851,7 @@ export async function getBusinessReports(): Promise<BusinessReports> {
       { id: "k2", label: "Revenue this week", value: formatCompactMoney(revenueWeek) },
       { id: "k3", label: "Revenue this month", value: formatCompactMoney(revenueMonth) },
       { id: "k4", label: "Revenue YTD", value: formatCompactMoney(revenueYtd) },
-      { id: "k5", label: "Active members", value: String(memberships.active) },
+      { id: "k5", label: "Active clients", value: String(memberships.activeClients) },
       { id: "k6", label: "New members this month", value: String(memberships.newThisMonth) },
       { id: "k7", label: "Expired memberships", value: String(memberships.expired) },
       { id: "k8", label: "Members at risk", value: String(memberships.atRisk) },
@@ -978,8 +1000,8 @@ export async function getDailyOpsDashboard(): Promise<DailyOpsDashboard> {
       },
       {
         id: "members",
-        label: "Active members",
-        value: String(memberships.active),
+        label: "Active clients",
+        value: String(memberships.activeClients),
         href: "/admin/clients",
       },
       {

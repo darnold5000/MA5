@@ -42,9 +42,19 @@ export type FunnelProfileRow = {
   invited_at: string | null;
   invitation_accepted_at: string | null;
   created_at: string;
-  active: boolean;
+  active?: boolean;
+  client_status?: string | null;
   lead_id: string | null;
 };
+
+function isActivatedMember(profile: FunnelProfileRow): boolean {
+  if (profile.client_status) {
+    return profile.client_status === "active";
+  }
+  return Boolean(
+    profile.active && (profile.invitation_accepted_at || profile.lead_id),
+  );
+}
 
 /**
  * Pure funnel aggregation for dashboard + tests.
@@ -58,9 +68,7 @@ export function buildFunnelReport(
   const invitationsAccepted = profiles.filter((p) =>
     Boolean(p.invitation_accepted_at),
   ).length;
-  const membersActivated = profiles.filter(
-    (p) => p.active && Boolean(p.invitation_accepted_at || p.lead_id),
-  ).length;
+  const membersActivated = profiles.filter(isActivatedMember).length;
 
   const leadToInviteDays: number[] = [];
   const leadToConvertDays: number[] = [];

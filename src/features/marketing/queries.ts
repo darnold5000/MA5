@@ -17,6 +17,11 @@ import {
 } from "@/features/marketing/empty-dashboard";
 import { buildFunnelReport } from "@/features/marketing/funnel";
 import {
+  applyActiveClientFilter,
+  applyInvitedClientFilter,
+  isActiveOperationalClient,
+} from "@/lib/auth/member-filters";
+import {
   computeGrowthScore,
   computeLeadAging,
   computeTopSource,
@@ -400,14 +405,15 @@ export async function getMarketingDashboard(
       supabase
         .from(MA5_TABLES.profiles)
         .select(
-          "id, invited_at, invitation_accepted_at, invitation_status, created_at, active, lead_id, acquisition_source, acquisition_medium, acquisition_campaign",
+          "id, invited_at, invitation_accepted_at, invitation_status, created_at, active, client_status, deleted_at, lead_id, acquisition_source, acquisition_medium, acquisition_campaign",
         )
         .limit(3000),
-      supabase
-        .from(MA5_TABLES.profiles)
-        .select("id, invited_at, invitation_status, active")
-        .in("invitation_status", ["sent", "pending"])
-        .limit(2000),
+      applyInvitedClientFilter(
+        supabase
+          .from(MA5_TABLES.profiles)
+          .select("id, invited_at, invitation_status, active, client_status")
+          .limit(2000),
+      ),
     ]);
 
     if (
@@ -479,7 +485,7 @@ export async function getMarketingDashboard(
       return p.invited_at < sevenDaysAgo;
     }).length;
     const awaitingActivation = inviteProfiles.filter(
-      (p) => p.active === false,
+      (p) => p.client_status === "invited",
     ).length;
     const staleInvites = inviteProfiles.filter(
       (p) => p.invited_at && p.invited_at < sevenDaysAgo,
@@ -487,6 +493,7 @@ export async function getMarketingDashboard(
 
     const profiles = membersRes.data ?? [];
     const membersAcquired = profiles.filter((p) => {
+      if (!isActiveOperationalClient(p)) return false;
       if (!p.acquisition_source && !p.lead_id) return false;
       if (p.invitation_accepted_at) {
         return (
@@ -558,6 +565,7 @@ export async function getMarketingDashboard(
           invitation_accepted_at: p.invitation_accepted_at ?? null,
           created_at: p.created_at,
           active: Boolean(p.active),
+          client_status: p.client_status ?? null,
           lead_id: p.lead_id ?? null,
         })),
     );
@@ -789,13 +797,15 @@ export async function getCampaignPerformance(
           .gte("created_at", resolved.from)
           .lte("created_at", resolved.to)
           .limit(5000),
-        supabase
-          .from(MA5_TABLES.profiles)
-          .select(
-            "acquisition_source, acquisition_medium, acquisition_campaign, invitation_accepted_at, created_at",
-          )
-          .not("acquisition_campaign", "is", null)
-          .limit(5000),
+        applyActiveClientFilter(
+          supabase
+            .from(MA5_TABLES.profiles)
+            .select(
+              "acquisition_source, acquisition_medium, acquisition_campaign, invitation_accepted_at, created_at, client_status, deleted_at",
+            )
+            .not("acquisition_campaign", "is", null)
+            .limit(5000),
+        ),
       ]);
 
     if (!visitors && !leads) return [];

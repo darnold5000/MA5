@@ -2,6 +2,8 @@ import {
   canDeleteLead,
   canDeleteVisitorSession,
 } from "@/lib/attribution/first-touch";
+import { isActiveOperationalClient } from "@/lib/auth/member-filters";
+import type { ProfileLifecycleRow } from "@/lib/auth/client-lifecycle";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
 import type { MarketingServiceScope } from "./service-scope";
@@ -75,12 +77,13 @@ export async function deleteUnconvertedLead(
   if (lead.converted_profile_id) {
     const { data: profile } = await scope.admin
       .from(MA5_TABLES.profiles)
-      .select("active, invitation_status")
+      .select(
+        "active, invitation_status, client_status, deleted_at, access_revoked_at, invitation_accepted_at",
+      )
       .eq("id", lead.converted_profile_id)
       .eq("tenant_id", scope.tenantId)
       .maybeSingle();
-    memberActive =
-      Boolean(profile?.active) && profile?.invitation_status === "accepted";
+    memberActive = isActiveOperationalClient(profile as ProfileLifecycleRow);
   }
 
   if (

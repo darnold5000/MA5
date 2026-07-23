@@ -12,17 +12,15 @@ function authFromAddress(): string | null {
 /**
  * Send a branded "activate your MA5 access" email for existing Auth users.
  * Falls back to Supabase recovery email when Resend is not configured.
- *
- * The Supabase recovery template should still use activation-aware copy
- * (see docs/AUTH_EMAIL_TEMPLATES.md) for the fallback / forgot-password path.
  */
 export async function sendExistingUserActivationEmail(args: {
   admin: ServiceClient;
   email: string;
   fullName: string;
+  inviteGeneration: number;
 }): Promise<{ channel: "resend" | "supabase_recovery" }> {
   const emailNorm = args.email.trim().toLowerCase();
-  const redirectTo = inviteRedirectUrl(env.siteUrl);
+  const redirectTo = inviteRedirectUrl(env.siteUrl, args.inviteGeneration);
   const resendKey = process.env.RESEND_API_KEY?.trim();
   const from = authFromAddress();
 
@@ -81,7 +79,6 @@ export async function sendExistingUserActivationEmail(args: {
     }
   }
 
-  // Fallback: Supabase recovery email (configure template per AUTH_EMAIL_TEMPLATES.md)
   const userClient = await createClient();
   const { error: resetError } = await userClient.auth.resetPasswordForEmail(
     emailNorm,

@@ -24,6 +24,7 @@ import {
   type MemberLifecycleAction,
   type ProfileLifecycleRow,
 } from "./client-lifecycle";
+import { invalidateAuthSessionsBestEffort } from "./session-invalidation";
 
 export type InvitedProfileInput = {
   userId: string;
@@ -33,6 +34,7 @@ export type InvitedProfileInput = {
   notes?: string;
   role: Extract<PlatformRole, "client" | "coach">;
   now: string;
+  inviteGeneration: number;
 };
 
 type ProfileSummary = ProfileLifecycleRow & {
@@ -42,7 +44,7 @@ type ProfileSummary = ProfileLifecycleRow & {
 };
 
 const PROFILE_SUMMARY_COLS =
-  "id, email, full_name, active, invitation_status, invitation_accepted_at, access_revoked_at, client_status, status_before_delete, invite_revoked_at, activated_at, paused_at, deleted_at, invited_at";
+  "id, email, full_name, active, invitation_status, invitation_accepted_at, access_revoked_at, client_status, status_before_delete, invite_revoked_at, activated_at, paused_at, deleted_at, invited_at, invite_generation";
 
 function clientOrCreate(
   existing?: Ma5TenantServiceClient,
@@ -95,7 +97,7 @@ export async function upsertInvitedProfile(
       full_name: input.fullName,
       phone: input.phone?.trim() || null,
       admin_notes: input.notes?.trim() || null,
-      ...patchForInvited(input.now),
+      ...patchForInvited(input.now, input.inviteGeneration),
     }),
     { onConflict: "id" },
   );
@@ -145,6 +147,15 @@ export async function applyMemberLifecycleAction(
     .eq("id", memberId);
 
   if (error) throw error;
+
+  if (
+    action === "pause_access" ||
+    action === "delete" ||
+    action === "revoke_invite"
+  ) {
+    await invalidateAuthSessionsBestEffort(scoped, memberId);
+  }
+
   return asClientStatus(patch.client_status as string);
 }
 
@@ -171,11 +182,19 @@ export async function updateMemberAccess(
   await applyMemberLifecycleAction(memberId, mapped, scoped);
 }
 
+export type ActivateMemberResult =
+  | { outcome: "activated" }
+  | { outcome: "already_active" };
+
 export async function activateMemberProfile(
   userId: string,
-  input: { fullName: string; now?: string },
+  input: {
+    fullName: string;
+    now?: string;
+    inviteGeneration: number;
+  },
   client?: Ma5TenantServiceClient,
-): Promise<void> {
+): Promise<ActivateMemberResult> {
   const { supabase, ctx } = clientOrCreate(client);
   const now = input.now ?? new Date().toISOString();
   const existing = await findProfileByIdInTenant(userId, client);
@@ -191,13 +210,13 @@ export async function activateMemberProfile(
     throw new Error("Your account access is paused");
   }
   if (status === "active") {
-    return;
+    return { outcome: "already_active" };
   }
   if (status !== "invited") {
     throw new Error("Invitation is not eligible for activation");
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from(MA5_TABLES.profiles)
     .update({
       full_name: input.fullName.trim(),
@@ -205,14 +224,24 @@ export async function activateMemberProfile(
     })
     .eq("tenant_id", ctx.tenantId)
     .eq("id", userId)
-    .eq("client_status", "invited");
+    .eq("client_status", "invited")
+    .eq("invite_generation", input.inviteGeneration)
+    .select("id")
+    .maybeSingle();
 
   if (error) throw error;
+  if (!data) {
+    throw new Error(
+      "This invitation has already been used, was revoked, or is no longer valid.",
+    );
+  }
+
+  return { outcome: "activated" };
 }
 
 export function inviteUserMetadata(
   ctx: Ma5DeploymentContext,
-  input: { fullName: string; role: string },
+  input: { fullName: string; role: string; inviteGeneration: number },
 ) {
   return {
     full_name: input.fullName,
@@ -220,5 +249,6 @@ export function inviteUserMetadata(
     invitation_status: "sent",
     active: false,
     ma5_tenant_id: ctx.tenantId,
+    ma5_invite_generation: input.inviteGeneration,
   };
 }

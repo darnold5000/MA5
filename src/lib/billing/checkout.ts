@@ -5,6 +5,8 @@ import {
   getOfferingBySlug,
 } from "@/lib/billing/catalog";
 import { getStripe, isStripeConfigured } from "@/lib/billing/stripe-client";
+import { isActiveOperationalClient } from "@/lib/auth/member-filters";
+import type { ProfileLifecycleRow } from "@/lib/auth/client-lifecycle";
 import { env } from "@/lib/env";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -71,6 +73,24 @@ export async function createOfferingCheckout(params: {
     offering.paymentType === "subscription" ? "subscription" : "payment";
 
   const { supabase, ctx } = createMa5TenantServiceClient();
+
+  const { data: clientProfile } = await supabase
+    .from(MA5_TABLES.profiles)
+    .select(
+      "client_status, deleted_at, active, invitation_status, access_revoked_at, invitation_accepted_at",
+    )
+    .eq("tenant_id", ctx.tenantId)
+    .eq("id", params.userId)
+    .maybeSingle();
+
+  if (!isActiveOperationalClient(clientProfile as ProfileLifecycleRow | null)) {
+    return {
+      ok: false,
+      status: 403,
+      error:
+        "Checkout is only available for active clients. Contact MA5 staff if you need access restored.",
+    };
+  }
 
   let customerId = params.existingCustomerId ?? undefined;
 

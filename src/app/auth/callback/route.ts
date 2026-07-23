@@ -12,9 +12,8 @@ function safeNextPath(nextRaw: string | null): string {
  * Exchanges the Auth code (or token_hash) from invite / recovery emails,
  * then redirects to /auth/accept-invite or /auth/reset-password.
  *
- * Invite + reset emails must use redirectTo:
- *   `${SITE_URL}/auth/callback?next=/auth/accept-invite`
- *   `${SITE_URL}/auth/callback?next=/auth/reset-password`
+ * Clears any existing local session before exchanging invite codes so a
+ * previously signed-in user cannot bleed into the invited account flow.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -42,6 +41,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Replace any stale browser session before establishing the invite session.
+    await supabase.auth.signOut({ scope: "local" });
+
     if (code) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
@@ -58,10 +60,14 @@ export async function GET(request: NextRequest) {
       }
       console.error("[auth/callback] verifyOtp", error.message);
     }
+
+    const fallback = new URL("/login", origin);
+    fallback.searchParams.set("error", "auth_callback");
+    return NextResponse.redirect(fallback);
   }
 
-  // Already signed in (e.g. client established session, then hit callback)
-  if (url && anonKey) {
+  // No auth code present — only forward already-valid sessions for password reset.
+  if (url && anonKey && next.startsWith("/auth/reset-password")) {
     const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll() {

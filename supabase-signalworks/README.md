@@ -51,6 +51,7 @@ Set `MA5_TENANT_ID` in MA5 deployment environment. Details: [docs/migration/RUNB
 | 035 | `035_ma5_stripe_webhook_processing_state.sql` | Applied |
 | 036 | `036_ma5_purge_rpc_lockdown.sql` | Apply before staging sign-off |
 | 037 | `037_ma5_client_lifecycle.sql` | Apply before client lifecycle deploy |
+| 038 | `038_ma5_invite_generation.sql` | Apply with 037 before invite hardening deploy |
 
 Types: `npm run gen:types` (OpenAPI) or `npm run gen:types:cli` after `supabase login` + `npm run supabase:link`.
 

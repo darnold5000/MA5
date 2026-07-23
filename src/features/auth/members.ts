@@ -137,6 +137,7 @@ export async function listDirectoryMembers(
     );
 }
 
-export function inviteRedirectUrl(siteUrl: string) {
-  return `${siteUrl}/auth/callback?next=${encodeURIComponent("/auth/accept-invite")}`;
+export function inviteRedirectUrl(siteUrl: string, inviteGeneration = 1) {
+  const next = `/auth/accept-invite?igen=${inviteGeneration}`;
+  return `${siteUrl.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(next)}`;
 }

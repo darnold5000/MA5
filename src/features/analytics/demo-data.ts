@@ -252,6 +252,7 @@ export const DEMO_BUSINESS_REPORTS: BusinessReports = {
   ],
   memberships: {
     active: 71,
+    activeClients: 68,
     newThisMonth: 6,
     cancelled: 2,
     netGrowth: 4,

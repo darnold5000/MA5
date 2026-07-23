@@ -24,7 +24,7 @@ describe("tenant-data helpers", () => {
         locationId: LOCATION,
         stripeAccountId: null,
       },
-      { fullName: "Alex", role: "client" },
+      { fullName: "Alex", role: "client", inviteGeneration: 1 },
     );
 
     expect(meta.ma5_tenant_id).toBe(TENANT);

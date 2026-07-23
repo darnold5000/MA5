@@ -16,6 +16,10 @@ alter table public.ma5_profiles
   add column if not exists paused_at timestamptz,
   add column if not exists deleted_at timestamptz;
 
+-- Bulk backfill runs in the SQL editor as postgres, not service_role.
+-- The profile column guard only bypasses service_role JWTs, so disable it here.
+alter table public.ma5_profiles disable trigger ma5_profiles_guard_client_columns;
+
 -- Backfill lifecycle status from existing invitation/access fields.
 update public.ma5_profiles
 set client_status = case
@@ -58,6 +62,8 @@ set paused_at = access_revoked_at
 where client_status = 'paused'
   and paused_at is null
   and access_revoked_at is not null;
+
+alter table public.ma5_profiles enable trigger ma5_profiles_guard_client_columns;
 
 alter table public.ma5_profiles
   alter column client_status set default 'invited';

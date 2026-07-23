@@ -29,6 +29,7 @@ import type {
   WorkoutDetail,
   WorkoutSetLog,
 } from "@/features/programs/types";
+import { applyActiveClientFilter } from "@/lib/auth/member-filters";
 import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -433,12 +434,13 @@ export async function listRosterClients(): Promise<
     const ids = [...new Set((roleRows ?? []).map((r) => String(r.user_id)))];
     if (ids.length === 0) return [];
 
-    const { data: profiles, error } = await supabase
-      .from(MA5_TABLES.profiles)
-      .select("id, full_name, email, active")
-      .in("id", ids)
-      .eq("active", true)
-      .order("full_name", { ascending: true });
+    const { data: profiles, error } = await applyActiveClientFilter(
+      supabase
+        .from(MA5_TABLES.profiles)
+        .select("id, full_name, email, active, client_status, deleted_at")
+        .in("id", ids)
+        .order("full_name", { ascending: true }),
+    );
     if (error) throw new Error(error.message);
 
     return (profiles ?? []).map((p) => ({

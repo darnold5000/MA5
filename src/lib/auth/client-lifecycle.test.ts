@@ -46,7 +46,7 @@ describe("client lifecycle", () => {
       "restore_invitation",
       "2026-01-02T00:00:00.000Z",
     );
-    expect(patch).toMatchObject(patchForInvited("2026-01-02T00:00:00.000Z"));
+    expect(patch).toMatchObject(patchForInvited("2026-01-02T00:00:00.000Z", 1));
     expect(patch.client_status).toBe("invited");
     expect(patch.active).toBe(false);
   });
@@ -146,7 +146,7 @@ describe("client lifecycle", () => {
 describe("invite email security expectations", () => {
   it("does not use hardcoded mike@ma5.com in lifecycle helpers", () => {
     const serialized = JSON.stringify({
-      patchForInvited: patchForInvited("2026-01-01T00:00:00.000Z"),
+      patchForInvited: patchForInvited("2026-01-01T00:00:00.000Z", 1),
       patchForActivated: patchForActivated("2026-01-01T00:00:00.000Z"),
     });
     expect(serialized).not.toContain("mike@ma5.com");

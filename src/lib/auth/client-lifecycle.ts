@@ -44,6 +44,7 @@ export type ProfileLifecycleRow = {
   paused_at?: string | null;
   deleted_at?: string | null;
   invited_at?: string | null;
+  invite_generation?: number | null;
 };
 
 export function normalizeEmail(email: string): string {
@@ -134,7 +135,10 @@ export function assertLifecycleAction(
 }
 
 /** Profile patch for a new invitation (create or resend). */
-export function patchForInvited(now: string): Record<string, unknown> {
+export function patchForInvited(
+  now: string,
+  inviteGeneration: number,
+): Record<string, unknown> {
   return {
     client_status: "invited",
     status_before_delete: null,
@@ -147,7 +151,13 @@ export function patchForInvited(now: string): Record<string, unknown> {
     invite_revoked_at: null,
     paused_at: null,
     deleted_at: null,
+    invite_generation: inviteGeneration,
   };
+}
+
+export function nextInviteGeneration(current: number | null | undefined): number {
+  const base = typeof current === "number" && current >= 1 ? current : 0;
+  return base + 1;
 }
 
 /** Profile patch after genuine account activation. */
@@ -187,7 +197,7 @@ export function applyLifecycleTransition(
         status_before_delete: null,
       };
     case "restore_invitation":
-      return patchForInvited(now);
+      return patchForInvited(now, current.invite_generation ?? 1);
     case "pause_access":
       return {
         client_status: "paused",
@@ -260,7 +270,7 @@ export function applyLifecycleTransition(
           deleted_at: null,
         };
       }
-      return patchForInvited(now);
+      return patchForInvited(now, current.invite_generation ?? 1);
     }
     default:
       throw new Error("Unsupported lifecycle action");

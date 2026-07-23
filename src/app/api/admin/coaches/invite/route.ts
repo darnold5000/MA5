@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { inviteRedirectUrl } from "@/features/auth/members";
+import { nextInviteGeneration } from "@/lib/auth/client-lifecycle";
 import {
   findProfileByEmailInTenant,
   inviteUserMetadata,
@@ -55,10 +56,19 @@ export async function POST(request: Request) {
       const client = createMa5TenantServiceClient();
       const { supabase: admin, ctx } = client;
 
+      const existing = await findProfileByEmailInTenant(emailNorm, client);
+      const inviteGeneration = nextInviteGeneration(
+        existing?.invite_generation ?? null,
+      );
+
       const { data: invited, error: inviteError } =
         await admin.auth.admin.inviteUserByEmail(emailNorm, {
-          data: inviteUserMetadata(ctx, { fullName, role: "coach" }),
-          redirectTo: inviteRedirectUrl(env.siteUrl),
+          data: inviteUserMetadata(ctx, {
+            fullName,
+            role: "coach",
+            inviteGeneration,
+          }),
+          redirectTo: inviteRedirectUrl(env.siteUrl, inviteGeneration),
         });
 
       if (inviteError) {
@@ -101,9 +111,13 @@ export async function POST(request: Request) {
             fullName,
             role: "coach",
             now: new Date().toISOString(),
+            inviteGeneration,
           },
           client,
         );
+        await admin.auth.admin.updateUserById(userId, {
+          user_metadata: { ma5_invite_generation: inviteGeneration },
+        });
       }
 
       return NextResponse.json({

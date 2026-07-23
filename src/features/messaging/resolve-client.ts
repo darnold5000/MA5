@@ -1,6 +1,10 @@
 import { TEST_CLIENT_EMAIL } from "@/content/demo-persona";
 import type { createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { applyActiveClientFilter, isSelectableClientProfile } from "@/lib/auth/member-filters";
+import {
+  type ProfileLifecycleRow,
+} from "@/lib/auth/client-lifecycle";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -40,10 +44,14 @@ export async function resolveClientProfileId(
   if (isUuid(clientId)) {
     const { data } = await supabase
       .from(MA5_TABLES.profiles)
-      .select("id, full_name, email")
+      .select(
+        "id, full_name, email, client_status, deleted_at, active, invitation_status",
+      )
       .eq("id", clientId)
       .maybeSingle();
-    if (!data) return null;
+    if (!data || !isSelectableClientProfile(data as ProfileLifecycleRow)) {
+      return null;
+    }
     return {
       id: String(data.id),
       fullName: (data.full_name as string | null) ?? null,
@@ -56,11 +64,15 @@ export async function resolveClientProfileId(
 
   const { data } = await supabase
     .from(MA5_TABLES.profiles)
-    .select("id, full_name, email")
+    .select(
+      "id, full_name, email, client_status, deleted_at, active, invitation_status",
+    )
     .eq("email", email)
     .maybeSingle();
 
-  if (!data) return null;
+  if (!data || !isSelectableClientProfile(data as ProfileLifecycleRow)) {
+    return null;
+  }
   return {
     id: String(data.id),
     fullName: (data.full_name as string | null) ?? null,
@@ -86,11 +98,14 @@ export async function loadMessageableClients(supabase: Supabase): Promise<
   const ids = [...new Set((roles ?? []).map((r) => String(r.user_id)))];
   if (ids.length === 0) return [];
 
-  const { data: profiles } = await supabase
-    .from(MA5_TABLES.profiles)
-    .select("id, full_name, email, avatar_url")
-    .in("id", ids)
-    .eq("active", true);
+  const { data: profiles } = await applyActiveClientFilter(
+    supabase
+      .from(MA5_TABLES.profiles)
+      .select(
+        "id, full_name, email, avatar_url, client_status, deleted_at, active, invitation_status",
+      )
+      .in("id", ids),
+  );
 
   return (profiles ?? []).map((p) => ({
     id: String(p.id),

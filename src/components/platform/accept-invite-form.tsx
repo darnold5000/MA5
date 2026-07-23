@@ -1,61 +1,23 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
-import { SignOutButton } from "@/components/platform/sign-out-button";
 
-type InviteContext =
-  | {
-      ok: true;
-      email: string;
-      fullName: string;
-    }
-  | {
-      ok: false;
-      message: string;
-      code?: string;
-    };
-
-export function AcceptInviteForm() {
-  const [context, setContext] = useState<InviteContext | null>(null);
-  const [fullName, setFullName] = useState("");
+export function AcceptInviteForm({
+  email,
+  fullName: initialFullName,
+}: {
+  email: string;
+  fullName: string;
+}) {
+  const [fullName, setFullName] = useState(initialFullName);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadInviteContext() {
-      const res = await fetch("/api/auth/invite-context", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "same-origin",
-      });
-      const data = (await res.json().catch(() => ({}))) as InviteContext;
-      if (cancelled) return;
-
-      if (!data.ok) {
-        setContext(data);
-        return;
-      }
-
-      setContext(data);
-      if (data.fullName) {
-        setFullName(data.fullName);
-      }
-    }
-
-    void loadInviteContext();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,44 +63,6 @@ export function AcceptInviteForm() {
     }
   }
 
-  if (!context) {
-    return (
-      <AuthCard
-        title="Accept invitation"
-        description="Validating your invitation…"
-      >
-        <p className="text-sm text-muted">Loading…</p>
-      </AuthCard>
-    );
-  }
-
-  if (!context.ok) {
-    const showSignOut =
-      context.code === "email_mismatch" ||
-      context.code === "already_active" ||
-      context.code === "invite_revoked" ||
-      context.code === "paused";
-
-    return (
-      <AuthCard title="Accept invitation" description="Unable to continue.">
-        <p className="text-sm text-brand" role="alert">
-          {context.message}
-        </p>
-        <div className="mt-4 flex flex-col gap-3">
-          {showSignOut ? (
-            <SignOutButton className="inline-flex min-h-10 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase" />
-          ) : null}
-          <Link
-            href="/login"
-            className="inline-flex min-h-10 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"
-          >
-            Go to sign in
-          </Link>
-        </div>
-      </AuthCard>
-    );
-  }
-
   return (
     <AuthCard
       title="Activate your account"
@@ -149,7 +73,7 @@ export function AcceptInviteForm() {
           <span className="font-semibold tracking-wide uppercase">Email</span>
           <input
             type="email"
-            value={context.email}
+            value={email}
             readOnly
             className="min-h-10 w-full border border-border bg-background/60 px-3 text-muted outline-none sm:min-h-11"
           />

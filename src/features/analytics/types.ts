@@ -71,6 +71,7 @@ export type ChartPoint = {
 
 export type MembershipSnapshot = {
   active: number;
+  activeClients: number;
   newThisMonth: number;
   cancelled: number;
   netGrowth: number;

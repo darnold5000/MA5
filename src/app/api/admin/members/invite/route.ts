@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { inviteRedirectUrl } from "@/features/auth/members";
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
-import { deriveClientStatusFromLegacy } from "@/lib/auth/client-lifecycle";
+import {
+  deriveClientStatusFromLegacy,
+  nextInviteGeneration,
+} from "@/lib/auth/client-lifecycle";
 import { sendExistingUserActivationEmail } from "@/lib/auth/activation-email";
 import {
   findProfileByEmailInTenant,
@@ -149,10 +152,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const inviteGeneration = nextInviteGeneration(
+      existingProfile?.invite_generation ?? null,
+    );
+
     const { data: invited, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(emailNorm, {
-        data: inviteUserMetadata(ctx, { fullName, role }),
-        redirectTo: inviteRedirectUrl(env.siteUrl),
+        data: inviteUserMetadata(ctx, { fullName, role, inviteGeneration }),
+        redirectTo: inviteRedirectUrl(env.siteUrl, inviteGeneration),
       });
 
     if (!inviteError) {
@@ -173,9 +180,16 @@ export async function POST(request: Request) {
           notes: parsed.data.notes,
           role,
           now,
+          inviteGeneration,
         },
         client,
       );
+
+      await admin.auth.admin.updateUserById(userId, {
+        user_metadata: {
+          ma5_invite_generation: inviteGeneration,
+        },
+      });
 
       await attachLeadOnInvite({
         client,
@@ -217,21 +231,29 @@ export async function POST(request: Request) {
         notes: parsed.data.notes,
         role,
         now,
+        inviteGeneration,
       },
       client,
     );
 
-    await attachLeadOnInvite({
-      client,
-      profileId: existingUserId,
-      email: emailNorm,
-      leadId: leadIdOpt,
+    await admin.auth.admin.updateUserById(existingUserId, {
+      user_metadata: {
+        ma5_invite_generation: inviteGeneration,
+      },
     });
 
     const { channel } = await sendExistingUserActivationEmail({
       admin,
       email: emailNorm,
       fullName,
+      inviteGeneration,
+    });
+
+    await attachLeadOnInvite({
+      client,
+      profileId: existingUserId,
+      email: emailNorm,
+      leadId: leadIdOpt,
     });
 
     return NextResponse.json({

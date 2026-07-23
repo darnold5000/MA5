@@ -4,6 +4,10 @@ import {
   parseMindbodyPaymentWorkbook,
   type MindbodyPaymentRow,
 } from "@/features/billing/mindbody-payment-import";
+import type { ProfileLifecycleRow } from "@/lib/auth/client-lifecycle";
+import {
+  isActiveOperationalClient,
+} from "@/lib/auth/member-filters";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
 export type MindbodyImportSummary = {
@@ -16,28 +20,62 @@ export type MindbodyImportSummary = {
   feeCents: number;
   netCents: number;
   matchedClients: number;
+  manualReviewRequired: number;
 };
 
 function normalizeName(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+type ProfileIndexEntry = {
+  id: string;
+  profile: ProfileLifecycleRow;
+};
+
 async function loadProfileNameIndex(
   admin: SupabaseClient,
   tenantId?: string,
-): Promise<Map<string, string>> {
-  let query = admin.from(MA5_TABLES.profiles).select("id, full_name, email");
+): Promise<Map<string, ProfileIndexEntry>> {
+  let query = admin
+    .from(MA5_TABLES.profiles)
+    .select(
+      "id, full_name, email, client_status, deleted_at, active, invitation_status, access_revoked_at, invitation_accepted_at",
+    );
   if (tenantId) query = query.eq("tenant_id", tenantId);
   const { data, error } = await query;
 
   if (error) throw error;
 
-  const index = new Map<string, string>();
+  const index = new Map<string, ProfileIndexEntry>();
   for (const row of data ?? []) {
     const name = (row.full_name as string | null)?.trim();
-    if (name) index.set(normalizeName(name), row.id as string);
+    if (!name) continue;
+    index.set(normalizeName(name), {
+      id: row.id as string,
+      profile: row as ProfileLifecycleRow,
+    });
   }
   return index;
+}
+
+export function matchMindbodyImportProfile(
+  profileIndex: Map<string, ProfileIndexEntry>,
+  clientName: string,
+): { userId: string | null; manualReviewReason: string | null } {
+  const match = profileIndex.get(normalizeName(clientName));
+  if (!match) {
+    return { userId: null, manualReviewReason: null };
+  }
+  if (isActiveOperationalClient(match.profile)) {
+    return { userId: match.id, manualReviewReason: null };
+  }
+  const status =
+    match.profile.client_status ??
+    (match.profile.deleted_at ? "deleted" : "non-active");
+  return {
+    userId: null,
+    manualReviewReason: `Manual review required: matched client "${clientName}" has status ${status} — assign payment manually`,
+  };
 }
 
 function toPaymentRecord(
@@ -91,6 +129,7 @@ export async function importMindbodyPaymentWorkbook(
   let feeCents = 0;
   let netCents = 0;
   let matchedClients = 0;
+  let manualReviewRequired = 0;
   const skipReasons = [...parsed.skipped];
 
   for (const row of parsed.rows) {
@@ -102,8 +141,17 @@ export async function importMindbodyPaymentWorkbook(
       continue;
     }
 
-    const userId = profileIndex.get(normalizeName(row.clientName)) ?? null;
-    if (userId) matchedClients += 1;
+    const match = matchMindbodyImportProfile(profileIndex, row.clientName);
+    const userId = match.userId;
+
+    if (match.userId) matchedClients += 1;
+    if (match.manualReviewReason) {
+      manualReviewRequired += 1;
+      skipReasons.push({
+        row: 0,
+        reason: `${match.manualReviewReason} (${row.saleOrderId})`,
+      });
+    }
 
     const record = toPaymentRecord(row, userId, tenantId);
     let existingQuery = admin
@@ -147,5 +195,6 @@ export async function importMindbodyPaymentWorkbook(
     feeCents,
     netCents,
     matchedClients,
+    manualReviewRequired,
   };
 }
