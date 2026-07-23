@@ -49,8 +49,11 @@ Set `MA5_TENANT_ID` in MA5 deployment environment. Details: [docs/migration/RUNB
 | 032c | `032c_ma5_storage_safe_uuid.sql` | Applied |
 | 034 | `034_ma5_rls_hardening.sql` | Applied |
 | 035 | `035_ma5_stripe_webhook_processing_state.sql` | Applied |
+| 036 | `036_ma5_purge_rpc_lockdown.sql` | Apply before staging sign-off |
 
 Types: `npm run gen:types` (OpenAPI) or `npm run gen:types:cli` after `supabase login` + `npm run supabase:link`.
+
+**Staging gate:** [docs/migration/STAGING_CHECKLIST.md](../docs/migration/STAGING_CHECKLIST.md)
 
 **Staging seed (manual only):** `seeds/033_ma5_staging_seed.sql` — not applied during production migrations. See [seeds/README.md](./seeds/README.md).
 
