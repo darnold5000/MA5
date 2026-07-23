@@ -4,6 +4,9 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { withTenantId } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 import {
   getOfferingById,
@@ -15,6 +18,27 @@ import { slugify } from "./types";
 
 const PRODUCT_SELECT_COLS =
   "id, slug, name, description, product_type, category, payment_type, price_cents, currency, billing_interval, session_credits, status, stripe_product_id, current_stripe_price_id, display_order, archived_at, created_at, updated_at";
+
+function adminDb() {
+  if (isMa5DeploymentConfigured()) {
+    return createMa5TenantServiceClient();
+  }
+  return {
+    supabase: createServiceClient(),
+    ctx: null as null,
+  };
+}
+
+function productUpdateQuery(
+  supabase: ReturnType<typeof createServiceClient>,
+  tenantId: string | null,
+  id: string,
+  updates: Record<string, unknown>,
+) {
+  let query = supabase.from(MA5_TABLES.products).update(updates).eq("id", id);
+  if (tenantId) query = query.eq("tenant_id", tenantId);
+  return query;
+}
 
 function billingIntervalFor(input: {
   paymentType: OfferingInput["paymentType"];
@@ -58,7 +82,8 @@ export async function syncOfferingToStripe(offeringId: string): Promise<Offering
   const offering = await getOfferingById(offeringId, { useServiceRole: true });
   if (!offering) throw new Error("Offering not found");
 
-  const supabase = createServiceClient();
+  const { supabase, ctx } = adminDb();
+  const tenantId = ctx?.tenantId ?? null;
   let stripeProductId = offering.stripeProductId;
   let currentStripePriceId = offering.currentStripePriceId;
 
@@ -94,23 +119,36 @@ export async function syncOfferingToStripe(offeringId: string): Promise<Offering
     });
     currentStripePriceId = price.id;
 
-    await supabase.from(MA5_TABLES.prices).insert({
-      product_id: offering.id,
-      stripe_price_id: price.id,
-      amount_cents: offering.priceCents,
-      currency: offering.currency,
-      billing_interval: interval,
-      active: true,
-    });
+    await supabase.from(MA5_TABLES.prices).insert(
+      (ctx
+        ? withTenantId(ctx, {
+            product_id: offering.id,
+            stripe_price_id: price.id,
+            amount_cents: offering.priceCents,
+            currency: offering.currency,
+            billing_interval: interval,
+            active: true,
+          })
+        : {
+            product_id: offering.id,
+            stripe_price_id: price.id,
+            amount_cents: offering.priceCents,
+            currency: offering.currency,
+            billing_interval: interval,
+            active: true,
+          }) as Record<string, unknown>,
+    );
   }
 
-  const { data, error } = await supabase
-    .from(MA5_TABLES.products)
-    .update({
+  const { data, error } = await productUpdateQuery(
+    supabase,
+    tenantId,
+    offering.id,
+    {
       stripe_product_id: stripeProductId,
       current_stripe_price_id: currentStripePriceId,
-    })
-    .eq("id", offering.id)
+    },
+  )
     .select(PRODUCT_SELECT_COLS)
     .single();
 
@@ -126,30 +164,32 @@ export async function createOffering(input: OfferingInput): Promise<Offering> {
     throw new Error("Supabase is not configured");
   }
 
-  const supabase = createServiceClient();
+  const { supabase, ctx } = adminDb();
   const slug = input.slug?.trim() || slugify(input.name);
   if (!slug) throw new Error("Slug is required");
 
   const interval = billingIntervalFor(input);
   const status: OfferingStatus = input.status ?? "active";
 
+  const insertRow = {
+    slug,
+    name: input.name.trim(),
+    description: input.description ?? null,
+    product_type: input.productType,
+    category: input.category ?? null,
+    payment_type: input.paymentType,
+    price_cents: input.priceCents,
+    currency: input.currency ?? "usd",
+    billing_interval: interval,
+    session_credits: input.sessionCredits ?? null,
+    status,
+    active: status === "active",
+    display_order: input.displayOrder ?? 0,
+  };
+
   const { data, error } = await supabase
     .from(MA5_TABLES.products)
-    .insert({
-      slug,
-      name: input.name.trim(),
-      description: input.description ?? null,
-      product_type: input.productType,
-      category: input.category ?? null,
-      payment_type: input.paymentType,
-      price_cents: input.priceCents,
-      currency: input.currency ?? "usd",
-      billing_interval: interval,
-      session_credits: input.sessionCredits ?? null,
-      status,
-      active: status === "active",
-      display_order: input.displayOrder ?? 0,
-    })
+    .insert(ctx ? withTenantId(ctx, insertRow) : insertRow)
     .select(PRODUCT_SELECT_COLS)
     .single();
 
@@ -177,7 +217,8 @@ export async function updateOffering(
   const existing = await getOfferingById(id, { useServiceRole: true });
   if (!existing) throw new Error("Offering not found");
 
-  const supabase = createServiceClient();
+  const { supabase, ctx } = adminDb();
+  const tenantId = ctx?.tenantId ?? null;
   const nextPaymentType = patch.paymentType ?? existing.paymentType;
   const nextInterval = billingIntervalFor({
     paymentType: nextPaymentType,
@@ -226,10 +267,7 @@ export async function updateOffering(
     updates.slug = patch.slug.trim();
   }
 
-  const { data, error } = await supabase
-    .from(MA5_TABLES.products)
-    .update(updates)
-    .eq("id", id)
+  const { data, error } = await productUpdateQuery(supabase, tenantId, id, updates)
     .select(PRODUCT_SELECT_COLS)
     .single();
 
@@ -280,21 +318,34 @@ export async function updateOffering(
       billingInterval: nextInterval,
     });
 
-    await supabase.from(MA5_TABLES.prices).insert({
-      product_id: offering.id,
-      stripe_price_id: price.id,
-      amount_cents: offering.priceCents,
-      currency: offering.currency,
-      billing_interval: nextInterval,
-      active: true,
-    });
+    await supabase.from(MA5_TABLES.prices).insert(
+      (ctx
+        ? withTenantId(ctx, {
+            product_id: offering.id,
+            stripe_price_id: price.id,
+            amount_cents: offering.priceCents,
+            currency: offering.currency,
+            billing_interval: nextInterval,
+            active: true,
+          })
+        : {
+            product_id: offering.id,
+            stripe_price_id: price.id,
+            amount_cents: offering.priceCents,
+            currency: offering.currency,
+            billing_interval: nextInterval,
+            active: true,
+          }) as Record<string, unknown>,
+    );
 
-    const { data: updated, error: priceErr } = await supabase
-      .from(MA5_TABLES.products)
-      .update({
+    const { data: updated, error: priceErr } = await productUpdateQuery(
+      supabase,
+      tenantId,
+      offering.id,
+      {
         current_stripe_price_id: price.id,
-      })
-      .eq("id", offering.id)
+      },
+    )
       .select(PRODUCT_SELECT_COLS)
       .single();
 

@@ -1,13 +1,15 @@
 import Stripe from "stripe";
 
-import { getOfferingBySlug } from "@/lib/billing/catalog";
+import {
+  commerceStripeMetadata,
+  getOfferingBySlug,
+} from "@/lib/billing/catalog";
 import { getStripe, isStripeConfigured } from "@/lib/billing/stripe-client";
 import { env } from "@/lib/env";
-import {
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured, tenantOnConflict, withTenantId } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 export type CreateCheckoutResult =
   | { ok: true; url: string; sessionId: string }
@@ -40,6 +42,14 @@ export async function createOfferingCheckout(params: {
     };
   }
 
+  if (!isMa5DeploymentConfigured()) {
+    return {
+      ok: false,
+      status: 503,
+      error: "MA5_TENANT_ID and MA5_LOCATION_ID must be set for checkout",
+    };
+  }
+
   const offering = await getOfferingBySlug(params.productSlug, {
     activeOnly: true,
     useServiceRole: true,
@@ -60,21 +70,25 @@ export async function createOfferingCheckout(params: {
   const mode: Stripe.Checkout.SessionCreateParams.Mode =
     offering.paymentType === "subscription" ? "subscription" : "payment";
 
+  const { supabase, ctx } = createMa5TenantServiceClient();
+
   let customerId = params.existingCustomerId ?? undefined;
 
   if (!customerId) {
-    try {
-      const supabase = createServiceClient();
-      const { data } = await supabase
-        .from(MA5_TABLES.profiles)
-        .select("stripe_customer_id")
-        .eq("id", params.userId)
-        .maybeSingle();
-      customerId = (data?.stripe_customer_id as string | null) ?? undefined;
-    } catch {
-      // continue without existing customer
-    }
+    const { data } = await supabase
+      .from(MA5_TABLES.profiles)
+      .select("stripe_customer_id")
+      .eq("tenant_id", ctx.tenantId)
+      .eq("id", params.userId)
+      .maybeSingle();
+    customerId = (data?.stripe_customer_id as string | null) ?? undefined;
   }
+
+  const stripeMeta = commerceStripeMetadata({
+    user_id: params.userId,
+    product_id: offering.id,
+    product_slug: offering.slug,
+  });
 
   try {
     const checkout = await stripe.checkout.sessions.create({
@@ -83,19 +97,11 @@ export async function createOfferingCheckout(params: {
       customer: customerId,
       customer_email: customerId ? undefined : params.userEmail,
       client_reference_id: params.userId,
-      metadata: {
-        user_id: params.userId,
-        product_id: offering.id,
-        product_slug: offering.slug,
-      },
+      metadata: stripeMeta,
       ...(mode === "subscription"
         ? {
             subscription_data: {
-              metadata: {
-                user_id: params.userId,
-                product_id: offering.id,
-                product_slug: offering.slug,
-              },
+              metadata: stripeMeta,
             },
           }
         : {}),
@@ -107,27 +113,24 @@ export async function createOfferingCheckout(params: {
       return { ok: false, status: 400, error: "Checkout URL missing" };
     }
 
-    try {
-      const supabase = createServiceClient();
-      await supabase.from(MA5_TABLES.checkoutSessions).upsert(
-        {
-          stripe_checkout_session_id: checkout.id,
-          user_id: params.userId,
-          product_id: offering.id,
-          mode,
-          status: "open",
-          amount_total_cents: offering.priceCents,
-          currency: offering.currency,
-          stripe_customer_id: customerId ?? null,
-          metadata: {
-            product_slug: offering.slug,
-          },
+    await supabase.from(MA5_TABLES.checkoutSessions).upsert(
+      withTenantId(ctx, {
+        stripe_checkout_session_id: checkout.id,
+        user_id: params.userId,
+        product_id: offering.id,
+        mode,
+        status: "open",
+        amount_total_cents: offering.priceCents,
+        currency: offering.currency,
+        stripe_customer_id: customerId ?? null,
+        metadata: {
+          product_slug: offering.slug,
         },
-        { onConflict: "stripe_checkout_session_id" },
-      );
-    } catch {
-      // Webhook will still create/update the ledger row
-    }
+      }),
+      {
+        onConflict: tenantOnConflict(ctx, "stripe_checkout_session_id"),
+      },
+    );
 
     return { ok: true, url: checkout.url, sessionId: checkout.id };
   } catch (err) {

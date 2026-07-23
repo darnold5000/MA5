@@ -1,9 +1,15 @@
-import {
-  createClient,
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import {
+  applyTenantFilter,
+  resolveCatalogDb,
+} from "@/lib/tenant/catalog";
+import {
+  isMa5DeploymentConfigured,
+  requireMa5TenantId,
+  withTenantId,
+} from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 import type {
   BillingInterval,
@@ -67,13 +73,12 @@ export async function listOfferings(options?: {
 }): Promise<Offering[]> {
   if (!isSupabaseConfigured()) return [];
 
-  const supabase = options?.useServiceRole
-    ? createServiceClient()
-    : await createClient();
+  const { supabase, tenantId } = await resolveCatalogDb(options);
 
-  let query = supabase
-    .from(MA5_TABLES.products)
-    .select(SELECT_COLS)
+  let query = applyTenantFilter(
+    supabase.from(MA5_TABLES.products).select(SELECT_COLS),
+    tenantId,
+  )
     .order("display_order", { ascending: true })
     .order("name", { ascending: true });
 
@@ -89,8 +94,6 @@ export async function listOfferings(options?: {
 }
 
 export async function listActiveOfferings(): Promise<Offering[]> {
-  // Public/storefront reads use the anon/user client; RLS allows active rows.
-  // Fall back to service role when the cookie client is unavailable.
   try {
     return await listOfferings({ activeOnly: true, useServiceRole: false });
   } catch {
@@ -104,14 +107,12 @@ export async function getOfferingBySlug(
 ): Promise<Offering | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const supabase = options?.useServiceRole
-    ? createServiceClient()
-    : await createClient();
+  const { supabase, tenantId } = await resolveCatalogDb(options);
 
-  let query = supabase
-    .from(MA5_TABLES.products)
-    .select(SELECT_COLS)
-    .eq("slug", slug);
+  let query = applyTenantFilter(
+    supabase.from(MA5_TABLES.products).select(SELECT_COLS),
+    tenantId,
+  ).eq("slug", slug);
 
   if (options?.activeOnly) {
     query = query.eq("status", "active");
@@ -128,13 +129,12 @@ export async function getOfferingById(
 ): Promise<Offering | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const supabase = options?.useServiceRole
-    ? createServiceClient()
-    : await createClient();
+  const { supabase, tenantId } = await resolveCatalogDb(options);
 
-  const { data, error } = await supabase
-    .from(MA5_TABLES.products)
-    .select(SELECT_COLS)
+  const { data, error } = await applyTenantFilter(
+    supabase.from(MA5_TABLES.products).select(SELECT_COLS),
+    tenantId,
+  )
     .eq("id", id)
     .maybeSingle();
 
@@ -147,21 +147,47 @@ export async function getOfferingByStripePriceId(
 ): Promise<Offering | null> {
   if (!isSupabaseConfigured() || !stripePriceId) return null;
 
-  const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from(MA5_TABLES.products)
-    .select(SELECT_COLS)
+  const { supabase, tenantId } = await resolveCatalogDb({
+    useServiceRole: true,
+  });
+
+  const { data, error } = await applyTenantFilter(
+    supabase.from(MA5_TABLES.products).select(SELECT_COLS),
+    tenantId,
+  )
     .eq("current_stripe_price_id", stripePriceId)
     .maybeSingle();
 
   if (!error && data) return mapProductRow(data as ProductRow);
 
-  const { data: priceRow } = await supabase
-    .from(MA5_TABLES.prices)
-    .select("product_id")
+  const { data: priceRow } = await applyTenantFilter(
+    supabase.from(MA5_TABLES.prices).select("product_id"),
+    tenantId,
+  )
     .eq("stripe_price_id", stripePriceId)
     .maybeSingle();
 
   if (!priceRow?.product_id) return null;
   return getOfferingById(priceRow.product_id as string, { useServiceRole: true });
+}
+
+export function commerceStripeMetadata(
+  input: Record<string, string | null | undefined>,
+): Record<string, string> {
+  const meta: Record<string, string> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value != null && value !== "") meta[key] = value;
+  }
+  if (isMa5DeploymentConfigured()) {
+    meta.tenant_id = requireMa5TenantId();
+  }
+  return meta;
+}
+
+export function withCommerceTenant<T extends Record<string, unknown>>(
+  row: T,
+): T & { tenant_id?: string } {
+  if (!isMa5DeploymentConfigured()) return row;
+  const { ctx } = createMa5TenantServiceClient();
+  return withTenantId(ctx, row);
 }

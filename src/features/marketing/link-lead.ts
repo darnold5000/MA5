@@ -1,7 +1,5 @@
-import { createServiceClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
-
-type AdminClient = ReturnType<typeof createServiceClient>;
+import type { Ma5TenantServiceClient } from "@/lib/tenant/service";
 
 /**
  * Resolve a lead for invite/convert flows.
@@ -9,16 +7,18 @@ type AdminClient = ReturnType<typeof createServiceClient>;
  * Email changes after conversion do not matter — profile.lead_id is authoritative.
  */
 export async function resolveLeadIdForEmail(
-  admin: AdminClient,
+  client: Ma5TenantServiceClient,
   email: string,
   explicitLeadId?: string | null,
 ): Promise<string | null> {
+  const { supabase: admin, ctx } = client;
   if (explicitLeadId) return explicitLeadId;
 
   const emailNorm = email.trim().toLowerCase();
   const { data } = await admin
     .from(MA5_TABLES.leads)
     .select("id")
+    .eq("tenant_id", ctx.tenantId)
     .ilike("email", emailNorm)
     .neq("status", "closed")
     .order("created_at", { ascending: false })
@@ -47,24 +47,26 @@ type LeadTouch = {
  * Sets lead.invited_at when first invited.
  */
 export async function attachLeadOnInvite(args: {
-  admin: AdminClient;
+  client: Ma5TenantServiceClient;
   profileId: string;
   email: string;
   leadId?: string | null;
   markQualified?: boolean;
 }): Promise<{ leadId: string | null }> {
+  const { supabase: admin, ctx } = args.client;
   const leadId = await resolveLeadIdForEmail(
-    args.admin,
+    args.client,
     args.email,
     args.leadId,
   );
   if (!leadId) return { leadId: null };
 
-  const { data: lead } = await args.admin
+  const { data: lead } = await admin
     .from(MA5_TABLES.leads)
     .select(
       "id, utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, created_at, invited_at",
     )
+    .eq("tenant_id", ctx.tenantId)
     .eq("id", leadId)
     .maybeSingle();
 
@@ -81,9 +83,10 @@ export async function attachLeadOnInvite(args: {
   }
   if (args.markQualified !== false) {
     // Keep converted status if already converted
-    const { data: current } = await args.admin
+    const { data: current } = await admin
       .from(MA5_TABLES.leads)
       .select("status")
+      .eq("tenant_id", ctx.tenantId)
       .eq("id", leadId)
       .maybeSingle();
     if (current?.status !== "converted") {
@@ -91,13 +94,18 @@ export async function attachLeadOnInvite(args: {
     }
   }
 
-  await args.admin.from(MA5_TABLES.leads).update(leadPatch).eq("id", leadId);
+  await admin
+    .from(MA5_TABLES.leads)
+    .update(leadPatch)
+    .eq("tenant_id", ctx.tenantId)
+    .eq("id", leadId);
 
-  const { data: profile } = await args.admin
+  const { data: profile } = await admin
     .from(MA5_TABLES.profiles)
     .select(
       "lead_id, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_landing_page",
     )
+    .eq("tenant_id", ctx.tenantId)
     .eq("id", args.profileId)
     .maybeSingle();
 
@@ -127,9 +135,10 @@ export async function attachLeadOnInvite(args: {
   }
 
   if (Object.keys(profilePatch).length > 0) {
-    await args.admin
+    await admin
       .from(MA5_TABLES.profiles)
       .update(profilePatch)
+      .eq("tenant_id", ctx.tenantId)
       .eq("id", args.profileId);
   }
 

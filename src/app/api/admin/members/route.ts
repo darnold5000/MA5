@@ -2,13 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { listDirectoryMembers } from "@/features/auth/members";
+import { updateMemberAccess } from "@/lib/auth/tenant-data";
 import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
-import {
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
-import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 
 const patchSchema = z.object({
   memberId: z.string().uuid(),
@@ -45,13 +43,22 @@ export async function PATCH(request: Request) {
     );
   }
 
+  if (!isMa5DeploymentConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "MA5_TENANT_ID and MA5_LOCATION_ID must be set to manage members",
+      },
+      { status: 503 },
+    );
+  }
+
   const json = await request.json().catch(() => null);
   const parsed = patchSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid update" }, { status: 400 });
   }
 
-  // Admins cannot revoke their own access via this endpoint.
   if (
     parsed.data.action === "revoke" &&
     parsed.data.memberId === auth.id
@@ -62,38 +69,14 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const admin = createServiceClient();
-  const now = new Date().toISOString();
-
-  if (parsed.data.action === "revoke") {
-    const { error } = await admin
-      .from(MA5_TABLES.profiles)
-      .update({
-        active: false,
-        invitation_status: "revoked",
-        access_revoked_at: now,
-      })
-      .eq("id", parsed.data.memberId);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ ok: true, status: "revoked" });
+  try {
+    await updateMemberAccess(parsed.data.memberId, parsed.data.action);
+    return NextResponse.json({
+      ok: true,
+      status: parsed.data.action === "revoke" ? "revoked" : "active",
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Update failed";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  const { error } = await admin
-    .from(MA5_TABLES.profiles)
-    .update({
-      active: true,
-      invitation_status: "accepted",
-      access_revoked_at: null,
-    })
-    .eq("id", parsed.data.memberId);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ ok: true, status: "active" });
 }

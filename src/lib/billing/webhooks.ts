@@ -6,8 +6,9 @@ import {
   getOfferingByStripePriceId,
 } from "@/lib/billing/catalog";
 import { getStripe } from "@/lib/billing/stripe-client";
-import { createServiceClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { tenantOnConflict, withTenantId } from "@/lib/tenant/deployment";
+import type { Ma5TenantServiceClient } from "@/lib/tenant/service";
 
 function customerId(
   customer: string | Stripe.Customer | Stripe.DeletedCustomer | null,
@@ -44,11 +45,14 @@ function mapSubscriptionStatus(status: Stripe.Subscription.Status | string) {
   return "inactive";
 }
 
-async function resolveProductId(params: {
-  productId?: string | null;
-  productSlug?: string | null;
-  stripePriceId?: string | null;
-}): Promise<string | null> {
+async function resolveProductId(
+  client: Ma5TenantServiceClient,
+  params: {
+    productId?: string | null;
+    productSlug?: string | null;
+    stripePriceId?: string | null;
+  },
+): Promise<string | null> {
   if (params.productId) {
     const byId = await getOfferingById(params.productId, {
       useServiceRole: true,
@@ -68,35 +72,41 @@ async function resolveProductId(params: {
   return null;
 }
 
-async function upsertMembership(params: {
-  userId: string;
-  productId: string;
-  status: string;
-  stripeSubscriptionId: string | null;
-  stripePriceId: string | null;
-  currentPeriodEnd: string | null;
-}) {
-  const supabase = createServiceClient();
-  const row = {
+async function upsertMembership(
+  client: Ma5TenantServiceClient,
+  params: {
+    userId: string;
+    productId: string;
+    status: string;
+    stripeSubscriptionId: string | null;
+    stripePriceId: string | null;
+    currentPeriodEnd: string | null;
+  },
+) {
+  const { supabase, ctx } = client;
+  const row = withTenantId(ctx, {
     user_id: params.userId,
     product_id: params.productId,
     status: params.status,
     stripe_subscription_id: params.stripeSubscriptionId,
     stripe_price_id: params.stripePriceId,
     current_period_end: params.currentPeriodEnd,
-  };
+  });
 
   if (params.stripeSubscriptionId) {
     await supabase.from(MA5_TABLES.memberships).upsert(row, {
-      onConflict: "stripe_subscription_id",
+      onConflict: tenantOnConflict(ctx, "stripe_subscription_id"),
     });
   } else {
     await supabase.from(MA5_TABLES.memberships).insert(row);
   }
 }
 
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-  const supabase = createServiceClient();
+async function handleCheckoutSessionCompleted(
+  client: Ma5TenantServiceClient,
+  session: Stripe.Checkout.Session,
+) {
+  const { supabase, ctx } = client;
   const userId = session.metadata?.user_id ?? session.client_reference_id;
   const productSlug = session.metadata?.product_slug ?? null;
   const productIdMeta = session.metadata?.product_id ?? null;
@@ -112,7 +122,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     stripePriceId = typeof price === "string" ? price : price?.id ?? null;
   }
 
-  const productId = await resolveProductId({
+  const productId = await resolveProductId(client, {
     productId: productIdMeta,
     productSlug,
     stripePriceId,
@@ -122,6 +132,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     await supabase
       .from(MA5_TABLES.profiles)
       .update({ stripe_customer_id: cust })
+      .eq("tenant_id", ctx.tenantId)
       .eq("id", userId);
   }
 
@@ -136,7 +147,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       : session.payment_intent?.id ?? null;
 
   await supabase.from(MA5_TABLES.checkoutSessions).upsert(
-    {
+    withTenantId(ctx, {
       stripe_checkout_session_id: session.id,
       user_id: userId,
       product_id: productId,
@@ -151,19 +162,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         product_slug: productSlug,
         payment_status: session.payment_status,
       },
-    },
-    { onConflict: "stripe_checkout_session_id" },
+    }),
+    { onConflict: tenantOnConflict(ctx, "stripe_checkout_session_id") },
   );
 
   const { data: checkoutRow } = await supabase
     .from(MA5_TABLES.checkoutSessions)
     .select("id")
+    .eq("tenant_id", ctx.tenantId)
     .eq("stripe_checkout_session_id", session.id)
     .maybeSingle();
 
   if (session.mode === "payment" && userId) {
     await supabase.from(MA5_TABLES.payments).upsert(
-      {
+      withTenantId(ctx, {
         user_id: userId,
         product_id: productId,
         checkout_session_id: checkoutRow?.id ?? null,
@@ -173,8 +185,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         status:
           session.payment_status === "paid" ? "succeeded" : "pending",
         metadata: { product_slug: productSlug },
-      },
-      { onConflict: "stripe_payment_intent_id" },
+      }),
+      { onConflict: tenantOnConflict(ctx, "stripe_payment_intent_id") },
     );
   }
 
@@ -194,7 +206,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
 
     await supabase.from(MA5_TABLES.subscriptions).upsert(
-      {
+      withTenantId(ctx, {
         user_id: userId,
         product_id: productId,
         stripe_subscription_id: subscriptionId,
@@ -203,11 +215,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         current_period_start: periodStart,
         current_period_end: periodEnd,
         metadata: { product_slug: productSlug },
-      },
-      { onConflict: "stripe_subscription_id" },
+      }),
+      { onConflict: tenantOnConflict(ctx, "stripe_subscription_id") },
     );
 
-    await upsertMembership({
+    await upsertMembership(client, {
       userId,
       productId,
       status: subStatus === "trialing" ? "trialing" : "active",
@@ -218,10 +230,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 }
 
-async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
-  const supabase = createServiceClient();
+async function handleCheckoutSessionExpired(
+  client: Ma5TenantServiceClient,
+  session: Stripe.Checkout.Session,
+) {
+  const { supabase, ctx } = client;
   await supabase.from(MA5_TABLES.checkoutSessions).upsert(
-    {
+    withTenantId(ctx, {
       stripe_checkout_session_id: session.id,
       user_id: session.metadata?.user_id ?? session.client_reference_id,
       product_id: session.metadata?.product_id ?? null,
@@ -230,16 +245,19 @@ async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
       amount_total_cents: session.amount_total ?? null,
       currency: session.currency ?? "usd",
       metadata: { product_slug: session.metadata?.product_slug ?? null },
-    },
-    { onConflict: "stripe_checkout_session_id" },
+    }),
+    { onConflict: tenantOnConflict(ctx, "stripe_checkout_session_id") },
   );
 }
 
-async function handleSubscriptionChange(sub: Stripe.Subscription) {
-  const supabase = createServiceClient();
+async function handleSubscriptionChange(
+  client: Ma5TenantServiceClient,
+  sub: Stripe.Subscription,
+) {
+  const { supabase, ctx } = client;
   const userId = sub.metadata?.user_id ?? null;
   const stripePriceId = sub.items.data[0]?.price?.id ?? null;
-  const productId = await resolveProductId({
+  const productId = await resolveProductId(client, {
     productId: sub.metadata?.product_id,
     productSlug: sub.metadata?.product_slug,
     stripePriceId,
@@ -256,6 +274,7 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
       const { data: profile } = await supabase
         .from(MA5_TABLES.profiles)
         .select("id")
+        .eq("tenant_id", ctx.tenantId)
         .eq("stripe_customer_id", cust)
         .maybeSingle();
       resolvedUserId = typeof profile?.id === "string" ? profile.id : null;
@@ -264,7 +283,7 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
 
   if (resolvedUserId) {
     await supabase.from(MA5_TABLES.subscriptions).upsert(
-      {
+      withTenantId(ctx, {
         user_id: resolvedUserId,
         product_id: productId,
         stripe_subscription_id: sub.id,
@@ -279,8 +298,8 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
         metadata: {
           product_slug: sub.metadata?.product_slug ?? null,
         },
-      },
-      { onConflict: "stripe_subscription_id" },
+      }),
+      { onConflict: tenantOnConflict(ctx, "stripe_subscription_id") },
     );
   }
 
@@ -299,10 +318,11 @@ async function handleSubscriptionChange(sub: Stripe.Subscription) {
       stripe_price_id: stripePriceId,
       ...(productId ? { product_id: productId } : {}),
     })
+    .eq("tenant_id", ctx.tenantId)
     .eq("stripe_subscription_id", sub.id);
 
   if (resolvedUserId && productId && !membershipStatus.includes("cancel")) {
-    await upsertMembership({
+    await upsertMembership(client, {
       userId: resolvedUserId,
       productId,
       status: membershipStatus,
@@ -331,8 +351,12 @@ function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
   return null;
 }
 
-async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
-  const supabase = createServiceClient();
+async function handleInvoice(
+  client: Ma5TenantServiceClient,
+  invoice: Stripe.Invoice,
+  failed: boolean,
+) {
+  const { supabase, ctx } = client;
   const stripeSubscriptionId = invoiceSubscriptionId(invoice);
 
   let userId: string | null = null;
@@ -342,6 +366,7 @@ async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
     const { data: subRow } = await supabase
       .from(MA5_TABLES.subscriptions)
       .select("id, user_id")
+      .eq("tenant_id", ctx.tenantId)
       .eq("stripe_subscription_id", stripeSubscriptionId)
       .maybeSingle();
     subscriptionRowId = (subRow?.id as string | undefined) ?? null;
@@ -354,6 +379,7 @@ async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
       const { data: profile } = await supabase
         .from(MA5_TABLES.profiles)
         .select("id")
+        .eq("tenant_id", ctx.tenantId)
         .eq("stripe_customer_id", cust)
         .maybeSingle();
       userId = (profile?.id as string | undefined) ?? null;
@@ -361,7 +387,7 @@ async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
   }
 
   await supabase.from(MA5_TABLES.invoices).upsert(
-    {
+    withTenantId(ctx, {
       user_id: userId,
       subscription_id: subscriptionRowId,
       stripe_invoice_id: invoice.id,
@@ -379,8 +405,8 @@ async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
         ? new Date(invoice.period_end * 1000).toISOString()
         : null,
       metadata: {},
-    },
-    { onConflict: "stripe_invoice_id" },
+    }),
+    { onConflict: tenantOnConflict(ctx, "stripe_invoice_id") },
   );
 
   const paymentIntentRaw = (
@@ -395,7 +421,7 @@ async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
 
   if (paymentIntentId) {
     await supabase.from(MA5_TABLES.payments).upsert(
-      {
+      withTenantId(ctx, {
         user_id: userId,
         stripe_payment_intent_id: paymentIntentId,
         stripe_invoice_id: invoice.id,
@@ -405,28 +431,31 @@ async function handleInvoice(invoice: Stripe.Invoice, failed: boolean) {
         currency: invoice.currency ?? "usd",
         status: failed ? "failed" : "succeeded",
         metadata: { stripe_invoice_id: invoice.id },
-      },
-      { onConflict: "stripe_payment_intent_id" },
+      }),
+      { onConflict: tenantOnConflict(ctx, "stripe_payment_intent_id") },
     );
   } else {
-    await supabase.from(MA5_TABLES.payments).insert({
-      user_id: userId,
-      stripe_invoice_id: invoice.id,
-      amount_cents: failed
-        ? invoice.amount_due ?? 0
-        : invoice.amount_paid ?? 0,
-      currency: invoice.currency ?? "usd",
-      status: failed ? "failed" : "succeeded",
-      metadata: { stripe_invoice_id: invoice.id },
-    });
+    await supabase.from(MA5_TABLES.payments).insert(
+      withTenantId(ctx, {
+        user_id: userId,
+        stripe_invoice_id: invoice.id,
+        amount_cents: failed
+          ? invoice.amount_due ?? 0
+          : invoice.amount_paid ?? 0,
+        currency: invoice.currency ?? "usd",
+        status: failed ? "failed" : "succeeded",
+        metadata: { stripe_invoice_id: invoice.id },
+      }),
+    );
   }
 }
 
 async function handlePaymentIntent(
+  client: Ma5TenantServiceClient,
   pi: Stripe.PaymentIntent,
   status: "succeeded" | "failed",
 ) {
-  const supabase = createServiceClient();
+  const { supabase, ctx } = client;
   let userId: string | null = pi.metadata?.user_id ?? null;
 
   if (!userId && pi.customer) {
@@ -435,6 +464,7 @@ async function handlePaymentIntent(
       const { data: profile } = await supabase
         .from(MA5_TABLES.profiles)
         .select("id")
+        .eq("tenant_id", ctx.tenantId)
         .eq("stripe_customer_id", cust)
         .maybeSingle();
       userId = (profile?.id as string | undefined) ?? null;
@@ -442,7 +472,7 @@ async function handlePaymentIntent(
   }
 
   await supabase.from(MA5_TABLES.payments).upsert(
-    {
+    withTenantId(ctx, {
       user_id: userId,
       product_id: pi.metadata?.product_id ?? null,
       stripe_payment_intent_id: pi.id,
@@ -450,13 +480,16 @@ async function handlePaymentIntent(
       currency: pi.currency ?? "usd",
       status,
       metadata: pi.metadata ?? {},
-    },
-    { onConflict: "stripe_payment_intent_id" },
+    }),
+    { onConflict: tenantOnConflict(ctx, "stripe_payment_intent_id") },
   );
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge) {
-  const supabase = createServiceClient();
+async function handleChargeRefunded(
+  client: Ma5TenantServiceClient,
+  charge: Stripe.Charge,
+) {
+  const { supabase, ctx } = client;
   const paymentIntentId =
     typeof charge.payment_intent === "string"
       ? charge.payment_intent
@@ -467,6 +500,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     const { data: payment } = await supabase
       .from(MA5_TABLES.payments)
       .select("id")
+      .eq("tenant_id", ctx.tenantId)
       .eq("stripe_payment_intent_id", paymentIntentId)
       .maybeSingle();
     paymentId = (payment?.id as string | undefined) ?? null;
@@ -477,13 +511,14 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         status: charge.refunded ? "refunded" : "partially_refunded",
         stripe_charge_id: charge.id,
       })
+      .eq("tenant_id", ctx.tenantId)
       .eq("stripe_payment_intent_id", paymentIntentId);
   }
 
   const refunds = charge.refunds?.data ?? [];
   for (const refund of refunds) {
     await supabase.from(MA5_TABLES.refunds).upsert(
-      {
+      withTenantId(ctx, {
         payment_id: paymentId,
         stripe_refund_id: refund.id,
         stripe_charge_id: charge.id,
@@ -499,21 +534,26 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
                 : "pending",
         reason: refund.reason ?? null,
         metadata: {},
-      },
-      { onConflict: "stripe_refund_id" },
+      }),
+      { onConflict: tenantOnConflict(ctx, "stripe_refund_id") },
     );
   }
 }
 
-export async function handleStripeWebhookEvent(event: Stripe.Event) {
+export async function handleStripeWebhookEvent(
+  event: Stripe.Event,
+  client: Ma5TenantServiceClient,
+) {
   switch (event.type) {
     case "checkout.session.completed":
       await handleCheckoutSessionCompleted(
+        client,
         event.data.object as Stripe.Checkout.Session,
       );
       break;
     case "checkout.session.expired":
       await handleCheckoutSessionExpired(
+        client,
         event.data.object as Stripe.Checkout.Session,
       );
       break;
@@ -521,29 +561,32 @@ export async function handleStripeWebhookEvent(event: Stripe.Event) {
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
       await handleSubscriptionChange(
+        client,
         event.data.object as Stripe.Subscription,
       );
       break;
     case "invoice.paid":
-      await handleInvoice(event.data.object as Stripe.Invoice, false);
+      await handleInvoice(client, event.data.object as Stripe.Invoice, false);
       break;
     case "invoice.payment_failed":
-      await handleInvoice(event.data.object as Stripe.Invoice, true);
+      await handleInvoice(client, event.data.object as Stripe.Invoice, true);
       break;
     case "payment_intent.succeeded":
       await handlePaymentIntent(
+        client,
         event.data.object as Stripe.PaymentIntent,
         "succeeded",
       );
       break;
     case "payment_intent.payment_failed":
       await handlePaymentIntent(
+        client,
         event.data.object as Stripe.PaymentIntent,
         "failed",
       );
       break;
     case "charge.refunded":
-      await handleChargeRefunded(event.data.object as Stripe.Charge);
+      await handleChargeRefunded(client, event.data.object as Stripe.Charge);
       break;
     default:
       break;

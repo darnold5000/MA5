@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
 
+import { commerceStripeMetadata } from "@/lib/billing/catalog";
 import { getSessionUser } from "@/lib/auth/session";
 import { env, isSupabasePublicConfigured } from "@/lib/env";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
@@ -81,11 +82,11 @@ export async function POST(request: Request) {
         ? undefined
         : sessionUser.email,
       client_reference_id: sessionUser.id,
-      metadata: {
+      metadata: commerceStripeMetadata({
         user_id: sessionUser.id,
         class_session_id: classSession.id,
         booking_kind: "session",
-      },
+      }),
       success_url: `${env.siteUrl}/api/stripe/session-paid?checkout_session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${env.siteUrl}/app/schedule?checkout=cancelled`,
     });

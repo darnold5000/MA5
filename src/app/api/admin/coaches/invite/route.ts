@@ -1,44 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  COACHES_COOKIE,
-  defaultCoaches,
-  parseCoaches,
-  serializeCoaches,
-} from "@/features/settings/demo-store";
 import { inviteRedirectUrl } from "@/features/auth/members";
-import { env } from "@/lib/env";
+import {
+  findProfileByEmailInTenant,
+  inviteUserMetadata,
+  upsertInvitedProfile,
+  upsertMemberRole,
+} from "@/lib/auth/tenant-data";
+import { env, isSupabasePublicConfigured } from "@/lib/env";
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
-import { isSupabasePublicConfigured } from "@/lib/env";
-import {
-  createClient,
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 const inviteSchema = z.object({
   fullName: z.string().min(1).max(120),
   email: z.string().email(),
 });
-
-function coachesCookieResponse(
-  coaches: ReturnType<typeof defaultCoaches>,
-  body: unknown,
-) {
-  const response = NextResponse.json(body);
-  response.cookies.set({
-    name: COACHES_COOKIE,
-    value: serializeCoaches(coaches),
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
-  return response;
-}
 
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);
@@ -59,39 +40,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  // Live invite via Supabase Auth Admin
   if (session && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!isMa5DeploymentConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "MA5_TENANT_ID and MA5_LOCATION_ID must be set to invite coaches",
+        },
+        { status: 503 },
+      );
+    }
+
     try {
-      const admin = createServiceClient();
+      const client = createMa5TenantServiceClient();
+      const { supabase: admin, ctx } = client;
+
       const { data: invited, error: inviteError } =
         await admin.auth.admin.inviteUserByEmail(emailNorm, {
-          data: {
-            full_name: fullName,
-            role: "coach",
-            invitation_status: "sent",
-            active: false,
-          },
+          data: inviteUserMetadata(ctx, { fullName, role: "coach" }),
           redirectTo: inviteRedirectUrl(env.siteUrl),
         });
 
       if (inviteError) {
-        // User may already exist — try to attach coach role
-        const userClient = await createClient();
-        const { data: existing } = await userClient
-          .from(MA5_TABLES.profiles)
-          .select("id, email, full_name")
-          .ilike("email", emailNorm)
-          .maybeSingle();
+        const existing = await findProfileByEmailInTenant(emailNorm, client);
 
         if (existing?.id) {
-          await admin.from(MA5_TABLES.userRoles).upsert(
-            { user_id: existing.id, role: "coach" },
-            { onConflict: "user_id,role" },
-          );
+          await upsertMemberRole(existing.id, "coach", client);
           if (fullName && !existing.full_name) {
             await admin
               .from(MA5_TABLES.profiles)
               .update({ full_name: fullName })
+              .eq("tenant_id", ctx.tenantId)
               .eq("id", existing.id);
           }
           return NextResponse.json({
@@ -115,20 +94,15 @@ export async function POST(request: Request) {
 
       const userId = invited.user?.id;
       if (userId) {
-        await admin.from(MA5_TABLES.profiles).upsert(
+        await upsertInvitedProfile(
           {
-            id: userId,
-            email: emailNorm,
-            full_name: fullName,
-            active: false,
-            invitation_status: "sent",
-            invited_at: new Date().toISOString(),
+            userId,
+            emailNorm,
+            fullName,
+            role: "coach",
+            now: new Date().toISOString(),
           },
-          { onConflict: "id" },
-        );
-        await admin.from(MA5_TABLES.userRoles).upsert(
-          { user_id: userId, role: "coach" },
-          { onConflict: "user_id,role" },
+          client,
         );
       }
 
@@ -145,34 +119,18 @@ export async function POST(request: Request) {
       });
     } catch (err) {
       console.error("[api/admin/coaches/invite]", err);
-      // fall through to demo
+      return NextResponse.json(
+        { error: "Could not send coach invitation" },
+        { status: 500 },
+      );
     }
   }
 
-  // Demo cookie path
-  const jar = await import("next/headers").then((m) => m.cookies());
-  const cookieStore = await jar;
-  const current = parseCoaches(cookieStore.get(COACHES_COOKIE)?.value);
-  if (current.some((c) => c.email.toLowerCase() === emailNorm)) {
-    return NextResponse.json(
-      { error: "That email is already on the coach list" },
-      { status: 400 },
-    );
-  }
-
-  const coach = {
-    id: `invited-${Date.now()}`,
-    fullName,
-    email: emailNorm,
-    roleLabel: "Coach",
-    status: "invited" as const,
-  };
-  const next = [...current, coach];
-  return coachesCookieResponse(next, {
-    ok: true,
-    coach,
-    message: session
-      ? "Invite saved (add SUPABASE_SERVICE_ROLE_KEY to send email)"
-      : "Invite saved (demo)",
-  });
+  return NextResponse.json(
+    {
+      error:
+        "Coach invitations require Supabase and MA5 deployment configuration",
+    },
+    { status: 503 },
+  );
 }

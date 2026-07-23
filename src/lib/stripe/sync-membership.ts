@@ -8,6 +8,9 @@ import {
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { tenantOnConflict, withTenantId } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 export type ActiveMembership = {
   productSlug: string;
@@ -36,15 +39,25 @@ export async function getActiveMembershipForUser(
     const fromStripe = await hydrateMembershipFromStripeCustomer(userId);
     if (fromStripe) return fromStripe;
 
-    const supabase = createServiceClient();
-    const { data } = await supabase
+    const client = isMa5DeploymentConfigured()
+      ? createMa5TenantServiceClient()
+      : null;
+    const supabase = client?.supabase ?? createServiceClient();
+    const tenantId = client?.ctx.tenantId;
+
+    let query = supabase
       .from(MA5_TABLES.memberships)
       .select("status, current_period_end, ma5_products(name, slug)")
       .eq("user_id", userId)
       .in("status", ["active", "trialing"])
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    if (tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
+    const { data } = await query.maybeSingle();
 
     if (!data) return null;
 
@@ -71,12 +84,20 @@ async function hydrateMembershipFromStripeCustomer(
   const stripe = getStripe();
   if (!stripe) return null;
 
-  const supabase = createServiceClient();
-  const { data: profile } = await supabase
+  const client = isMa5DeploymentConfigured()
+    ? createMa5TenantServiceClient()
+    : null;
+  const supabase = client?.supabase ?? createServiceClient();
+  const tenantId = client?.ctx.tenantId;
+
+  let profileQuery = supabase
     .from(MA5_TABLES.profiles)
     .select("stripe_customer_id, email")
-    .eq("id", userId)
-    .maybeSingle();
+    .eq("id", userId);
+  if (tenantId) {
+    profileQuery = profileQuery.eq("tenant_id", tenantId);
+  }
+  const { data: profile } = await profileQuery.maybeSingle();
 
   let customerId = profile?.stripe_customer_id as string | null | undefined;
 
@@ -87,10 +108,14 @@ async function hydrateMembershipFromStripeCustomer(
     });
     customerId = customers.data[0]?.id;
     if (customerId) {
-      await supabase
+      let updateQuery = supabase
         .from(MA5_TABLES.profiles)
         .update({ stripe_customer_id: customerId })
         .eq("id", userId);
+      if (tenantId) {
+        updateQuery = updateQuery.eq("tenant_id", tenantId);
+      }
+      await updateQuery;
     }
   }
 
@@ -116,10 +141,14 @@ async function hydrateMembershipFromStripeCustomer(
         s.status === "canceled",
     );
     if (ending?.id) {
-      await supabase
+      let cancelQuery = supabase
         .from(MA5_TABLES.memberships)
         .update({ status: "canceled" })
         .eq("stripe_subscription_id", ending.id);
+      if (tenantId) {
+        cancelQuery = cancelQuery.eq("tenant_id", tenantId);
+      }
+      await cancelQuery;
     }
     return null;
   }
@@ -159,7 +188,11 @@ async function finalizeHydratedMembership(params: {
   active: { id: string; status: string };
   priceId: string | null;
 }): Promise<ActiveMembership> {
-  const supabase = createServiceClient();
+  const client = isMa5DeploymentConfigured()
+    ? createMa5TenantServiceClient()
+    : null;
+  const supabase = client?.supabase ?? createServiceClient();
+  const ctx = client?.ctx;
   const stripe = getStripe();
   let periodEnd: string | null = null;
 
@@ -169,17 +202,29 @@ async function finalizeHydratedMembership(params: {
     if (end) periodEnd = new Date(end * 1000).toISOString();
   }
 
-  await supabase.from(MA5_TABLES.memberships).upsert(
-    {
-      user_id: params.userId,
-      product_id: params.offering.id,
-      status: params.active.status === "trialing" ? "trialing" : "active",
-      stripe_subscription_id: params.active.id,
-      stripe_price_id: params.priceId,
-      current_period_end: periodEnd,
-    },
-    { onConflict: "stripe_subscription_id" },
-  );
+  const row = ctx
+    ? withTenantId(ctx, {
+        user_id: params.userId,
+        product_id: params.offering.id,
+        status: params.active.status === "trialing" ? "trialing" : "active",
+        stripe_subscription_id: params.active.id,
+        stripe_price_id: params.priceId,
+        current_period_end: periodEnd,
+      })
+    : {
+        user_id: params.userId,
+        product_id: params.offering.id,
+        status: params.active.status === "trialing" ? "trialing" : "active",
+        stripe_subscription_id: params.active.id,
+        stripe_price_id: params.priceId,
+        current_period_end: periodEnd,
+      };
+
+  await supabase.from(MA5_TABLES.memberships).upsert(row, {
+    onConflict: ctx
+      ? tenantOnConflict(ctx, "stripe_subscription_id")
+      : "stripe_subscription_id",
+  });
 
   return {
     productSlug: params.offering.slug,

@@ -2,6 +2,7 @@ import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { getSessionById } from "@/features/scheduling/queries";
 import type { BookingItem } from "@/features/scheduling/fallback-data";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 
 function confirmationNumber(): string {
   const n = Math.floor(1000 + Math.random() * 9000);
@@ -30,7 +31,8 @@ export async function createBooking(input: {
     throw new Error("This session is full");
   }
 
-  // Block duplicate enrollment for the same class/session.
+  const deploymentReady = isMa5DeploymentConfigured();
+
   if (input.userId && isSupabaseConfigured() && session.source !== "demo") {
     try {
       const supabase = await createClient();
@@ -52,7 +54,6 @@ export async function createBooking(input: {
       ) {
         throw err;
       }
-      // Fall through to booking if the duplicate check itself fails.
     }
   }
 
@@ -72,18 +73,27 @@ export async function createBooking(input: {
     source: "demo",
   };
 
-  if (!input.userId || !isSupabaseConfigured() || session.source === "demo") {
+  if (
+    !input.userId ||
+    !isSupabaseConfigured() ||
+    session.source === "demo" ||
+    !deploymentReady
+  ) {
+    if (deploymentReady && input.userId && session.source !== "demo") {
+      throw new Error("Booking persistence requires a configured MA5 deployment");
+    }
     return { booking: demoBooking, demo: true };
   }
 
   try {
     const supabase = await createClient();
+    const confirm = confirmationNumber();
     const { data, error } = await supabase
       .from(MA5_TABLES.bookings)
       .insert({
         session_id: session.id,
         user_id: input.userId,
-        confirmation_number: demoBooking.confirmationNumber,
+        confirmation_number: confirm,
         status: "confirmed",
         payment_status: paymentStatus,
         amount_cents: session.priceCents,
@@ -96,11 +106,11 @@ export async function createBooking(input: {
       if (error.code === "23505") {
         throw new Error("You’re already enrolled in this session");
       }
-      return { booking: demoBooking, demo: true };
+      throw new Error(error.message);
     }
 
     if (!data) {
-      return { booking: demoBooking, demo: true };
+      throw new Error("Booking was not created");
     }
 
     return {
@@ -124,6 +134,6 @@ export async function createBooking(input: {
     ) {
       throw err;
     }
-    return { booking: demoBooking, demo: true };
+    throw err instanceof Error ? err : new Error("Could not create booking");
   }
 }

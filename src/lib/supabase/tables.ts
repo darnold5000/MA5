@@ -1,4 +1,5 @@
 export const MA5_TABLES = {
+  locations: "ma5_locations",
   profiles: "ma5_profiles",
   userRoles: "ma5_user_roles",
   notifications: "ma5_notifications",
@@ -6,6 +7,7 @@ export const MA5_TABLES = {
   products: "ma5_products",
   prices: "ma5_prices",
   checkoutSessions: "ma5_checkout_sessions",
+  stripeWebhookEvents: "ma5_stripe_webhook_events",
   payments: "ma5_payments",
   subscriptions: "ma5_subscriptions",
   invoices: "ma5_invoices",

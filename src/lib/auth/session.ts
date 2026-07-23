@@ -21,6 +21,7 @@ export type Ma5Profile = {
   phone: string | null;
   active: boolean;
   stripe_customer_id: string | null;
+  tenant_id?: string | null;
   invitation_status?: string | null;
   invited_at?: string | null;
   invitation_accepted_at?: string | null;
@@ -60,7 +61,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
         supabase
           .from(MA5_TABLES.profiles)
           .select(
-            "id, email, full_name, phone, active, stripe_customer_id, invitation_status, invited_at, invitation_accepted_at, last_login_at, access_revoked_at",
+            "id, email, full_name, phone, active, stripe_customer_id, tenant_id, invitation_status, invited_at, invitation_accepted_at, last_login_at, access_revoked_at",
           )
           .eq("id", user.id)
           .maybeSingle(),

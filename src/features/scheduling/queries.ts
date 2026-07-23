@@ -1,10 +1,36 @@
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { defaultLocationLabel } from "@/features/settings/locations";
 import { mergeSessions, readOpsState } from "@/features/admin/ops-store";
 import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
 import { listActiveOfferings } from "@/lib/billing/catalog";
 import type { ProductItem, MembershipItem } from "@/features/scheduling/fallback-data";
 import { durationFromRange } from "@/features/scheduling/format";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+
+type SessionRow = {
+  id: string;
+  class_type_id: string | null;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  price_cents: number;
+  status: SessionItem["status"];
+  coach_name: string | null;
+  ma5_locations: { name: string } | { name: string }[] | null;
+};
+
+function locationNameFromRow(
+  row: SessionRow,
+  fallback = defaultLocationLabel(),
+): string {
+  const loc = row.ma5_locations;
+  if (!loc) return fallback;
+  if (Array.isArray(loc)) return loc[0]?.name ?? fallback;
+  return loc.name ?? fallback;
+}
 
 export async function listAllSessions(): Promise<SessionItem[]> {
   if (!isSupabaseConfigured()) {
@@ -16,35 +42,43 @@ export async function listAllSessions(): Promise<SessionItem[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from(MA5_TABLES.sessions)
-      .select("*")
+      .select(
+        "id, class_type_id, title, description, starts_at, ends_at, capacity, price_cents, status, coach_name, ma5_locations(name)",
+      )
       .order("starts_at", { ascending: true });
 
     if (error || !data?.length) {
+      if (isMa5DeploymentConfigured()) {
+        return [];
+      }
       const state = await readOpsState();
       return mergeSessions(state);
     }
 
-    return data.map((row) => {
-      const startsAt = row.starts_at as string;
-      const endsAt = row.ends_at as string;
+    return (data as SessionRow[]).map((row) => {
+      const startsAt = row.starts_at;
+      const endsAt = row.ends_at;
       return {
-        id: row.id as string,
-        classTypeId: (row.class_type_id as string) ?? "",
-        title: row.title as string,
-        description: (row.description as string) ?? "",
+        id: row.id,
+        classTypeId: row.class_type_id ?? "",
+        title: row.title,
+        description: row.description ?? "",
         startsAt,
         endsAt,
         durationMinutes: durationFromRange(startsAt, endsAt),
-        capacity: row.capacity as number,
+        capacity: row.capacity,
         bookedCount: 0,
-        priceCents: row.price_cents as number,
-        locationName: (row.location_name as string) ?? "MA5 Performance",
-        status: row.status as SessionItem["status"],
-        coachName: (row.coach_name as string) ?? "MA5 Coach",
+        priceCents: row.price_cents,
+        locationName: locationNameFromRow(row),
+        status: row.status,
+        coachName: row.coach_name ?? "MA5 Coach",
         source: "database" as const,
       };
     });
   } catch {
+    if (isMa5DeploymentConfigured()) {
+      return [];
+    }
     const state = await readOpsState();
     return mergeSessions(state);
   }
@@ -82,6 +116,7 @@ export async function listProducts(): Promise<ProductItem[]> {
 
 export async function listUserBookings(userId: string | null): Promise<BookingItem[]> {
   if (!userId || !isSupabaseConfigured()) {
+    if (isMa5DeploymentConfigured()) return [];
     const { FALLBACK_BOOKINGS } = await import("@/features/scheduling/fallback-data");
     return FALLBACK_BOOKINGS;
   }
@@ -95,6 +130,7 @@ export async function listUserBookings(userId: string | null): Promise<BookingIt
       .order("created_at", { ascending: false });
 
     if (error || !data) {
+      if (isMa5DeploymentConfigured()) return [];
       const { FALLBACK_BOOKINGS } = await import("@/features/scheduling/fallback-data");
       return FALLBACK_BOOKINGS;
     }
@@ -116,6 +152,7 @@ export async function listUserBookings(userId: string | null): Promise<BookingIt
       };
     });
   } catch {
+    if (isMa5DeploymentConfigured()) return [];
     const { FALLBACK_BOOKINGS } = await import("@/features/scheduling/fallback-data");
     return FALLBACK_BOOKINGS;
   }

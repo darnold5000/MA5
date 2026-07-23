@@ -7,6 +7,9 @@ import {
   readDemoCoaches,
 } from "@/features/settings/demo-store";
 import {
+  getDefaultLocationSettings,
+} from "@/features/settings/locations";
+import {
   DEFAULT_WAIVERS,
   WAIVER_LABELS,
   type ClientProfileSettings,
@@ -101,6 +104,9 @@ export async function getFacilitySettings(): Promise<FacilitySettings> {
   try {
     const session = await getSessionUser();
     if (!session) return readDemoFacilitySettings();
+
+    const fromLocation = await getDefaultLocationSettings();
+    if (fromLocation) return fromLocation;
 
     const supabase = await createClient();
     const { data, error } = await supabase

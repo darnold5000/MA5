@@ -4,6 +4,7 @@
  * Requires in env (or .env.local):
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
+ *   MA5_TENANT_ID (Signal Works destination)
  *
  * Usage:
  *   node --env-file=.env.local scripts/create-demo-coach.mjs
@@ -11,6 +12,7 @@
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const tenantId = process.env.MA5_TENANT_ID?.trim();
 
 const EMAIL = "mike@ma5.com";
 const PASSWORD = "1Password";
@@ -21,6 +23,14 @@ if (!url || !serviceKey) {
     "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n" +
       "Put them in .env.local and run:\n" +
       "  node --env-file=.env.local scripts/create-demo-coach.mjs",
+  );
+  process.exit(1);
+}
+
+if (!tenantId) {
+  console.error(
+    "Missing MA5_TENANT_ID.\n" +
+      "Set it to the Signal Works tenant id for this MA5 deployment.",
   );
   process.exit(1);
 }
@@ -41,6 +51,7 @@ async function main() {
         role: "coach",
         invitation_status: "accepted",
         active: true,
+        ma5_tenant_id: tenantId,
       },
     });
 
@@ -69,10 +80,10 @@ async function main() {
     console.log(`Created auth user ${EMAIL} (${userId})`);
   }
 
-  // Ensure profile is active; staff accounts should not keep a leftover client role.
   const { error: profileError } = await admin.from("ma5_profiles").upsert(
     {
       id: userId,
+      tenant_id: tenantId,
       email: EMAIL,
       full_name: FULL_NAME,
       active: true,
@@ -84,16 +95,15 @@ async function main() {
   if (profileError) throw profileError;
 
   const { error: roleError } = await admin.from("ma5_user_roles").upsert(
-    { user_id: userId, role: "coach" },
-    { onConflict: "user_id,role" },
+    { tenant_id: tenantId, user_id: userId, role: "coach" },
+    { onConflict: "tenant_id,user_id,role" },
   );
   if (roleError) throw roleError;
 
-  // Older auth triggers defaulted every user to client. Remove it so Mike is
-  // staff-only — admin access comes from coach, not from being a member.
   const { error: removeClientError } = await admin
     .from("ma5_user_roles")
     .delete()
+    .eq("tenant_id", tenantId)
     .eq("user_id", userId)
     .eq("role", "client");
   if (removeClientError) throw removeClientError;
@@ -101,10 +111,12 @@ async function main() {
   const { data: roles } = await admin
     .from("ma5_user_roles")
     .select("role")
+    .eq("tenant_id", tenantId)
     .eq("user_id", userId);
   console.log("Done.");
   console.log(`  Email:    ${EMAIL}`);
   console.log(`  Password: ${PASSWORD}`);
+  console.log(`  Tenant:   ${tenantId}`);
   console.log(`  Roles:    ${(roles ?? []).map((r) => r.role).join(", ") || "(none)"}`);
   console.log(`  Login:    /login → then /admin`);
 }

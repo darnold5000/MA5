@@ -4,13 +4,17 @@ import { z } from "zod";
 import { inviteRedirectUrl } from "@/features/auth/members";
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
 import { sendExistingUserActivationEmail } from "@/lib/auth/activation-email";
+import {
+  findProfileByEmailInTenant,
+  inviteUserMetadata,
+  upsertInvitedProfile,
+  upsertMemberRole,
+} from "@/lib/auth/tenant-data";
 import { requireAdminSessionOrResponse } from "@/lib/auth/session";
 import { env, isSupabasePublicConfigured } from "@/lib/env";
-import {
-  createServiceClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
-import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 const inviteSchema = z.object({
   firstName: z.string().min(1).max(80).optional(),
@@ -29,14 +33,10 @@ function resolveFullName(data: z.infer<typeof inviteSchema>): string {
   return [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
 }
 
-/**
- * Resolve an Auth user that already exists but may lack a ma5_profiles row.
- * generateLink does not send email; it returns the user id for linking.
- */
 async function findAuthUserIdByEmail(
-  admin: ReturnType<typeof createServiceClient>,
   emailNorm: string,
 ): Promise<string | null> {
+  const { supabase: admin } = createMa5TenantServiceClient();
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: emailNorm,
@@ -47,47 +47,6 @@ async function findAuthUserIdByEmail(
     return null;
   }
   return data.user?.id ?? null;
-}
-
-async function upsertInvitedProfile(
-  admin: ReturnType<typeof createServiceClient>,
-  args: {
-    userId: string;
-    emailNorm: string;
-    fullName: string;
-    phone?: string;
-    notes?: string;
-    role: "client" | "coach";
-    now: string;
-    leadId: string | null;
-  },
-) {
-  await admin.from(MA5_TABLES.profiles).upsert(
-    {
-      id: args.userId,
-      email: args.emailNorm,
-      full_name: args.fullName,
-      phone: args.phone?.trim() || null,
-      admin_notes: args.notes?.trim() || null,
-      active: false,
-      invitation_status: "sent",
-      invited_at: args.now,
-      access_revoked_at: null,
-    },
-    { onConflict: "id" },
-  );
-
-  await admin.from(MA5_TABLES.userRoles).upsert(
-    { user_id: args.userId, role: args.role },
-    { onConflict: "user_id,role" },
-  );
-
-  await attachLeadOnInvite({
-    admin,
-    profileId: args.userId,
-    email: args.emailNorm,
-    leadId: args.leadId,
-  });
 }
 
 export async function POST(request: Request) {
@@ -114,6 +73,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!isMa5DeploymentConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "MA5_TENANT_ID and MA5_LOCATION_ID must be set for member invitations",
+      },
+      { status: 503 },
+    );
+  }
+
   const emailNorm = parsed.data.email.trim().toLowerCase();
   const fullName = resolveFullName(parsed.data);
   if (!fullName) {
@@ -125,29 +94,20 @@ export async function POST(request: Request) {
   const leadIdOpt = parsed.data.leadId ?? null;
 
   try {
-    const admin = createServiceClient();
+    const client = createMa5TenantServiceClient();
+    const { supabase: admin, ctx } = client;
 
-    const { data: existingProfile } = await admin
-      .from(MA5_TABLES.profiles)
-      .select(
-        "id, email, full_name, active, invitation_status, access_revoked_at",
-      )
-      .ilike("email", emailNorm)
-      .maybeSingle();
+    const existingProfile = await findProfileByEmailInTenant(emailNorm, client);
 
-    // Case A: already active member — ensure role, do not re-invite.
     if (
       existingProfile &&
       existingProfile.active &&
       existingProfile.invitation_status === "accepted"
     ) {
-      await admin.from(MA5_TABLES.userRoles).upsert(
-        { user_id: existingProfile.id, role },
-        { onConflict: "user_id,role" },
-      );
+      await upsertMemberRole(existingProfile.id, role, client);
 
       await attachLeadOnInvite({
-        admin,
+        client,
         profileId: existingProfile.id,
         email: emailNorm,
         leadId: leadIdOpt,
@@ -169,15 +129,9 @@ export async function POST(request: Request) {
       });
     }
 
-    // Case B: brand-new Auth user via invite email.
     const { data: invited, error: inviteError } =
       await admin.auth.admin.inviteUserByEmail(emailNorm, {
-        data: {
-          full_name: fullName,
-          role,
-          invitation_status: "sent",
-          active: false,
-        },
+        data: inviteUserMetadata(ctx, { fullName, role }),
         redirectTo: inviteRedirectUrl(env.siteUrl),
       });
 
@@ -190,14 +144,23 @@ export async function POST(request: Request) {
         );
       }
 
-      await upsertInvitedProfile(admin, {
-        userId,
-        emailNorm,
-        fullName,
-        phone: parsed.data.phone,
-        notes: parsed.data.notes,
-        role,
-        now,
+      await upsertInvitedProfile(
+        {
+          userId,
+          emailNorm,
+          fullName,
+          phone: parsed.data.phone,
+          notes: parsed.data.notes,
+          role,
+          now,
+        },
+        client,
+      );
+
+      await attachLeadOnInvite({
+        client,
+        profileId: userId,
+        email: emailNorm,
         leadId: leadIdOpt,
       });
 
@@ -215,12 +178,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // Case C: Auth user already exists (with or without a profile).
-    // inviteUserByEmail fails when "Enable sign ups" is off OR user exists —
-    // admin inviteUserByEmail should still work with signups disabled; the
-    // usual failure here is "already registered".
     const existingUserId =
-      existingProfile?.id ?? (await findAuthUserIdByEmail(admin, emailNorm));
+      existingProfile?.id ?? (await findAuthUserIdByEmail(emailNorm));
 
     if (!existingUserId) {
       return NextResponse.json(
@@ -229,20 +188,26 @@ export async function POST(request: Request) {
       );
     }
 
-    await upsertInvitedProfile(admin, {
-      userId: existingUserId,
-      emailNorm,
-      fullName,
-      phone: parsed.data.phone,
-      notes: parsed.data.notes,
-      role,
-      now,
+    await upsertInvitedProfile(
+      {
+        userId: existingUserId,
+        emailNorm,
+        fullName,
+        phone: parsed.data.phone,
+        notes: parsed.data.notes,
+        role,
+        now,
+      },
+      client,
+    );
+
+    await attachLeadOnInvite({
+      client,
+      profileId: existingUserId,
+      email: emailNorm,
       leadId: leadIdOpt,
     });
 
-    // Existing Auth users cannot receive a second Invite template email.
-    // Prefer a branded activation message (Resend); otherwise Supabase recovery
-    // with activation-aware template copy (docs/AUTH_EMAIL_TEMPLATES.md).
     const { channel } = await sendExistingUserActivationEmail({
       admin,
       email: emailNorm,

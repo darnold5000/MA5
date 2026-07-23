@@ -1,5 +1,7 @@
-import { createServiceClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 import type { InvitationStatus, MemberDirectoryRow } from "./types";
 
@@ -34,14 +36,19 @@ function asInvitationStatus(value: string | null | undefined): InvitationStatus 
 }
 
 export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
-  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (
+    !isSupabaseConfigured() ||
+    !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    !isMa5DeploymentConfigured()
+  ) {
     return [];
   }
 
-  const admin = createServiceClient();
+  const { supabase: admin, ctx } = createMa5TenantServiceClient();
   const { data: roleRows, error: roleError } = await admin
     .from(MA5_TABLES.userRoles)
     .select("user_id, role")
+    .eq("tenant_id", ctx.tenantId)
     .in("role", ["client", "coach", "admin", "staff", "owner"]);
 
   if (roleError) {
@@ -61,7 +68,6 @@ export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
     const next = row.role as MemberDirectoryRow["role"];
     if (!(next in ROLE_RANK)) continue;
     const current = roleByUser.get(row.user_id);
-    // Prefer highest staff role when a user has multiple (e.g. coach + client).
     if (!current || ROLE_RANK[next] > ROLE_RANK[current]) {
       roleByUser.set(row.user_id, next);
     }
@@ -75,6 +81,7 @@ export async function listDirectoryMembers(): Promise<MemberDirectoryRow[]> {
     .select(
       "id, email, full_name, phone, active, invitation_status, invited_at, invitation_accepted_at, last_login_at, access_revoked_at, admin_notes",
     )
+    .eq("tenant_id", ctx.tenantId)
     .in("id", ids)
     .order("full_name", { ascending: true });
 

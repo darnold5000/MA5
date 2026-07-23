@@ -1,7 +1,7 @@
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
 import type { AttributionTouch } from "@/lib/attribution/types";
-import { createServiceClient } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 type ConvertArgs = {
   profileId: string;
@@ -21,11 +21,11 @@ type ConvertArgs = {
 export async function applyAttributionToMember(
   args: ConvertArgs,
 ): Promise<{ leadId: string | null }> {
-  const admin = createServiceClient();
+  const client = createMa5TenantServiceClient();
+  const { supabase: admin, ctx } = client;
 
-  // Prefer lead link paths (explicit id → email → visitor)
   const attached = await attachLeadOnInvite({
-    admin,
+    client,
     profileId: args.profileId,
     email: args.email,
     leadId: args.leadId,
@@ -38,13 +38,14 @@ export async function applyAttributionToMember(
     const { data: byVisitor } = await admin
       .from(MA5_TABLES.leads)
       .select("id")
+      .eq("tenant_id", ctx.tenantId)
       .eq("visitor_id", args.visitorId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
     if (byVisitor?.id) {
       const retry = await attachLeadOnInvite({
-        admin,
+        client,
         profileId: args.profileId,
         email: args.email,
         leadId: byVisitor.id,
@@ -62,6 +63,7 @@ export async function applyAttributionToMember(
         converted_profile_id: args.profileId,
         converted_at: new Date().toISOString(),
       })
+      .eq("tenant_id", ctx.tenantId)
       .eq("id", leadId);
   }
 
@@ -70,6 +72,7 @@ export async function applyAttributionToMember(
     .select(
       "lead_id, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_landing_page",
     )
+    .eq("tenant_id", ctx.tenantId)
     .eq("id", args.profileId)
     .maybeSingle();
 
@@ -86,7 +89,6 @@ export async function applyAttributionToMember(
     return { leadId: leadId ?? profile.lead_id };
   }
 
-  // Fallback: cookie / visitor session when no lead exists yet
   const touch = args.firstTouch;
   const patch: Record<string, string | null> = {
     lead_id: leadId ?? profile.lead_id,
@@ -110,6 +112,7 @@ export async function applyAttributionToMember(
       .select(
         "utm_source, utm_medium, utm_campaign, utm_term, utm_content, landing_page, referrer, first_seen",
       )
+      .eq("tenant_id", ctx.tenantId)
       .eq("visitor_id", args.visitorId)
       .maybeSingle();
 
@@ -127,7 +130,11 @@ export async function applyAttributionToMember(
 
   const hasAny = Object.values(patch).some((v) => v != null && v !== "");
   if (hasAny) {
-    await admin.from(MA5_TABLES.profiles).update(patch).eq("id", args.profileId);
+    await admin
+      .from(MA5_TABLES.profiles)
+      .update(patch)
+      .eq("tenant_id", ctx.tenantId)
+      .eq("id", args.profileId);
   }
 
   return { leadId: leadId ?? profile.lead_id };

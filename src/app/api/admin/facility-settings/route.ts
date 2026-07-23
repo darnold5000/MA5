@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  FACILITY_SETTINGS_COOKIE,
-  defaultFacilitySettings,
-  parseFacilitySettings,
-  serializeFacilitySettings,
-} from "@/features/settings/demo-store";
+  facilityPatchToLocationColumns,
+  getDefaultLocationSettings,
+} from "@/features/settings/locations";
+import { defaultFacilitySettings } from "@/features/settings/demo-store";
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import {
+  isMa5DeploymentConfigured,
+  requireMa5DeploymentContext,
+} from "@/lib/tenant/deployment";
 
 const patchSchema = z.object({
   gymName: z.string().min(1).max(120).optional(),
@@ -32,20 +35,13 @@ const patchSchema = z.object({
   notifyCapacityWarnings: z.boolean().optional(),
 });
 
-function cookieResponse(
-  settings: ReturnType<typeof defaultFacilitySettings>,
-  body: unknown,
-) {
-  const response = NextResponse.json(body);
-  response.cookies.set({
-    name: FACILITY_SETTINGS_COOKIE,
-    value: serializeFacilitySettings(settings),
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
-  return response;
+export async function GET() {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ settings: defaultFacilitySettings() });
+  }
+
+  const settings = (await getDefaultLocationSettings()) ?? defaultFacilitySettings();
+  return NextResponse.json({ settings });
 }
 
 export async function PATCH(request: Request) {
@@ -60,89 +56,48 @@ export async function PATCH(request: Request) {
       ? await getSessionUser()
       : null;
 
-  if (session && !canAccessAdmin(session.roles)) {
+  if (!session) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+
+  if (!canAccessAdmin(session.roles)) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  if (!session) {
-    const jar = await import("next/headers").then((m) => m.cookies());
-    const cookieStore = await jar;
-    const current = parseFacilitySettings(
-      cookieStore.get(FACILITY_SETTINGS_COOKIE)?.value,
+  if (!isMa5DeploymentConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "MA5_TENANT_ID and MA5_LOCATION_ID must be set to update facility settings",
+      },
+      { status: 503 },
     );
-    const next = { ...current, ...parsed.data };
-    // Never stuff large data URLs into the cookie
-    if (next.logoStoragePath?.startsWith("data:")) {
-      next.logoStoragePath = "local:logo";
-      next.logoUrl = null;
-    } else if (next.logoStoragePath === "local:logo") {
-      next.logoUrl = null;
-    } else if (next.logoStoragePath) {
-      next.logoUrl = next.logoStoragePath.startsWith("http")
-        ? next.logoStoragePath
-        : next.logoUrl;
-    }
-    return cookieResponse(next, { ok: true, settings: next });
+  }
+
+  const { tenantId, locationId } = requireMa5DeploymentContext();
+  const updates = facilityPatchToLocationColumns(parsed.data);
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "No changes provided" }, { status: 400 });
   }
 
   try {
     const supabase = await createClient();
-    const updates: Record<string, unknown> = {};
-    if (parsed.data.gymName !== undefined) updates.gym_name = parsed.data.gymName;
-    if (parsed.data.legalName !== undefined) {
-      updates.legal_name = parsed.data.legalName;
-    }
-    if (parsed.data.addressLine !== undefined) {
-      updates.address_line = parsed.data.addressLine;
-    }
-    if (parsed.data.email !== undefined) updates.email = parsed.data.email;
-    if (parsed.data.openGymHours !== undefined) {
-      updates.open_gym_hours = parsed.data.openGymHours;
-    }
-    if (parsed.data.coachingHours !== undefined) {
-      updates.coaching_hours = parsed.data.coachingHours;
-    }
-    if (parsed.data.hoursSummary !== undefined) {
-      updates.hours_summary = parsed.data.hoursSummary;
-    }
-    if (parsed.data.brandPrimary !== undefined) {
-      updates.brand_primary = parsed.data.brandPrimary;
-    }
-    if (parsed.data.logoStoragePath !== undefined) {
-      updates.logo_storage_path = parsed.data.logoStoragePath;
-    }
-    if (parsed.data.notifyFailedPayments !== undefined) {
-      updates.notify_failed_payments = parsed.data.notifyFailedPayments;
-    }
-    if (parsed.data.notifyNewSignups !== undefined) {
-      updates.notify_new_signups = parsed.data.notifyNewSignups;
-    }
-    if (parsed.data.notifyMessageDigest !== undefined) {
-      updates.notify_message_digest = parsed.data.notifyMessageDigest;
-    }
-    if (parsed.data.notifyCapacityWarnings !== undefined) {
-      updates.notify_capacity_warnings = parsed.data.notifyCapacityWarnings;
-    }
-
     const { error } = await supabase
-      .from(MA5_TABLES.facilitySettings)
+      .from(MA5_TABLES.locations)
       .update(updates)
-      .eq("id", 1);
+      .eq("tenant_id", tenantId)
+      .eq("id", locationId);
+
     if (error) throw error;
 
-    return NextResponse.json({ ok: true });
+    const settings = await getDefaultLocationSettings();
+    return NextResponse.json({ ok: true, settings });
   } catch (err) {
     console.error("[api/admin/facility-settings]", err);
-    const jar = await import("next/headers").then((m) => m.cookies());
-    const cookieStore = await jar;
-    const current = parseFacilitySettings(
-      cookieStore.get(FACILITY_SETTINGS_COOKIE)?.value,
+    return NextResponse.json(
+      { error: "Could not update facility settings" },
+      { status: 500 },
     );
-    const next = { ...current, ...parsed.data };
-    return cookieResponse(next, {
-      ok: true,
-      settings: next,
-      warning: "Saved to demo store (run migration 005 for database persistence)",
-    });
   }
 }
