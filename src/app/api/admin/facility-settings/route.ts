@@ -5,7 +5,7 @@ import {
   facilityPatchToLocationColumns,
   getDefaultLocationSettings,
 } from "@/features/settings/locations";
-import { defaultFacilitySettings } from "@/features/settings/demo-store";
+import { defaultFacilitySettings } from "@/features/settings/defaults";
 import { getSessionUser } from "@/lib/auth/session";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 import { isSupabasePublicConfigured } from "@/lib/env";

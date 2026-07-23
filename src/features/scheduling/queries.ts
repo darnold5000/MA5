@@ -3,10 +3,11 @@ import { MA5_TABLES } from "@/lib/supabase/tables";
 import { defaultLocationLabel } from "@/features/settings/locations";
 import { listAdminSessionsFromDb } from "@/features/scheduling/admin-sessions";
 import { mergeSessions, readOpsState } from "@/features/admin/ops-store";
-import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
+import type { BookingItem, SessionItem } from "@/features/scheduling/types";
 import { listActiveOfferings } from "@/lib/billing/catalog";
-import type { ProductItem, MembershipItem } from "@/features/scheduling/fallback-data";
+import type { ProductItem, MembershipItem } from "@/features/scheduling/types";
 import { durationFromRange } from "@/features/scheduling/format";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
 import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 
 type SessionRow = {
@@ -35,6 +36,7 @@ function locationNameFromRow(
 
 export async function listAllSessions(): Promise<SessionItem[]> {
   if (!isSupabaseConfigured()) {
+    if (!allowDemoFallbacks()) return [];
     const state = await readOpsState();
     return mergeSessions(state);
   }
@@ -58,7 +60,7 @@ export async function listAllSessions(): Promise<SessionItem[]> {
       .order("starts_at", { ascending: true });
 
     if (error || !data?.length) {
-      if (isMa5DeploymentConfigured()) {
+      if (!allowDemoFallbacks()) {
         return [];
       }
       const state = await readOpsState();
@@ -85,9 +87,10 @@ export async function listAllSessions(): Promise<SessionItem[]> {
         source: "database" as const,
       };
     });
-  } catch {
-    if (isMa5DeploymentConfigured()) {
-      return [];
+  } catch (err) {
+    console.error("[scheduling] list sessions failed", err);
+    if (!allowDemoFallbacks()) {
+      throw err;
     }
     const state = await readOpsState();
     return mergeSessions(state);
@@ -126,7 +129,7 @@ export async function listProducts(): Promise<ProductItem[]> {
 
 export async function listUserBookings(userId: string | null): Promise<BookingItem[]> {
   if (!userId || !isSupabaseConfigured()) {
-    if (isMa5DeploymentConfigured()) return [];
+    if (!allowDemoFallbacks()) return [];
     const { FALLBACK_BOOKINGS } = await import("@/features/scheduling/fallback-data");
     return FALLBACK_BOOKINGS;
   }
@@ -140,7 +143,8 @@ export async function listUserBookings(userId: string | null): Promise<BookingIt
       .order("created_at", { ascending: false });
 
     if (error || !data) {
-      if (isMa5DeploymentConfigured()) return [];
+      console.error("[scheduling] list user bookings failed", error);
+      if (!allowDemoFallbacks()) return [];
       const { FALLBACK_BOOKINGS } = await import("@/features/scheduling/fallback-data");
       return FALLBACK_BOOKINGS;
     }
@@ -161,8 +165,9 @@ export async function listUserBookings(userId: string | null): Promise<BookingIt
         source: "database" as const,
       };
     });
-  } catch {
-    if (isMa5DeploymentConfigured()) return [];
+  } catch (err) {
+    console.error("[scheduling] list user bookings failed", err);
+    if (!allowDemoFallbacks()) return [];
     const { FALLBACK_BOOKINGS } = await import("@/features/scheduling/fallback-data");
     return FALLBACK_BOOKINGS;
   }

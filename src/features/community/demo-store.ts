@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 
+import { defaultCommunityState as emptyCommunityState } from "@/features/community/defaults";
 import type { CommunityBoardState, CommunityPost } from "@/features/community/types";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
 
 export const COMMUNITY_COOKIE = "ma5_community_v1";
 
-export function defaultCommunityState(): CommunityBoardState {
+export function buildDemoCommunityState(): CommunityBoardState {
   const now = Date.now();
   const rootId = "community-post-1";
   return {
@@ -55,10 +57,11 @@ export function parseCommunityState(
 export async function loadDemoCommunityState(
   viewerId?: string | null,
 ): Promise<CommunityBoardState> {
+  if (!allowDemoFallbacks()) return emptyCommunityState();
   const jar = await cookies();
   const state = parseCommunityState(
     jar.get(COMMUNITY_COOKIE)?.value,
-    defaultCommunityState(),
+    buildDemoCommunityState(),
   );
   return markMine(state, viewerId ?? null);
 }

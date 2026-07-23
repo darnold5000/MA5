@@ -23,7 +23,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
-import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
+import { allowDemoFallbacks, isMa5ProductionRuntime } from "@/lib/tenant/runtime-data";
 
 export async function getClientProfileSettings(): Promise<ClientProfileSettings> {
   const session = isSupabaseConfigured() ? await getSessionUser() : null;
@@ -34,7 +34,7 @@ export async function getClientProfileSettings(): Promise<ClientProfileSettings>
   });
 
   if (!session || !isSupabaseConfigured()) {
-    if (shouldUseMa5LiveData()) return fallback;
+    if (!allowDemoFallbacks()) return fallback;
     return readDemoClientProfile(fallback);
   }
 
@@ -64,7 +64,7 @@ export async function getClientProfileSettings(): Promise<ClientProfileSettings>
     );
 
     if (!profile) {
-      if (shouldUseMa5LiveData()) return fallback;
+      if (!allowDemoFallbacks()) return fallback;
       return readDemoClientProfile(fallback);
     }
 
@@ -95,17 +95,19 @@ export async function getClientProfileSettings(): Promise<ClientProfileSettings>
       waivers,
     };
   } catch (err) {
-    console.error("[settings] profile load failed, using demo", err);
-    if (shouldUseMa5LiveData()) throw err;
+    console.error("[settings] profile load failed", err);
+    if (isMa5ProductionRuntime()) throw err;
+    if (!allowDemoFallbacks()) return fallback;
     return readDemoClientProfile(fallback);
   }
 }
 
 export async function getFacilitySettings(): Promise<FacilitySettings> {
   if (!isSupabaseConfigured()) {
-    if (shouldUseMa5LiveData()) {
+    if (isMa5ProductionRuntime()) {
       throw new Error("Facility settings require Supabase on Signal Works deployment");
     }
+    if (!allowDemoFallbacks()) return defaultFacilitySettings();
     return readDemoFacilitySettings();
   }
 
@@ -121,7 +123,10 @@ export async function getFacilitySettings(): Promise<FacilitySettings> {
 
   try {
     const session = await getSessionUser();
-    if (!session) return readDemoFacilitySettings();
+    if (!session) {
+      if (!allowDemoFallbacks()) return defaultFacilitySettings();
+      return readDemoFacilitySettings();
+    }
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -131,7 +136,10 @@ export async function getFacilitySettings(): Promise<FacilitySettings> {
       .maybeSingle();
 
     if (error) throw error;
-    if (!data) return readDemoFacilitySettings();
+    if (!data) {
+      if (!allowDemoFallbacks()) return defaultFacilitySettings();
+      return readDemoFacilitySettings();
+    }
 
     const logoPath = (data.logo_storage_path as string | null) ?? null;
 
@@ -166,14 +174,16 @@ export async function getFacilitySettings(): Promise<FacilitySettings> {
       notifyCapacityWarnings: Boolean(data.notify_capacity_warnings ?? false),
     };
   } catch (err) {
-    console.error("[settings] facility load failed, using demo", err);
+    console.error("[settings] facility load failed", err);
+    if (isMa5ProductionRuntime()) throw err;
+    if (!allowDemoFallbacks()) return defaultFacilitySettings();
     return readDemoFacilitySettings();
   }
 }
 
 export async function listCoaches(): Promise<CoachRosterEntry[]> {
   if (!isSupabaseConfigured()) {
-    if (shouldUseMa5LiveData()) return [];
+    if (!allowDemoFallbacks()) return [];
     return readDemoCoaches();
   }
 
@@ -192,8 +202,7 @@ export async function listCoaches(): Promise<CoachRosterEntry[]> {
       ...new Set((roleRows ?? []).map((r) => String(r.user_id))),
     ];
     if (ids.length === 0) {
-      if (shouldUseMa5LiveData()) return [];
-      return readDemoCoaches();
+      return [];
     }
 
     const { data: profiles, error } = await supabase
@@ -239,9 +248,7 @@ export async function listCoaches(): Promise<CoachRosterEntry[]> {
       };
     });
 
-    const demoExtras = shouldUseMa5LiveData()
-      ? []
-      : await readDemoCoaches();
+    const demoExtras = allowDemoFallbacks() ? await readDemoCoaches() : [];
     const emails = new Set(fromDb.map((c) => c.email.toLowerCase()));
     const invited = demoExtras.filter(
       (c) =>
@@ -253,7 +260,8 @@ export async function listCoaches(): Promise<CoachRosterEntry[]> {
     );
   } catch (err) {
     console.error("[settings] coaches load failed", err);
-    if (shouldUseMa5LiveData()) throw err;
+    if (isMa5ProductionRuntime()) throw err;
+    if (!allowDemoFallbacks()) return [];
     return readDemoCoaches();
   }
 }

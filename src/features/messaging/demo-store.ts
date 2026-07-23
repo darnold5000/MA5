@@ -5,6 +5,8 @@ import type {
   Message,
   MessageThread,
 } from "@/features/messaging/types";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
+import { defaultCommunicationState as emptyCommunicationState } from "@/features/messaging/defaults";
 
 export const COMMUNICATION_COOKIE = "ma5_communication";
 
@@ -22,7 +24,7 @@ function daysAgo(d: number): string {
   return new Date(Date.now() - d * 24 * 60 * 60 * 1000).toISOString();
 }
 
-export function defaultCommunicationState(): CommunicationState {
+export function buildDemoCommunicationState(): CommunicationState {
   const threadJordan = "thread-jordan";
   const threadAlex = "thread-alex";
   const threadEmily = "thread-emily";
@@ -309,30 +311,16 @@ export function parseCommunicationState(
 }
 
 export async function loadDemoCommunicationState(): Promise<CommunicationState> {
+  if (!allowDemoFallbacks()) return emptyCommunicationState();
   const { cookies } = await import("next/headers");
   const jar = await cookies();
   return parseCommunicationState(
     jar.get(COMMUNICATION_COOKIE)?.value,
-    defaultCommunicationState(),
+    buildDemoCommunicationState(),
   );
 }
 
-/** Unread badge source of truth for demo: communication notifications only. */
-export function countUnreadNotifications(
-  notifications: AppNotification[],
-): number {
-  return notifications.filter(
-    (n) =>
-      !n.readAt &&
-      (n.type === "direct_message" || n.type === "announcement"),
-  ).length;
-}
-
-export function countStaffUnreadReplies(threads: MessageThread[]): number {
-  return threads.reduce((sum, t) => {
-    if (t.lastSenderRole === "client" && t.unreadCount > 0) {
-      return sum + t.unreadCount;
-    }
-    return sum;
-  }, 0);
-}
+export {
+  countStaffUnreadReplies,
+  countUnreadNotifications,
+} from "@/features/messaging/defaults";

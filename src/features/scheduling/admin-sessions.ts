@@ -1,6 +1,5 @@
-import { FALLBACK_CLASS_TYPES } from "@/features/scheduling/fallback-data";
-import type { SessionItem } from "@/features/scheduling/fallback-data";
 import { durationFromRange } from "@/features/scheduling/format";
+import type { SessionItem } from "@/features/scheduling/types";
 import { defaultLocationLabel } from "@/features/settings/locations";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { withTenantId } from "@/lib/tenant/deployment";
@@ -90,8 +89,7 @@ async function resolveClassType(
   if (UUID_RE.test(classTypeId)) {
     query = query.eq("id", classTypeId);
   } else {
-    const fallback = FALLBACK_CLASS_TYPES.find((c) => c.id === classTypeId);
-    const slug = fallback?.slug ?? classTypeId.replace(/^ct-/, "");
+    const slug = classTypeId.replace(/^ct-/, "");
     query = query.eq("slug", slug);
   }
 

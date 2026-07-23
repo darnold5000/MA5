@@ -1,6 +1,11 @@
 import { cookies } from "next/headers";
 
 import {
+  addDaysIso,
+  emptyProgramsState,
+  type ProgramsState,
+} from "@/features/programs/state";
+import {
   dehydrateExercisesForCookie,
   libraryExerciseId,
   mergeExerciseLibrary,
@@ -17,22 +22,12 @@ import type {
   WorkoutCompletion,
   WorkoutSetLog,
 } from "@/features/programs/types";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
 
 export const PROGRAMS_COOKIE = "ma5_programs";
 
-export type ProgramsState = {
-  exercises: ReturnType<typeof mergeExerciseLibrary>;
-  workouts: Workout[];
-  workoutBlocks: WorkoutBlock[];
-  programs: Program[];
-  programDays: ProgramDay[];
-  teams: Team[];
-  teamMembers: TeamMember[];
-  assignments: ProgramAssignment[];
-  calendarEntries: CalendarEntry[];
-  completions: WorkoutCompletion[];
-  setLogs: WorkoutSetLog[];
-};
+export type { ProgramsState } from "@/features/programs/state";
+export { addDaysIso, emptyProgramsState } from "@/features/programs/state";
 
 function id(prefix: string) {
   return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
@@ -602,15 +597,11 @@ function seedDemoSetLogs(input: {
   return logs;
 }
 
-export function emptyProgramsState(): ProgramsState {
-  return seedState();
-}
-
 export function parseProgramsState(raw: string | undefined): ProgramsState {
-  if (!raw) return emptyProgramsState();
+  if (!raw) return seedState();
   try {
     const parsed = JSON.parse(raw) as Partial<ProgramsState>;
-    const base = emptyProgramsState();
+    const base = seedState();
     const useSeedProgress =
       !Array.isArray(parsed.assignments) ||
       parsed.assignments.length === 0 ||
@@ -651,11 +642,12 @@ export function parseProgramsState(raw: string | undefined): ProgramsState {
       setLogs: Array.isArray(parsed.setLogs) ? parsed.setLogs : base.setLogs,
     };
   } catch {
-    return emptyProgramsState();
+    return seedState();
   }
 }
 
 export async function readProgramsState(): Promise<ProgramsState> {
+  if (!allowDemoFallbacks()) return emptyProgramsState();
   const jar = await cookies();
   return parseProgramsState(jar.get(PROGRAMS_COOKIE)?.value);
 }
@@ -675,12 +667,6 @@ export function blockLabelForIndex(index: number): string {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   if (index < 26) return letters[index]!;
   return `X${index + 1}`;
-}
-
-export function addDaysIso(startDate: string, dayOffset: number): string {
-  const d = new Date(`${startDate}T12:00:00`);
-  d.setDate(d.getDate() + dayOffset);
-  return d.toISOString().slice(0, 10);
 }
 
 /** Materialize program days onto a calendar starting at startDate (week1/day1 = startDate). */

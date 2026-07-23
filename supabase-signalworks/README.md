@@ -52,6 +52,6 @@ Set `MA5_TENANT_ID` in MA5 deployment environment. Details: [docs/migration/RUNB
 
 Types: `npm run gen:types` (OpenAPI) or `npm run gen:types:cli` after `supabase login` + `npm run supabase:link`.
 
-| 033 | `033_ma5_staging_seed.sql` | Staging only — apply next |
+**Staging seed (manual only):** `seeds/033_ma5_staging_seed.sql` — not applied during production migrations. See [seeds/README.md](./seeds/README.md).
 
 See [docs/migration/02-migration-sequence.md](../docs/migration/02-migration-sequence.md).

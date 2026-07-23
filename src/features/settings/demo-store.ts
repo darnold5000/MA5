@@ -1,37 +1,24 @@
 import { cookies } from "next/headers";
 
-import { siteConfig } from "@/content/site-config";
 import {
-  DEFAULT_WAIVERS,
+  defaultClientProfile,
+  defaultFacilitySettings,
+} from "@/features/settings/defaults";
+import {
   type ClientProfileSettings,
   type CoachRosterEntry,
   type FacilitySettings,
 } from "@/features/settings/types";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
 
 export const PROFILE_SETTINGS_COOKIE = "ma5_profile_settings";
 export const FACILITY_SETTINGS_COOKIE = "ma5_facility_settings";
 export const COACHES_COOKIE = "ma5_coaches";
 
-export function defaultFacilitySettings(): FacilitySettings {
-  return {
-    gymName: siteConfig.name,
-    legalName: siteConfig.legalName,
-    addressLine: siteConfig.location.fullAddress,
-    email: siteConfig.contact.email,
-    openGymHours: siteConfig.hours.openGym,
-    coachingHours: "By appointment",
-    hoursSummary: siteConfig.hours.summary,
-    brandPrimary: "#E2062B",
-    logoStoragePath: null,
-    logoUrl: null,
-    notifyFailedPayments: true,
-    notifyNewSignups: true,
-    notifyMessageDigest: true,
-    notifyCapacityWarnings: false,
-  };
-}
+export { defaultClientProfile, defaultFacilitySettings };
 
 export function defaultCoaches(): CoachRosterEntry[] {
+  if (!allowDemoFallbacks()) return [];
   return [
     {
       id: "coach-robert",
@@ -48,29 +35,6 @@ export function defaultCoaches(): CoachRosterEntry[] {
       status: "active",
     },
   ];
-}
-
-export function defaultClientProfile(input?: {
-  fullName?: string;
-  email?: string;
-  phone?: string;
-}): ClientProfileSettings {
-  return {
-    fullName: input?.fullName ?? "Alex",
-    preferredName: input?.fullName?.split(/\s+/)[0] ?? "Alex",
-    email: input?.email ?? "ma5client@example.com",
-    phone: input?.phone ?? "(317) 555-0142",
-    avatarUrl: null,
-    emergencyName: "Pat Rivera",
-    emergencyRelationship: "Spouse",
-    emergencyPhone: "(317) 555-0199",
-    emergencyNotes: "Call if unreachable after session",
-    notifyCoachMessages: true,
-    notifySessionReminders: true,
-    notifyProgramUpdates: true,
-    notifyBillingAlerts: true,
-    waivers: DEFAULT_WAIVERS.map((w) => ({ ...w })),
-  };
 }
 
 export function parseClientProfile(
@@ -90,6 +54,17 @@ export function parseClientProfile(
   } catch {
     return fallback;
   }
+}
+
+export async function readDemoClientProfile(
+  fallback: ClientProfileSettings,
+): Promise<ClientProfileSettings> {
+  if (!allowDemoFallbacks()) return fallback;
+  const jar = await cookies();
+  return parseClientProfile(
+    jar.get(PROFILE_SETTINGS_COOKIE)?.value,
+    fallback,
+  );
 }
 
 export function parseFacilitySettings(
@@ -121,22 +96,14 @@ export function parseCoaches(raw: string | undefined): CoachRosterEntry[] {
   }
 }
 
-export async function readDemoClientProfile(
-  fallback: ClientProfileSettings,
-): Promise<ClientProfileSettings> {
-  const jar = await cookies();
-  return parseClientProfile(
-    jar.get(PROFILE_SETTINGS_COOKIE)?.value,
-    fallback,
-  );
-}
-
 export async function readDemoFacilitySettings(): Promise<FacilitySettings> {
+  if (!allowDemoFallbacks()) return defaultFacilitySettings();
   const jar = await cookies();
   return parseFacilitySettings(jar.get(FACILITY_SETTINGS_COOKIE)?.value);
 }
 
 export async function readDemoCoaches(): Promise<CoachRosterEntry[]> {
+  if (!allowDemoFallbacks()) return [];
   const jar = await cookies();
   return parseCoaches(jar.get(COACHES_COOKIE)?.value);
 }

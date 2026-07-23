@@ -2,8 +2,8 @@ import {
   countStaffUnreadReplies,
   countUnreadNotifications,
   defaultCommunicationState,
-  loadDemoCommunicationState,
-} from "@/features/messaging/demo-store";
+} from "@/features/messaging/defaults";
+import { loadDemoCommunicationState } from "@/features/messaging/demo-store";
 import { loadMessageableClients } from "@/features/messaging/resolve-client";
 import type {
   Announcement,
@@ -18,7 +18,7 @@ import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin, hasCapability } from "@/lib/permissions/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
-import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
+import { allowDemoFallbacks, isMa5ProductionRuntime } from "@/lib/tenant/runtime-data";
 
 function mapThreadRow(
   row: Record<string, unknown>,
@@ -271,18 +271,19 @@ function audienceLabel(type: Announcement["audienceType"]): string {
 }
 
 export async function loadCommunicationState(): Promise<CommunicationState> {
-  const live = shouldUseMa5LiveData();
-  const demo = live ? defaultCommunicationState() : await loadDemoCommunicationState();
+  const demoAllowed = allowDemoFallbacks();
+  const demo = demoAllowed
+    ? await loadDemoCommunicationState()
+    : defaultCommunicationState();
 
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
-    if (live) throw new Error("Messaging requires Supabase on Signal Works deployment");
+    if (!demoAllowed) return defaultCommunicationState();
     return demo;
   }
 
   const session = await getSessionUser();
   if (!session) {
-    if (live) return defaultCommunicationState();
-    return demo;
+    return defaultCommunicationState();
   }
 
   try {
@@ -291,11 +292,11 @@ export async function loadCommunicationState(): Promise<CommunicationState> {
       hasCapability(session.roles, "message_clients");
     const fromDb = await loadFromSupabase(session.id, isStaff);
     if (fromDb) return fromDb;
-    if (live) return defaultCommunicationState();
-    return demo;
+    return defaultCommunicationState();
   } catch (err) {
     console.error("[messaging] loadCommunicationState", err);
-    if (live) throw err;
+    if (isMa5ProductionRuntime()) throw err;
+    if (!demoAllowed) return defaultCommunicationState();
     return demo;
   }
 }

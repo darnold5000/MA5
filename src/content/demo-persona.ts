@@ -1,11 +1,9 @@
-export const DEMO_PERSONA_COOKIE = "ma5_demo_persona";
-
 export type DemoPersona = "client" | "staff";
 
-/** Real Supabase test client used for Stripe / Hub demos */
-export const TEST_CLIENT_EMAIL = "ma5client@example.com";
+export const DEMO_PERSONA_COOKIE = "ma5_demo_persona";
 
-/** Real Supabase test coach used for Operations / Programs demos */
+/** Test fixtures for local demo flows — not used in production runtime. */
+export const TEST_CLIENT_EMAIL = "ma5client@example.com";
 export const TEST_COACH_EMAIL = "mike@ma5.com";
 
 export const demoClient = {
@@ -37,26 +35,24 @@ export function isDemoPersona(value: string | undefined | null): value is DemoPe
   return value === "client" || value === "staff";
 }
 
-/** Hub greeting + sidebar name — test client is always Alex */
 export function resolveClientFirstName(input?: {
   email?: string | null;
   fullName?: string | null;
 } | null): string {
-  const email = input?.email?.trim().toLowerCase();
-  if (!email || email === TEST_CLIENT_EMAIL.toLowerCase()) {
-    return demoClient.firstName;
-  }
   const fromProfile = input?.fullName?.trim().split(/\s+/)[0];
-  return fromProfile || demoClient.firstName;
+  if (fromProfile) return fromProfile;
+  const emailLocal = input?.email?.trim().split("@")[0];
+  if (emailLocal) {
+    return emailLocal.charAt(0).toUpperCase() + emailLocal.slice(1);
+  }
+  return "Member";
 }
 
 export function resolveClientFullName(input?: {
   email?: string | null;
   fullName?: string | null;
 } | null): string {
-  const email = input?.email?.trim().toLowerCase();
-  if (!email || email === TEST_CLIENT_EMAIL.toLowerCase()) {
-    return demoClient.fullName;
-  }
-  return input?.fullName?.trim() || demoClient.fullName;
+  const fromProfile = input?.fullName?.trim();
+  if (fromProfile) return fromProfile;
+  return resolveClientFirstName(input);
 }

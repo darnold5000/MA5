@@ -1,7 +1,10 @@
 import {
   readProgramsState,
-  type ProgramsState,
 } from "@/features/programs/demo-store";
+import {
+  emptyProgramsState,
+  type ProgramsState,
+} from "@/features/programs/state";
 import {
   buildClientTrainingProgress,
   buildCoachAttentionAlerts,
@@ -30,6 +33,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { createSignedVideoUrl } from "@/lib/video/storage";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
 
 async function withSignedPlayback(state: ProgramsState): Promise<ProgramsState> {
   const exercises = await Promise.all(
@@ -44,19 +48,22 @@ async function withSignedPlayback(state: ProgramsState): Promise<ProgramsState> 
 
 export async function getProgramsState(): Promise<ProgramsState> {
   if (!isSupabaseConfigured()) {
-    return readProgramsState();
+    if (allowDemoFallbacks()) return readProgramsState();
+    return emptyProgramsState();
   }
   try {
     const session = await getSessionUser();
     if (!session) {
-      return readProgramsState();
+      if (allowDemoFallbacks()) return readProgramsState();
+      return emptyProgramsState();
     }
     const supabase = await createClient();
     const state = await loadProgramsStateFromSupabase(supabase);
     return withSignedPlayback(state);
   } catch (err) {
-    console.error("[programs] Supabase load failed, falling back to cookie", err);
-    return readProgramsState();
+    console.error("[programs] Supabase load failed", err);
+    if (allowDemoFallbacks()) return readProgramsState();
+    throw err;
   }
 }
 
@@ -144,6 +151,7 @@ async function loadClientSetLogs(clientIds: string[]): Promise<WorkoutSetLog[]> 
   if (clientIds.length === 0) return [];
 
   if (!isSupabaseConfigured()) {
+    if (!allowDemoFallbacks()) return [];
     const state = await readProgramsState();
     return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
   }
@@ -151,6 +159,7 @@ async function loadClientSetLogs(clientIds: string[]): Promise<WorkoutSetLog[]> 
   try {
     const session = await getSessionUser();
     if (!session) {
+      if (!allowDemoFallbacks()) return [];
       const state = await readProgramsState();
       return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
     }
@@ -167,6 +176,7 @@ async function loadClientSetLogs(clientIds: string[]): Promise<WorkoutSetLog[]> 
     );
   } catch (err) {
     console.error("[programs] set log load failed", err);
+    if (!allowDemoFallbacks()) return [];
     const state = await readProgramsState();
     return state.setLogs.filter((log) => clientIds.includes(log.clientUserId));
   }
@@ -176,6 +186,7 @@ async function loadSetLogsForCalendarEntry(
   calendarEntryId: string,
 ): Promise<WorkoutSetLog[]> {
   if (!isSupabaseConfigured()) {
+    if (!allowDemoFallbacks()) return [];
     const state = await readProgramsState();
     return state.setLogs.filter(
       (log) => log.calendarEntryId === calendarEntryId,
@@ -198,6 +209,7 @@ async function loadSetLogsForCalendarEntry(
     );
   } catch (err) {
     console.error("[programs] entry set log load failed", err);
+    if (!allowDemoFallbacks()) return [];
     const state = await readProgramsState();
     return state.setLogs.filter(
       (log) => log.calendarEntryId === calendarEntryId,
@@ -354,14 +366,17 @@ async function listMembershipPeriodEnds(
 ): Promise<Record<string, string>> {
   const ends: Record<string, string> = {};
 
-  // Demo fallbacks so coaches see the membership rule in walkthroughs
-  const inDays = (n: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
-  };
-  if (clientIds.includes("client-alex")) {
-    ends["client-alex"] = inDays(5);
+  if (!allowDemoFallbacks()) {
+    // Production: only real membership data from the database.
+  } else {
+    const inDays = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    if (clientIds.includes("client-alex")) {
+      ends["client-alex"] = inDays(5);
+    }
   }
 
   if (!isSupabaseConfigured()) {
@@ -399,11 +414,13 @@ export async function listRosterClients(): Promise<
   Array<{ id: string; name: string }>
 > {
   if (!isSupabaseConfigured()) {
+    if (!allowDemoFallbacks()) return [];
     return listClientsForPrograms(await readProgramsState());
   }
   try {
     const session = await getSessionUser();
     if (!session) {
+      if (!allowDemoFallbacks()) return [];
       return listClientsForPrograms(await readProgramsState());
     }
     const supabase = await createClient();
@@ -433,6 +450,7 @@ export async function listRosterClients(): Promise<
     }));
   } catch (err) {
     console.error("[programs] roster load failed", err);
+    if (!allowDemoFallbacks()) return [];
     return listClientsForPrograms(await getProgramsState());
   }
 }
@@ -449,7 +467,7 @@ export function listClientsForPrograms(state: ProgramsState) {
   const hasRealProfiles = [...known.keys()].some((id) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id),
   );
-  if (!hasRealProfiles) {
+  if (!hasRealProfiles && allowDemoFallbacks()) {
     known.set("client-alex", known.get("client-alex") ?? "Alex");
     known.set("client-jordan", known.get("client-jordan") ?? "Jordan Lee");
     known.set("client-sam", known.get("client-sam") ?? "Sam Patel");

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
-import type { BookingItem } from "@/features/scheduling/fallback-data";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
+import type { BookingItem } from "@/features/scheduling/types";
 
 export const DEMO_BOOKINGS_COOKIE = "ma5_demo_bookings";
 
@@ -24,6 +25,7 @@ export function parseDemoBookingsCookie(raw: string | undefined): BookingItem[] 
 }
 
 export async function readDemoBookings(): Promise<BookingItem[]> {
+  if (!allowDemoFallbacks()) return [];
   const jar = await cookies();
   return parseDemoBookingsCookie(jar.get(DEMO_BOOKINGS_COOKIE)?.value);
 }

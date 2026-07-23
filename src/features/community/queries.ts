@@ -1,7 +1,7 @@
 import {
-  defaultCommunityState,
   loadDemoCommunityState,
 } from "@/features/community/demo-store";
+import { defaultCommunityState } from "@/features/community/defaults";
 import type {
   CommunityBoardState,
   CommunityPost,
@@ -10,7 +10,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
-import { shouldUseMa5LiveData } from "@/lib/tenant/staging";
+import { allowDemoFallbacks, isMa5ProductionRuntime } from "@/lib/tenant/runtime-data";
 
 type PostRow = {
   id: string;
@@ -21,15 +21,14 @@ type PostRow = {
 };
 
 export async function loadCommunityBoard(): Promise<CommunityBoardState> {
-  const live = shouldUseMa5LiveData();
   const session =
     isSupabasePublicConfigured() && isSupabaseConfigured()
       ? await getSessionUser()
       : null;
 
   if (!session || !isSupabaseConfigured()) {
-    if (live) return emptyCommunityBoard();
-    return loadDemoCommunityState(session?.id ?? "client-alex");
+    if (!allowDemoFallbacks()) return emptyCommunityBoard();
+    return loadDemoCommunityState(session?.id ?? null);
   }
 
   try {
@@ -87,8 +86,9 @@ export async function loadCommunityBoard(): Promise<CommunityBoardState> {
 
     return { posts: roots };
   } catch (err) {
-    console.error("[community] load failed, using demo", err);
-    if (live) return emptyCommunityBoard();
+    console.error("[community] load failed", err);
+    if (isMa5ProductionRuntime()) throw err;
+    if (!allowDemoFallbacks()) return emptyCommunityBoard();
     return loadDemoCommunityState(session.id);
   }
 }

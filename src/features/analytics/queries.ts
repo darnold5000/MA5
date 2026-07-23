@@ -1,8 +1,12 @@
 import {
   DEMO_BUSINESS_REPORTS,
   DEMO_DAILY_OPS,
-  EMPTY_FEES,
 } from "@/features/analytics/demo-data";
+import {
+  EMPTY_FEES,
+  emptyBusinessReports,
+  emptyDailyOpsDashboard,
+} from "@/features/analytics/empty-data";
 import { formatCompactMoney } from "@/features/analytics/format";
 import type {
   ActivityItem,
@@ -28,11 +32,12 @@ import {
   zonedDayStart,
   zonedParts,
 } from "@/features/analytics/time";
-import { countStaffUnreadReplies } from "@/features/messaging/demo-store";
+import { countStaffUnreadReplies } from "@/features/messaging/defaults";
 import { loadCommunicationState } from "@/features/messaging/queries";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { allowDemoFallbacks, isMa5ProductionRuntime } from "@/lib/tenant/runtime-data";
 
 type PaymentRowDb = {
   amount_cents: number;
@@ -744,7 +749,10 @@ async function fetchFeeSnapshot(): Promise<FeeSnapshot> {
 
 export async function getBusinessReports(): Promise<BusinessReports> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
-    return { ...DEMO_BUSINESS_REPORTS, isDemo: true };
+    if (allowDemoFallbacks()) {
+      return { ...DEMO_BUSINESS_REPORTS, isDemo: true };
+    }
+    return emptyBusinessReports("Analytics unavailable — database not configured");
   }
 
   try {
@@ -858,13 +866,24 @@ export async function getBusinessReports(): Promise<BusinessReports> {
     };
   } catch (err) {
     console.error("[analytics] getBusinessReports", err);
-    return { ...DEMO_BUSINESS_REPORTS, isDemo: true };
+    if (allowDemoFallbacks()) {
+      return { ...DEMO_BUSINESS_REPORTS, isDemo: true };
+    }
+    if (isMa5ProductionRuntime()) {
+      throw err;
+    }
+    const message =
+      err instanceof Error ? err.message : "Analytics data is temporarily unavailable";
+    return emptyBusinessReports(message);
   }
 }
 
 export async function getDailyOpsDashboard(): Promise<DailyOpsDashboard> {
   if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
-    return { ...DEMO_DAILY_OPS, isDemo: true };
+    if (allowDemoFallbacks()) {
+      return { ...DEMO_DAILY_OPS, isDemo: true };
+    }
+    return emptyDailyOpsDashboard("Daily ops unavailable — database not configured");
   }
 
   try {
@@ -999,6 +1018,14 @@ export async function getDailyOpsDashboard(): Promise<DailyOpsDashboard> {
     };
   } catch (err) {
     console.error("[analytics] getDailyOpsDashboard", err);
-    return { ...DEMO_DAILY_OPS, isDemo: true };
+    if (allowDemoFallbacks()) {
+      return { ...DEMO_DAILY_OPS, isDemo: true };
+    }
+    if (isMa5ProductionRuntime()) {
+      throw err;
+    }
+    const message =
+      err instanceof Error ? err.message : "Daily ops data is temporarily unavailable";
+    return emptyDailyOpsDashboard(message);
   }
 }

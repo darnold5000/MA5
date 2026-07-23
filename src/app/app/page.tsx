@@ -15,7 +15,7 @@ import {
   listPublishedSessions,
   listUserBookings,
 } from "@/features/scheduling/queries";
-import { demoClient, resolveClientFirstName } from "@/content/demo-persona";
+import { resolveClientFirstName } from "@/content/demo-persona";
 import { getSessionUser } from "@/lib/auth/session";
 import { useLiveBookingsOnly } from "@/lib/booking/live-data";
 import { isSupabasePublicConfigured } from "@/lib/env";
@@ -91,14 +91,21 @@ export default async function ClientDashboardPage() {
     fullName: session?.profile?.full_name,
   });
 
-  const used =
-    demoClient.membership.sessionsIncluded -
-    demoClient.membership.sessionsRemaining;
-  const included = demoClient.membership.sessionsIncluded;
-  const progressPct = Math.round((used / included) * 100);
-  const streakWeeks = demoClient.membership.streakWeeks;
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const usedThisMonth = bookings.filter(
+    (b) => b.startsAt && new Date(b.startsAt) >= monthStart,
+  ).length;
 
-  const isWorkoutDay = Boolean(todayBooking);
+  const trainingProgress = session
+    ? await getClientTrainingProgress(
+        session.id,
+        session.email ?? session.profile?.email,
+      )
+    : null;
+
+  const hasProgramWorkout = Boolean(trainingProgress?.todayWorkout);
   const hasUpcoming = Boolean(nextBooking);
   const heroIsBooked = Boolean(focusBooking);
   const heroTitle =
@@ -107,10 +114,10 @@ export default async function ClientDashboardPage() {
   const spotsLeft = heroSession
     ? Math.max(heroSession.capacity - heroSession.bookedCount, 0)
     : null;
-  const coachFirst =
-    heroSession?.coachName?.split(" ")[0] ?? "Robert";
+  const coachFirst = heroSession?.coachName?.split(" ")[0] ?? "Coach";
   const paymentStatus = focusBooking?.paymentStatus ?? null;
 
+  const isWorkoutDay = Boolean(todayBooking);
   let contextEyebrow = "Next workout";
   let contextTitle = heroTitle;
   let contextSupport: string | null = null;
@@ -128,15 +135,6 @@ export default async function ClientDashboardPage() {
     contextEyebrow = "Next workout";
   }
 
-  const trainingProgress = session
-    ? await getClientTrainingProgress(
-        session.id,
-        session.email ?? session.profile?.email,
-      )
-    : await getClientTrainingProgress("client-alex", demoClient.email);
-
-  const hasProgramWorkout = Boolean(trainingProgress.todayWorkout);
-
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -148,11 +146,21 @@ export default async function ClientDashboardPage() {
             {greetingForNow()}, {firstName}
           </h1>
           <p className="mt-2 text-sm text-muted">{formatCalendarDate()}</p>
-          <p className="mt-3 text-sm text-foreground">
-            {used} of {included} sessions used this month
-            <span className="text-muted"> · </span>
-            {streakWeeks} week training streak
-          </p>
+          {activeMembership || usedThisMonth > 0 ? (
+            <p className="mt-3 text-sm text-foreground">
+              {usedThisMonth > 0
+                ? `${usedThisMonth} session${usedThisMonth === 1 ? "" : "s"} booked this month`
+                : null}
+              {activeMembership ? (
+                <>
+                  {usedThisMonth > 0 ? (
+                    <span className="text-muted"> · </span>
+                  ) : null}
+                  {activeMembership.productName}
+                </>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -223,27 +231,29 @@ export default async function ClientDashboardPage() {
         )}
       </section>
 
-      <section className="border-y border-border py-8">
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          This month
-        </p>
-        <div className="mt-4 h-2.5 w-full max-w-lg bg-background">
-          <div className="h-2.5 bg-brand" style={{ width: `${progressPct}%` }} />
-        </div>
-        <p className="mt-3 text-sm text-foreground">
-          {used} / {included} sessions used
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          {streakWeeks} week streak
-          {activeMembership ? ` · ${activeMembership.productName}` : ""}
-        </p>
-      </section>
+      {usedThisMonth > 0 || activeMembership ? (
+        <section className="border-y border-border py-8">
+          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+            This month
+          </p>
+          {usedThisMonth > 0 ? (
+            <p className="mt-4 text-sm text-foreground">
+              {usedThisMonth} session{usedThisMonth === 1 ? "" : "s"} booked
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-muted">No sessions booked yet this month.</p>
+          )}
+          {activeMembership ? (
+            <p className="mt-1 text-sm text-muted">{activeMembership.productName}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="border-b border-border pb-8">
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
           Program
         </p>
-        {trainingProgress.programTitle ? (
+        {trainingProgress?.programTitle ? (
           <>
             <h2 className="mt-2 font-display text-3xl tracking-wide uppercase">
               {hasProgramWorkout
@@ -297,17 +307,14 @@ export default async function ClientDashboardPage() {
         <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
           Coach message
         </p>
-        <p className="mt-3 text-base leading-relaxed text-foreground sm:text-lg">
-          “{demoClient.coachMessage.preview}”
-        </p>
-        <p className="mt-2 text-sm text-muted">
-          — {demoClient.coachMessage.from}
+        <p className="mt-3 text-sm text-muted">
+          Open your inbox to see messages from your coach.
         </p>
         <Link
           href="/app/messages"
           className="mt-5 inline-flex text-xs font-semibold tracking-wide text-brand uppercase hover:underline"
         >
-          Reply to Coach
+          Open messages →
         </Link>
       </section>
     </div>

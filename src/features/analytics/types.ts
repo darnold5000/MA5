@@ -128,6 +128,8 @@ export type FeeSnapshot = {
 
 export type DailyOpsDashboard = {
   isDemo?: boolean;
+  unavailable?: boolean;
+  unavailableMessage?: string | null;
   health: HealthMetric[];
   overview: OverviewMetric[];
   schedule: ScheduleRow[];
@@ -138,6 +140,8 @@ export type DailyOpsDashboard = {
 
 export type BusinessReports = {
   isDemo?: boolean;
+  unavailable?: boolean;
+  unavailableMessage?: string | null;
   revenuePeriods: PeriodMetric[];
   revenueChart: ChartPoint[];
   bookingPeriods: PeriodMetric[];

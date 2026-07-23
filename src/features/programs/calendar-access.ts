@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { ProgramsState } from "@/features/programs/demo-store";
+import type { ProgramsState } from "@/features/programs/state";
 import type { CalendarEntry } from "@/features/programs/types";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 

@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
+
 import type { CommunityPlacementId } from "@/content/community";
 import type {
   MarketingGalleryItem,
@@ -45,6 +47,7 @@ export function serializeMarketingGalleryStore(store: DemoGalleryStore): string 
 }
 
 export async function readMarketingGalleryDemoStore(): Promise<DemoGalleryStore> {
+  if (!allowDemoFallbacks()) return emptyStore();
   const jar = await cookies();
   return parseMarketingGalleryStore(jar.get(MARKETING_GALLERY_COOKIE)?.value);
 }

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
-import type { BookingItem, SessionItem } from "@/features/scheduling/fallback-data";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
+import type { BookingItem, SessionItem } from "@/features/scheduling/types";
 import {
   FALLBACK_BOOKINGS,
   FALLBACK_CLASS_TYPES,
@@ -85,13 +86,24 @@ export function emptyOpsState(): AdminOpsState {
   return {
     customSessions: [],
     sessionPatches: {},
+    roster: [],
+    clients: [],
+  };
+}
+
+function demoDefaultOpsState(): AdminOpsState {
+  return {
+    customSessions: [],
+    sessionPatches: {},
     roster: defaultRoster(),
     clients: DEFAULT_CLIENTS,
   };
 }
 
 export function parseOpsState(raw: string | undefined): AdminOpsState {
-  if (!raw) return emptyOpsState();
+  if (!raw) {
+    return allowDemoFallbacks() ? demoDefaultOpsState() : emptyOpsState();
+  }
   try {
     const parsed = JSON.parse(raw) as Partial<AdminOpsState>;
     return {
@@ -102,8 +114,16 @@ export function parseOpsState(raw: string | undefined): AdminOpsState {
         parsed.sessionPatches && typeof parsed.sessionPatches === "object"
           ? parsed.sessionPatches
           : {},
-      roster: Array.isArray(parsed.roster) ? parsed.roster : defaultRoster(),
-      clients: Array.isArray(parsed.clients) ? parsed.clients : DEFAULT_CLIENTS,
+      roster: Array.isArray(parsed.roster)
+        ? parsed.roster
+        : allowDemoFallbacks()
+          ? defaultRoster()
+          : [],
+      clients: Array.isArray(parsed.clients)
+        ? parsed.clients
+        : allowDemoFallbacks()
+          ? DEFAULT_CLIENTS
+          : [],
     };
   } catch {
     return emptyOpsState();
@@ -111,6 +131,7 @@ export function parseOpsState(raw: string | undefined): AdminOpsState {
 }
 
 export async function readOpsState(): Promise<AdminOpsState> {
+  if (!allowDemoFallbacks()) return emptyOpsState();
   const jar = await cookies();
   return parseOpsState(jar.get(ADMIN_OPS_COOKIE)?.value);
 }
@@ -120,6 +141,11 @@ export function serializeOpsState(state: AdminOpsState): string {
 }
 
 export function mergeSessions(state: AdminOpsState): SessionItem[] {
+  if (!allowDemoFallbacks()) {
+    return [...state.customSessions].sort((a, b) =>
+      a.startsAt.localeCompare(b.startsAt),
+    );
+  }
   const base = FALLBACK_SESSIONS.map((session) => {
     const patch = state.sessionPatches[session.id];
     return patch ? { ...session, ...patch } : session;
@@ -130,6 +156,7 @@ export function mergeSessions(state: AdminOpsState): SessionItem[] {
 }
 
 export function classTypeOptions() {
+  if (!allowDemoFallbacks()) return [];
   return FALLBACK_CLASS_TYPES;
 }
 
@@ -141,6 +168,9 @@ export function createSessionDraft(input: {
   priceCents?: number;
   coachName?: string;
 }): SessionItem {
+  if (!allowDemoFallbacks()) {
+    throw new Error("Session drafts require MA5_DEMO_MODE or database configuration");
+  }
   const classType =
     FALLBACK_CLASS_TYPES.find((c) => c.id === input.classTypeId) ??
     FALLBACK_CLASS_TYPES[1];

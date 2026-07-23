@@ -16,6 +16,8 @@ import {
   formatCalendarDate,
   greetingForNow,
 } from "@/features/scheduling/format";
+import { getSessionUser } from "@/lib/auth/session";
+import { isSupabasePublicConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
   title: "Operations",
@@ -23,6 +25,13 @@ export const metadata: Metadata = {
 };
 
 export default async function OperationsHomePage() {
+  const session =
+    isSupabasePublicConfigured() ? await getSessionUser() : null;
+  const staffName =
+    session?.profile?.full_name?.trim().split(/\s+/)[0] ??
+    session?.email?.split("@")[0] ??
+    "Team";
+
   const [data, attention] = await Promise.all([
     getDailyOpsDashboard(),
     listCoachAttentionAlerts(),
@@ -30,10 +39,19 @@ export default async function OperationsHomePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-10">
+      {data.unavailable ? (
+        <div
+          className="border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground"
+          role="alert"
+        >
+          {data.unavailableMessage ??
+            "Daily ops data is unavailable. Check database configuration and try again."}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-muted">
-            {greetingForNow()}, Mike · {formatCalendarDate()}
+            {greetingForNow()}, {staffName} · {formatCalendarDate()}
           </p>
           <h1 className="mt-2 font-display text-3xl tracking-wide uppercase sm:text-4xl">
             Daily ops

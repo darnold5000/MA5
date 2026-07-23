@@ -1,13 +1,15 @@
 export type * from "./types";
 export {
   COMMUNICATION_COOKIE,
-  countStaffUnreadReplies,
-  countUnreadNotifications,
-  defaultCommunicationState,
   loadDemoCommunicationState,
   parseCommunicationState,
   serializeCommunicationState,
 } from "./demo-store";
+export {
+  countStaffUnreadReplies,
+  countUnreadNotifications,
+  defaultCommunicationState,
+} from "./defaults";
 export {
   deliverExternalSafely,
   getDeliveryAdapter,

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { ProgramsState } from "@/features/programs/demo-store";
-import { addDaysIso } from "@/features/programs/demo-store";
+import type { ProgramsState } from "@/features/programs/state";
+import { addDaysIso } from "@/features/programs/state";
 import type {
   AssignmentStatus,
   CalendarEntry,

@@ -9,7 +9,7 @@ import {
 import {
   type FacilitySettings,
 } from "./types";
-import { defaultFacilitySettings as defaultFacilityFromDemo } from "./demo-store";
+import { defaultFacilitySettings } from "@/features/settings/defaults";
 
 export type LocationRow = {
   id: string;
@@ -133,5 +133,5 @@ export async function getLocationNameById(
 }
 
 export function defaultLocationLabel(): string {
-  return defaultFacilityFromDemo().gymName;
+  return defaultFacilitySettings().gymName;
 }
