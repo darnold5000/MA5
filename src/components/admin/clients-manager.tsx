@@ -12,7 +12,6 @@ import {
 
 type AdminClientsManagerProps = {
   members: MemberDirectoryRow[];
-  showDeleted?: boolean;
 };
 
 const ACTION_LABELS: Record<MemberLifecycleAction, string> = {
@@ -20,7 +19,7 @@ const ACTION_LABELS: Record<MemberLifecycleAction, string> = {
   restore_invitation: "Restore invitation",
   pause_access: "Pause access",
   restore_access: "Restore access",
-  delete: "Delete",
+  delete: "Remove",
   restore_deleted: "Restore client",
 };
 
@@ -30,13 +29,11 @@ const CONFIRM_MESSAGES: Partial<Record<MemberLifecycleAction, string>> = {
   pause_access:
     "Pause this client’s access?\n\nThey will temporarily lose access to the client portal, but their records and history will remain available.",
   delete:
-    "Delete this client?\n\nThe client will be removed from the active client list and will lose portal access. Their historical records will be retained.",
+    "Remove this client from the directory?\n\nThey will lose portal access and disappear from this list. Billing and attendance history is kept for reporting. You can invite the same email again later if they never finished signing up.",
   restore_invitation:
     "Restore this invitation?\n\nThe client will return to invited status. Send a new invitation email after restoring.",
   restore_access:
     "Restore this client’s portal access?\n\nThey will be able to sign in again immediately.",
-  restore_deleted:
-    "Restore this deleted client?\n\nThey will return to their previous lifecycle status.",
 };
 
 function formatDate(value: string | null) {
@@ -71,7 +68,6 @@ function statusBadgeClass(status: MemberDirectoryRow["clientStatus"]): string {
 
 export function AdminClientsManager({
   members,
-  showDeleted = false,
 }: AdminClientsManagerProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -85,11 +81,8 @@ export function AdminClientsManager({
   const [role, setRole] = useState<"client" | "coach">("client");
 
   const visibleMembers = useMemo(
-    () =>
-      showDeleted
-        ? members
-        : members.filter((member) => member.clientStatus !== "deleted"),
-    [members, showDeleted],
+    () => members.filter((member) => member.clientStatus !== "deleted"),
+    [members],
   );
 
   async function sendInvite(resendEmail?: string, resendName?: string) {
@@ -166,14 +159,12 @@ export function AdminClientsManager({
       setMessage("Invitation restored — send a new invite email when ready.");
     } else if (action === "restore_access") {
       setMessage("Client access restored.");
-    } else if (action === "restore_deleted") {
-      setMessage("Client restored.");
     } else if (action === "revoke_invite") {
       setMessage("Invitation revoked.");
     } else if (action === "pause_access") {
       setMessage("Client access paused.");
     } else if (action === "delete") {
-      setMessage("Client deleted.");
+      setMessage("Client removed from directory.");
     } else {
       setMessage("Updated.");
     }
@@ -222,17 +213,14 @@ export function AdminClientsManager({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           Invite members by email. New accounts are invitation-only.
-          {showDeleted ? " Showing deleted clients." : null}
         </p>
-        {!showDeleted ? (
-          <button
-            type="button"
-            onClick={() => setShowNewClient((open) => !open)}
-            className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-          >
-            {showNewClient ? "Close" : "New client"}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => setShowNewClient((open) => !open)}
+          className="inline-flex min-h-11 items-center bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+        >
+          {showNewClient ? "Close" : "New client"}
+        </button>
       </div>
 
       {showNewClient ? (
@@ -330,9 +318,7 @@ export function AdminClientsManager({
             {visibleMembers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-muted">
-                  {showDeleted
-                    ? "No deleted clients."
-                    : "No members yet. Send an invitation to add the first account."}
+                  No members yet. Send an invitation to add the first account.
                 </td>
               </tr>
             ) : (

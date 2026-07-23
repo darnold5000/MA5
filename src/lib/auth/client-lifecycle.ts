@@ -119,10 +119,23 @@ export function allowedActionsForStatus(status: ClientStatus): MemberLifecycleAc
     case "paused":
       return ["restore_access", "delete"];
     case "deleted":
-      return ["restore_deleted"];
+      return [];
     default:
       return [];
   }
+}
+
+/** True when the member still needs the invitation / set-password flow (not forgot-password). */
+export function profileNeedsInviteActivationLink(
+  profile: ProfileLifecycleRow | null | undefined,
+): boolean {
+  if (!profile) return true;
+  if (profile.invitation_accepted_at || profile.activated_at) return false;
+  const status = profile.client_status
+    ? asClientStatus(profile.client_status)
+    : null;
+  if (status === "active" || status === "paused") return false;
+  return true;
 }
 
 export function assertLifecycleAction(

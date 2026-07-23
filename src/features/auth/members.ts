@@ -72,6 +72,12 @@ export async function listDirectoryMembers(
     return [];
   }
 
+  const ownerUserIds = new Set(
+    (roleRows ?? [])
+      .filter((row) => row.role === "owner")
+      .map((row) => String(row.user_id)),
+  );
+
   const ROLE_RANK: Record<MemberDirectoryRow["role"], number> = {
     owner: 5,
     admin: 4,
@@ -82,14 +88,14 @@ export async function listDirectoryMembers(
   const roleByUser = new Map<string, MemberDirectoryRow["role"]>();
   for (const row of roleRows ?? []) {
     const next = row.role as MemberDirectoryRow["role"];
-    if (!(next in ROLE_RANK)) continue;
+    if (next === "owner" || !(next in ROLE_RANK)) continue;
     const current = roleByUser.get(row.user_id);
     if (!current || ROLE_RANK[next] > ROLE_RANK[current]) {
       roleByUser.set(row.user_id, next);
     }
   }
 
-  const ids = [...roleByUser.keys()];
+  const ids = [...roleByUser.keys()].filter((id) => !ownerUserIds.has(id));
   if (ids.length === 0) return [];
 
   const { data: profiles, error: profileError } = await admin

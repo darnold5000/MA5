@@ -2,7 +2,7 @@
 
 Paste these into **Supabase → Authentication → Email Templates**.
 
-Existing Auth users who are re-invited receive a **recovery** link (not a second Invite email). Keep the recovery template activation-aware so those members are not told they forgot their password.
+Existing Auth users who are re-invited receive an **invite** link when they never finished signup, or a **recovery** link only after they have activated before. Keep both Supabase templates activation-friendly.
 
 ---
 

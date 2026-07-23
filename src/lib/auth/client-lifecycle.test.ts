@@ -7,6 +7,7 @@ import {
   normalizeEmail,
   patchForActivated,
   patchForInvited,
+  profileNeedsInviteActivationLink,
 } from "@/lib/auth/client-lifecycle";
 
 describe("client lifecycle", () => {
@@ -91,30 +92,17 @@ describe("client lifecycle", () => {
     expect(patch.status_before_delete).toBe("invited");
   });
 
-  it("restoring deleted invited client returns invited", () => {
-    const patch = applyLifecycleTransition(
-      {
-        client_status: "deleted",
-        status_before_delete: "invited",
-      },
-      "restore_deleted",
-      "2026-01-06T00:00:00.000Z",
-    );
-    expect(patch.client_status).toBe("invited");
-    expect(patch.active).toBe(false);
-  });
-
-  it("restoring deleted active client returns active", () => {
-    const patch = applyLifecycleTransition(
-      {
-        client_status: "deleted",
-        status_before_delete: "active",
-      },
-      "restore_deleted",
-      "2026-01-06T00:00:00.000Z",
-    );
-    expect(patch.client_status).toBe("active");
-    expect(patch.active).toBe(true);
+  it("deleted clients cannot be restored from the admin directory", () => {
+    expect(() =>
+      applyLifecycleTransition(
+        {
+          client_status: "deleted",
+          status_before_delete: "invited",
+        },
+        "restore_deleted",
+        "2026-01-06T00:00:00.000Z",
+      ),
+    ).toThrow(/not allowed/);
   });
 
   it("exposes contextual actions per status", () => {
@@ -134,6 +122,28 @@ describe("client lifecycle", () => {
       "restore_access",
       "delete",
     ]);
+    expect(allowedActionsForStatus("deleted")).toEqual([]);
+  });
+
+  it("invite link is required until the member activates", () => {
+    expect(
+      profileNeedsInviteActivationLink({
+        client_status: "invited",
+        invitation_accepted_at: null,
+      }),
+    ).toBe(true);
+    expect(
+      profileNeedsInviteActivationLink({
+        client_status: "active",
+        invitation_accepted_at: "2026-01-01T00:00:00.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      profileNeedsInviteActivationLink({
+        client_status: "deleted",
+        invitation_accepted_at: null,
+      }),
+    ).toBe(true);
   });
 
   it("normalizes email matching", () => {

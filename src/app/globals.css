@@ -113,6 +113,39 @@ body {
   font-family: var(--font-manrope), system-ui, sans-serif;
 }
 
+/* Pointer + pressed feedback for interactive controls */
+button:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease,
+    opacity 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+button:not(:disabled):active,
+input[type="button"]:not(:disabled):active,
+input[type="submit"]:not(:disabled):active,
+input[type="reset"]:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.98);
+  filter: brightness(0.92);
+}
+
 ::selection {
   background: color-mix(in srgb, var(--brand) 45%, transparent);
   color: var(--foreground);
@@ -222,6 +255,7 @@ select:focus-visible {
   min-height: 2.5rem;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
   background: var(--th-blue);
   padding: 0 1.25rem;
   font-size: 0.75rem;
@@ -229,20 +263,31 @@ select:focus-visible {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease,
+    background-color 0.12s ease;
 }
 
 .programs-th .th-btn-primary:hover {
   background: var(--th-blue-hover);
 }
 
+.programs-th .th-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+  filter: brightness(0.92);
+}
+
 .programs-th .th-btn-primary:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .programs-th .th-btn-ghost {
   display: inline-flex;
   min-height: 2.5rem;
   align-items: center;
+  cursor: pointer;
   border: 1px solid var(--th-border-strong);
   background: var(--th-surface);
   padding: 0 1rem;
@@ -251,6 +296,17 @@ select:focus-visible {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--th-text);
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.programs-th .th-btn-ghost:active:not(:disabled) {
+  transform: scale(0.98);
+  filter: brightness(0.96);
+  background: var(--th-surface-muted);
 }
 
 .programs-th .th-link {

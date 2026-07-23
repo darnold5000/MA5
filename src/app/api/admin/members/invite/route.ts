@@ -37,20 +37,11 @@ function resolveFullName(data: z.infer<typeof inviteSchema>): string {
   return [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
 }
 
-async function findAuthUserIdByEmail(
-  emailNorm: string,
-): Promise<string | null> {
-  const { supabase: admin } = createMa5TenantServiceClient();
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: emailNorm,
-    options: { redirectTo: inviteRedirectUrl(env.siteUrl) },
-  });
-  if (error) {
-    console.error("[api/admin/members/invite] findAuthUser", error.message);
-    return null;
-  }
-  return data.user?.id ?? null;
+function profileWasActivated(profile: {
+  invitation_accepted_at?: string | null;
+  activated_at?: string | null;
+}): boolean {
+  return Boolean(profile.invitation_accepted_at || profile.activated_at);
 }
 
 export async function POST(request: Request) {
@@ -135,21 +126,29 @@ export async function POST(request: Request) {
 
     if (
       existingProfile &&
-      (existingStatus === "invite_revoked" ||
-        existingStatus === "deleted" ||
-        existingStatus === "paused")
+      (existingStatus === "invite_revoked" || existingStatus === "paused")
     ) {
       return NextResponse.json(
         {
           error:
             existingStatus === "invite_revoked"
               ? "Restore the invitation before sending a new invite."
-              : existingStatus === "deleted"
-                ? "Restore the deleted client before sending a new invite."
-                : "Restore client access before sending a new invite.",
+              : "Restore client access before sending a new invite.",
         },
         { status: 400 },
       );
+    }
+
+    if (existingProfile && existingStatus === "deleted") {
+      if (profileWasActivated(existingProfile)) {
+        return NextResponse.json(
+          {
+            error:
+              "This email belonged to a former member. Use a different email or contact support to restore their records.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const inviteGeneration = nextInviteGeneration(
@@ -212,8 +211,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const existingUserId =
-      existingProfile?.id ?? (await findAuthUserIdByEmail(emailNorm));
+    const existingUserId = existingProfile?.id ?? null;
 
     if (!existingUserId) {
       return NextResponse.json(
@@ -247,6 +245,7 @@ export async function POST(request: Request) {
       email: emailNorm,
       fullName,
       inviteGeneration,
+      profile: existingProfile,
     });
 
     await attachLeadOnInvite({
@@ -267,12 +266,12 @@ export async function POST(request: Request) {
         active: false,
       },
       message: parsed.data.resend
-        ? channel === "resend"
-          ? "Activation email resent"
-          : "Invitation resent"
-        : channel === "resend"
-          ? "Existing account updated — branded activation email sent"
-          : "Existing account updated and activation email sent",
+        ? channel === "resend_invite" || channel === "supabase_invite"
+          ? "Invitation email resent"
+          : "Activation email resent"
+        : channel === "resend_invite" || channel === "supabase_invite"
+          ? "Existing account updated — invitation email sent"
+          : "Existing account updated — activation email sent",
     });
   } catch (err) {
     console.error("[api/admin/members/invite]", err);

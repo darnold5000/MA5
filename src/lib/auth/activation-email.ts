@@ -1,8 +1,18 @@
 import { inviteRedirectUrl } from "@/features/auth/members";
+import {
+  profileNeedsInviteActivationLink,
+  type ProfileLifecycleRow,
+} from "@/lib/auth/client-lifecycle";
 import { env } from "@/lib/env";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
+
+export type ActivationEmailChannel =
+  | "resend_invite"
+  | "resend_recovery"
+  | "supabase_invite"
+  | "supabase_recovery";
 
 function authFromAddress(): string | null {
   const from = process.env.AUTH_EMAIL_FROM?.trim();
@@ -10,23 +20,26 @@ function authFromAddress(): string | null {
 }
 
 /**
- * Send a branded "activate your MA5 access" email for existing Auth users.
- * Falls back to Supabase recovery email when Resend is not configured.
+ * Send activation email for an Auth user that already exists.
+ * Never-activated members get an invite link (set password). Former members get recovery.
  */
 export async function sendExistingUserActivationEmail(args: {
   admin: ServiceClient;
   email: string;
   fullName: string;
   inviteGeneration: number;
-}): Promise<{ channel: "resend" | "supabase_recovery" }> {
+  profile?: ProfileLifecycleRow | null;
+}): Promise<{ channel: ActivationEmailChannel }> {
   const emailNorm = args.email.trim().toLowerCase();
   const redirectTo = inviteRedirectUrl(env.siteUrl, args.inviteGeneration);
+  const useInviteLink = profileNeedsInviteActivationLink(args.profile);
+  const linkType = useInviteLink ? "invite" : "recovery";
   const resendKey = process.env.RESEND_API_KEY?.trim();
   const from = authFromAddress();
 
   if (resendKey && from) {
     const { data, error } = await args.admin.auth.admin.generateLink({
-      type: "recovery",
+      type: linkType,
       email: emailNorm,
       options: { redirectTo },
     });
@@ -34,6 +47,15 @@ export async function sendExistingUserActivationEmail(args: {
     const actionLink = data?.properties?.action_link;
     if (!error && actionLink) {
       const firstName = args.fullName.trim().split(/\s+/)[0] || "there";
+      const subject = useInviteLink
+        ? "You've been invited to the MA5 Member Platform"
+        : "Set your MA5 password and activate access";
+      const intro = useInviteLink
+        ? "MA5 has invited you to the member platform."
+        : "MA5 staff has restored your access to the member platform.";
+      const instruction = useInviteLink
+        ? "Use the secure link below to set your password and activate your account."
+        : "Use the secure link below to set or update your password.";
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -43,21 +65,20 @@ export async function sendExistingUserActivationEmail(args: {
         body: JSON.stringify({
           from,
           to: [emailNorm],
-          subject: "Activate your MA5 member access",
+          subject,
           html: [
             `<p>Hi ${escapeHtml(firstName)},</p>`,
-            `<p>MA5 staff has set up (or restored) your access to the MA5 Member Platform.</p>`,
-            `<p>This is an <strong>activation</strong> email — not a notice that you forgot your password. Use the secure link below to set your password and finish activating your account.</p>`,
+            `<p>${escapeHtml(intro)}</p>`,
+            `<p>${escapeHtml(instruction)}</p>`,
             `<p><a href="${actionLink}">Activate your MA5 account</a></p>`,
             `<p>If you were not expecting this, you can ignore this email or contact MA5 staff.</p>`,
           ].join(""),
           text: [
             `Hi ${firstName},`,
             "",
-            "MA5 staff has set up (or restored) your access to the MA5 Member Platform.",
+            intro,
             "",
-            "This is an activation email — not a notice that you forgot your password.",
-            "Use the secure link below to set your password and finish activating your account:",
+            instruction,
             "",
             actionLink,
             "",
@@ -67,7 +88,7 @@ export async function sendExistingUserActivationEmail(args: {
       });
 
       if (res.ok) {
-        return { channel: "resend" };
+        return { channel: useInviteLink ? "resend_invite" : "resend_recovery" };
       }
       console.error(
         "[activation-email] Resend failed",
@@ -77,6 +98,30 @@ export async function sendExistingUserActivationEmail(args: {
     } else if (error) {
       console.error("[activation-email] generateLink", error.message);
     }
+  }
+
+  if (useInviteLink) {
+    const { data, error } = await args.admin.auth.admin.generateLink({
+      type: "invite",
+      email: emailNorm,
+      options: { redirectTo },
+    });
+    if (!error && data?.properties?.action_link) {
+      const { error: resendError } = await args.admin.auth.resend({
+        type: "signup",
+        email: emailNorm,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (!resendError) {
+        return { channel: "supabase_invite" };
+      }
+      console.error("[activation-email] supabase invite resend", resendError.message);
+    } else if (error) {
+      console.error("[activation-email] invite generateLink", error.message);
+    }
+    throw new Error(
+      "Could not send invitation email. Configure RESEND_API_KEY and AUTH_EMAIL_FROM, or update the Supabase Invite email template.",
+    );
   }
 
   const userClient = await createClient();
@@ -89,6 +134,7 @@ export async function sendExistingUserActivationEmail(args: {
       "[activation-email] supabase recovery",
       resetError.message,
     );
+    throw new Error("Could not send password email");
   }
   return { channel: "supabase_recovery" };
 }

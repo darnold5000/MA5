@@ -6,10 +6,11 @@ type ButtonVariant = "primary" | "secondary" | "ghost";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand text-brand-foreground hover:brightness-110 active:brightness-95",
+    "cursor-pointer bg-brand text-brand-foreground hover:brightness-110 active:scale-[0.98] active:brightness-95",
   secondary:
-    "border border-border bg-transparent text-foreground hover:border-brand hover:text-brand",
-  ghost: "bg-transparent text-foreground hover:text-brand",
+    "cursor-pointer border border-border bg-transparent text-foreground hover:border-brand hover:text-brand active:scale-[0.98] active:bg-surface",
+  ghost:
+    "cursor-pointer bg-transparent text-foreground hover:text-brand active:scale-[0.98] active:opacity-80",
 };
 
 type ButtonLinkProps = {
