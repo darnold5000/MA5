@@ -7,8 +7,14 @@ function readPublic(name: string): string | undefined {
   return value && value.trim().length > 0 ? value.trim() : undefined;
 }
 
+/** Canonical site origin for auth redirect URLs (no trailing slash). */
+export function resolveSiteUrl(): string {
+  const raw = readPublic("NEXT_PUBLIC_SITE_URL") ?? "http://localhost:3000";
+  return raw.replace(/\/$/, "");
+}
+
 export const env = {
-  siteUrl: readPublic("NEXT_PUBLIC_SITE_URL") ?? "http://localhost:3000",
+  siteUrl: resolveSiteUrl(),
   mindbodyBookingUrl:
     readPublic("NEXT_PUBLIC_MINDBODY_BOOKING_URL") ??
     "https://www.mindbodyonline.com/explore/locations/ma5fitness-llc",

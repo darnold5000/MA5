@@ -47,6 +47,19 @@ type ProfileSummary = ProfileLifecycleRow & {
 const PROFILE_SUMMARY_COLS =
   "id, email, full_name, active, invitation_status, invitation_accepted_at, access_revoked_at, client_status, status_before_delete, invite_revoked_at, activated_at, paused_at, deleted_at, invited_at, invite_generation";
 
+function throwProfileQueryError(error: { message?: string }): never {
+  const message = error.message ?? "Profile query failed";
+  if (
+    message.includes("invite_generation") ||
+    message.includes("client_status")
+  ) {
+    throw new Error(
+      "MA5 lifecycle migrations (037–038) are not applied in Supabase. Run them in the SQL editor, then retry.",
+    );
+  }
+  throw new Error(message);
+}
+
 function clientOrCreate(
   existing?: Ma5TenantServiceClient,
 ): Ma5TenantServiceClient {
@@ -65,7 +78,7 @@ export async function findProfileByEmailInTenant(
     .ilike("email", emailNorm)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) throwProfileQueryError(error);
   return (data as ProfileSummary | null) ?? null;
 }
 
@@ -81,7 +94,7 @@ export async function findProfileByIdInTenant(
     .eq("id", memberId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) throwProfileQueryError(error);
   return (data as ProfileSummary | null) ?? null;
 }
 

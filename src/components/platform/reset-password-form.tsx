@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
+import { parseHashSessionTokens } from "@/lib/auth/auth-callback";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function ResetPasswordForm() {
@@ -27,6 +28,22 @@ export function ResetPasswordForm() {
       }
 
       const supabase = createClient();
+
+      const { accessToken, refreshToken } = parseHashSessionTokens(
+        window.location.hash,
+      );
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();

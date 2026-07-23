@@ -6,6 +6,7 @@ import { attachLeadOnInvite } from "@/features/marketing/link-lead";
 import {
   deriveClientStatusFromLegacy,
   nextInviteGeneration,
+  patchForInvited,
 } from "@/lib/auth/client-lifecycle";
 import { sendExistingUserActivationEmail, sendFormerMemberReenrollEmail } from "@/lib/auth/activation-email";
 import {
@@ -146,6 +147,12 @@ export async function POST(request: Request) {
           existingProfile.invite_generation ?? null,
         );
 
+        await sendFormerMemberReenrollEmail({
+          admin,
+          email: emailNorm,
+          fullName,
+        });
+
         await reenrollFormerMember(
           {
             userId: existingProfile.id,
@@ -163,12 +170,6 @@ export async function POST(request: Request) {
           user_metadata: {
             ma5_invite_generation: inviteGeneration,
           },
-        });
-
-        await sendFormerMemberReenrollEmail({
-          admin,
-          email: emailNorm,
-          fullName,
         });
 
         await attachLeadOnInvite({
@@ -263,6 +264,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const profileForEmail = existingProfile
+      ? {
+          ...existingProfile,
+          ...patchForInvited(now, inviteGeneration),
+        }
+      : null;
+
+    const { channel } = await sendExistingUserActivationEmail({
+      admin,
+      email: emailNorm,
+      fullName,
+      inviteGeneration,
+      profile: profileForEmail,
+    });
+
     await upsertInvitedProfile(
       {
         userId: existingUserId,
@@ -281,14 +297,6 @@ export async function POST(request: Request) {
       user_metadata: {
         ma5_invite_generation: inviteGeneration,
       },
-    });
-
-    const { channel } = await sendExistingUserActivationEmail({
-      admin,
-      email: emailNorm,
-      fullName,
-      inviteGeneration,
-      profile: existingProfile,
     });
 
     await attachLeadOnInvite({
@@ -318,9 +326,8 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[api/admin/members/invite]", err);
-    return NextResponse.json(
-      { error: "Could not send invitation" },
-      { status: 500 },
-    );
+    const message =
+      err instanceof Error ? err.message : "Could not send invitation";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

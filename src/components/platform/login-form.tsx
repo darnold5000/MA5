@@ -2,20 +2,41 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
+import {
+  messageForAuthHashError,
+  parseHashAuthError,
+} from "@/lib/auth/auth-callback";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
   const resetOk = searchParams.get("reset") === "1";
+  const callbackError = searchParams.get("error") === "auth_callback";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    callbackError
+      ? "Your sign-in link expired or was already used. Request a new invitation or password reset email."
+      : null,
+  );
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    const hashError = parseHashAuthError(window.location.hash);
+    if (!hashError) return;
+
+    setError(messageForAuthHashError(hashError));
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}`,
+    );
+  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
