@@ -129,7 +129,7 @@ export function AdminThreadView({
             >
               <div
                 className={cn(
-                  "relative max-w-[85%] px-4 py-3 text-sm",
+                  "relative max-w-[85%] rounded-xl px-4 py-3 text-sm",
                   staff
                     ? "bg-brand text-brand-foreground"
                     : "border border-border bg-surface",

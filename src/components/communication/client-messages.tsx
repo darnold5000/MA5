@@ -233,7 +233,7 @@ export function ClientThreadView({
             >
               <div
                 className={cn(
-                  "max-w-[85%] px-4 py-3 text-sm",
+                  "max-w-[85%] rounded-xl px-4 py-3 text-sm",
                   mine
                     ? "bg-brand text-brand-foreground"
                     : "border border-border bg-surface",

@@ -38,6 +38,39 @@
   --hub-success-border: rgb(4 120 87 / 0.4);
   --hub-warning-fg: #fbbf24;
   --hub-positive-fg: #34d399;
+  /* Match Journey: slight round on controls (lg) and panels (xl) */
+  --hub-radius-control: 0.5rem;
+  --hub-radius-panel: 0.75rem;
+}
+
+/*
+ * Soften sharp corners across admin + client hubs to match Journey.
+ * Keep intentionally circular elements (avatars, dots, pills).
+ */
+.hub-theme :where(
+  button,
+  [role="button"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="file"]
+    ):not([type="hidden"]),
+  select,
+  textarea,
+  label:has(> input[type="file"]),
+  a.inline-flex,
+  .th-btn-primary,
+  .th-btn-ghost,
+  .th-input
+):not([class*="rounded-full"]) {
+  border-radius: var(--hub-radius-control);
+}
+
+.hub-theme
+  :where([class~="border"], .th-card, .th-bar):not([class*="rounded-full"]):not(
+    button
+  ):not([role="button"]):not(input):not(select):not(textarea):not(a):not(
+    .th-btn-primary
+  ):not(.th-btn-ghost):not(.th-input):not(tr):not(td):not(th):not(table) {
+  border-radius: var(--hub-radius-panel);
 }
 
 .hub-theme[data-hub-theme="light"] {
@@ -210,6 +243,7 @@ select:focus-visible {
 .programs-th .th-card {
   background: var(--th-surface);
   border: 1px solid var(--th-border);
+  border-radius: var(--hub-radius-panel, 0.75rem);
 }
 
 .programs-th .th-muted {
@@ -220,6 +254,7 @@ select:focus-visible {
   min-height: 2.5rem;
   width: 100%;
   border: 1px solid var(--th-border);
+  border-radius: var(--hub-radius-control, 0.5rem);
   background-color: var(--th-surface);
   padding: 0.5rem 0.75rem;
   color: var(--th-text);
@@ -265,6 +300,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  border-radius: var(--hub-radius-control, 0.5rem);
   background: var(--th-blue);
   padding: 0 1.25rem;
   font-size: 0.75rem;
@@ -298,6 +334,7 @@ select:focus-visible {
   align-items: center;
   cursor: pointer;
   border: 1px solid var(--th-border-strong);
+  border-radius: var(--hub-radius-control, 0.5rem);
   background: var(--th-surface);
   padding: 0 1rem;
   font-size: 0.75rem;
@@ -327,6 +364,7 @@ select:focus-visible {
 .programs-th .th-bar {
   background: var(--th-surface-muted);
   border: 1px solid var(--th-border);
+  border-radius: var(--hub-radius-panel, 0.75rem);
 }
 
 /* Programs library — follow hub dark theme */
