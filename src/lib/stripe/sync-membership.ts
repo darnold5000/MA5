@@ -4,6 +4,7 @@ import {
   getOfferingBySlug,
   getOfferingByStripePriceId,
 } from "@/lib/billing/catalog";
+import { subscriptionPeriodEnd } from "@/lib/billing/stripe-subscription-periods";
 import { getStripe } from "@/lib/stripe";
 import {
   createServiceClient,
@@ -231,8 +232,7 @@ async function finalizeHydratedMembership(params: {
 
   if (stripe) {
     const sub = await stripe.subscriptions.retrieve(params.active.id);
-    const end = (sub as { current_period_end?: number }).current_period_end;
-    if (end) periodEnd = new Date(end * 1000).toISOString();
+    periodEnd = subscriptionPeriodEnd(sub);
   }
 
   const row = ctx

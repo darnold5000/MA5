@@ -2,7 +2,7 @@
 
 **Status:** Migration `024` **applied** — tenant registered on Signal Works  
 **MA5 tenant UUID:** `d71ada88-8fad-466f-9264-3a479d54d6e2` (slug `ma5-performance`) — [RUNBOOK.md](./RUNBOOK.md)  
-**Next:** Migration `025`+ not authorized until explicitly requested
+**Day-to-day ops (email, Stripe, Vercel, webhooks):** [../DEVELOPER_ONBOARDING.md](../DEVELOPER_ONBOARDING.md)
 
 ## Migration folders (critical)
 
@@ -23,6 +23,7 @@
 
 | # | Document | Purpose |
 |---|----------|---------|
+| — | [../DEVELOPER_ONBOARDING.md](../DEVELOPER_ONBOARDING.md) | **Start here** — env, Resend, Stripe, Supabase, Vercel, troubleshooting |
 | 01 | [target-schema-plan.md](./01-target-schema-plan.md) | Table-by-table schema, FK, RLS strategy |
 | 02 | [migration-sequence.md](./02-migration-sequence.md) | Destination migrations in `supabase-signalworks/` |
 | 03 | [data-backfill-plan.md](./03-data-backfill-plan.md) | Bootstrap + seed plan |

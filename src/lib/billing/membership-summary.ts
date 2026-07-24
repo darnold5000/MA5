@@ -1,3 +1,6 @@
+import {
+  persistSubscriptionPeriodsForStripeId,
+} from "@/lib/billing/ensure-subscription-periods";
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
 import { createServiceClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -105,7 +108,7 @@ export async function getMembershipSummary(
     let membershipQuery = supabase
       .from(MA5_TABLES.memberships)
       .select(
-        "status, current_period_end, created_at, product_id, ma5_products(name, billing_interval, payment_type)",
+        "status, current_period_end, created_at, product_id, stripe_subscription_id, ma5_products(name, billing_interval, payment_type)",
       )
       .eq("user_id", userId)
       .in("status", [...ACTIVE_STATUSES])
@@ -115,7 +118,7 @@ export async function getMembershipSummary(
     let subscriptionQuery = supabase
       .from(MA5_TABLES.subscriptions)
       .select(
-        "status, current_period_end, current_period_start, created_at, product_id, ma5_products(name, billing_interval, payment_type)",
+        "status, current_period_end, current_period_start, created_at, product_id, stripe_subscription_id, ma5_products(name, billing_interval, payment_type)",
       )
       .eq("user_id", userId)
       .in("status", [...ACTIVE_STATUSES])
@@ -169,15 +172,50 @@ export async function getMembershipSummary(
 
     const status = formatStatus(rawStatus);
 
-    const nextBillingDate = formatDate(
+    const stripeSubscriptionId =
+      (subscription?.stripe_subscription_id as string | null) ??
+      (membership?.stripe_subscription_id as string | null) ??
+      null;
+
+    let periodEndIso =
       (subscription?.current_period_end as string | null) ??
-        (membership?.current_period_end as string | null) ??
-        active?.currentPeriodEnd ??
-        null,
-    );
+      (membership?.current_period_end as string | null) ??
+      active?.currentPeriodEnd ??
+      null;
+
+    let periodStartIso =
+      (subscription?.current_period_start as string | null) ?? null;
+
+    if (!periodEndIso && stripeSubscriptionId) {
+      const { periodEnd, periodStart } =
+        await persistSubscriptionPeriodsForStripeId({
+          supabase,
+          tenantId,
+          stripeSubscriptionId,
+        });
+      if (periodEnd) periodEndIso = periodEnd;
+      if (periodStart && !periodStartIso) periodStartIso = periodStart;
+    }
+
+    if (!periodEndIso) {
+      let invoiceQuery = supabase
+        .from(MA5_TABLES.invoices)
+        .select("period_end")
+        .eq("user_id", userId)
+        .not("period_end", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (tenantId) invoiceQuery = invoiceQuery.eq("tenant_id", tenantId);
+      const { data: latestInvoice } = await invoiceQuery.maybeSingle();
+      if (latestInvoice?.period_end) {
+        periodEndIso = latestInvoice.period_end as string;
+      }
+    }
+
+    const nextBillingDate = formatDate(periodEndIso);
 
     const membershipStartDate = formatDate(
-      (subscription?.current_period_start as string | null) ??
+      periodStartIso ??
         (subscription?.created_at as string | null) ??
         (membership?.created_at as string | null) ??
         null,

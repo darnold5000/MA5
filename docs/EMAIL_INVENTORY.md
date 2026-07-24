@@ -1,6 +1,11 @@
 # MA5 email inventory (auth & transactional)
 
-Companion to [ADR 0007: Tenant-branded auth email via Resend](../../../docs/adr/0007-tenant-auth-email-via-resend.md).
+Companion to [ADR 0007: Tenant-branded auth email via Resend](../../../docs/adr/0007-tenant-auth-email-via-resend.md).  
+**Developer runbook:** [DEVELOPER_ONBOARDING.md](./DEVELOPER_ONBOARDING.md) (Resend vs Supabase SMTP, invites, troubleshooting).
+
+## Policy
+
+**Use Resend + app-owned email (`lib/email/`, `auth-email-flows.ts`). Do not use Supabase SMTP or `inviteUserByEmail` / `resetPasswordForEmail` for MA5 product flows.**
 
 ## Current env (Vercel / local)
 
@@ -39,7 +44,7 @@ No Supabase SMTP / `inviteUserByEmail` / `resetPasswordForEmail` on these paths.
 
 ## Gaps vs target (ADR 0007)
 
-1. **No `email_settings` table**—branding from env until Phase 3 (`041`).
+1. **`tenant_email_settings` table** — apply migration **041**; wire admin UI when ready (Phase 3).
 2. **No React Email**—inline HTML in `lib/email/templates/` / `notify-staff.ts`.
 3. **No shared EmailService** with signalworks-clients (duplicate patterns).
 

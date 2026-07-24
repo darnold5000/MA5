@@ -50,6 +50,12 @@ Checkout reads the active offering + `current_stripe_price_id` from Supabase.
    - `charge.refunded`
 4. Copy signing secret → `STRIPE_WEBHOOK_SECRET=whsec_...`
 
+**Vercel Deployment Protection:** If the site returns `401 Protected deployment` to Stripe, add [Protection Bypass for Automation](https://vercel.com/docs/security/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation) to the endpoint URL:
+
+`https://your-host.example/api/stripe/webhook?x-vercel-protection-bypass=YOUR_SECRET`
+
+See [DEVELOPER_ONBOARDING.md](./DEVELOPER_ONBOARDING.md) § Vercel.
+
 Membership and ledger rows are written by the webhook — and by the Checkout **success redirect** (`/api/stripe/membership-paid`) when webhooks are delayed or missing. Configure webhooks anyway for renewals, failures, and refunds.
 
 Local forwarding:

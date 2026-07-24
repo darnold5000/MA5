@@ -1,12 +1,8 @@
 import type Stripe from "stripe";
 
 import { syncOfferingCheckoutSession } from "@/lib/billing/webhooks";
-import {
-  subscriptionPeriodEnd,
-  subscriptionPeriodStart,
-} from "@/lib/billing/stripe-subscription-periods";
+import { persistSubscriptionPeriodsForStripeId } from "@/lib/billing/ensure-subscription-periods";
 import { getStripe, isStripeConfigured } from "@/lib/billing/stripe-client";
-import { MA5_TABLES } from "@/lib/supabase/tables";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 import { createMa5TenantServiceClient } from "@/lib/tenant/service";
@@ -70,14 +66,13 @@ export async function syncOfferingCheckoutSessionById(
 
   const client = createMa5TenantServiceClient();
   await syncOfferingCheckoutSession(client, session);
-  await repairSubscriptionPeriodsFromStripe(client, session, stripe);
+  await repairSubscriptionPeriodsFromStripe(client, session);
   return { ok: true };
 }
 
 async function repairSubscriptionPeriodsFromStripe(
   client: ReturnType<typeof createMa5TenantServiceClient>,
   session: Stripe.Checkout.Session,
-  stripe: Stripe,
 ) {
   if (session.mode !== "subscription") return;
   const subId =
@@ -86,24 +81,11 @@ async function repairSubscriptionPeriodsFromStripe(
       : session.subscription?.id ?? null;
   if (!subId) return;
 
-  const sub = await stripe.subscriptions.retrieve(subId);
-  const periodEnd = subscriptionPeriodEnd(sub);
-  const periodStart = subscriptionPeriodStart(sub);
-  if (!periodEnd && !periodStart) return;
-
   const { supabase, ctx } = client;
-  await supabase
-    .from(MA5_TABLES.subscriptions)
-    .update({
-      current_period_start: periodStart,
-      current_period_end: periodEnd,
-    })
-    .eq("tenant_id", ctx.tenantId)
-    .eq("stripe_subscription_id", subId);
-
-  await supabase
-    .from(MA5_TABLES.memberships)
-    .update({ current_period_end: periodEnd })
-    .eq("tenant_id", ctx.tenantId)
-    .eq("stripe_subscription_id", subId);
+  await persistSubscriptionPeriodsForStripeId({
+    supabase,
+    tenantId: ctx.tenantId,
+    stripeSubscriptionId: subId,
+    periods: undefined,
+  });
 }
