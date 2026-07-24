@@ -59,14 +59,39 @@ function EmptyState({
   description: string;
 }) {
   return (
-    <div className="border border-dashed border-border bg-surface px-6 py-10 text-center">
-      <p className="font-display text-xl tracking-wide uppercase">{title}</p>
-      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">
+    <div className="rounded-xl border border-dashed border-border/80 bg-surface/50 px-6 py-12 text-center">
+      <p className="font-display text-lg tracking-wide uppercase sm:text-xl">
+        {title}
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
         {description}
       </p>
     </div>
   );
 }
+
+const inputClassName =
+  "mt-1.5 w-full rounded-lg border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition placeholder:text-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20";
+
+const labelClassName = "text-xs font-semibold tracking-wide text-muted uppercase";
+
+const cardClassName =
+  "rounded-xl border border-border/80 bg-surface p-6 shadow-sm sm:p-7";
+
+const btnPrimaryClassName =
+  "inline-flex min-h-10 items-center justify-center rounded-lg bg-brand px-5 text-sm font-semibold tracking-wide text-brand-foreground uppercase transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50";
+
+const btnSecondaryClassName =
+  "inline-flex min-h-9 items-center justify-center rounded-lg border border-border bg-background px-3.5 text-xs font-semibold tracking-wide text-foreground uppercase transition hover:border-brand/40 hover:bg-surface";
+
+const btnGhostClassName =
+  "inline-flex min-h-9 items-center justify-center rounded-lg px-3.5 text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground";
+
+const JOURNEY_TABS = [
+  ["goals", "Goals"],
+  ["photos", "Photos"],
+  ["timeline", "Timeline"],
+] as const;
 
 export function MyJourneyView({
   userId,
@@ -324,24 +349,24 @@ export function MyJourneyView({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ["goals", "Goals"],
-            ["photos", "Progress Photos"],
-            ["timeline", "Timeline"],
-          ] as const
-        ).map(([id, label]) => (
+    <div className="space-y-5">
+      <div
+        className="inline-flex w-full max-w-lg rounded-xl border border-border bg-background/60 p-1 sm:max-w-xl"
+        role="tablist"
+        aria-label="Journey sections"
+      >
+        {JOURNEY_TABS.map(([id, label]) => (
           <button
             key={id}
             type="button"
+            role="tab"
+            aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={cn(
-              "min-h-11 px-4 text-xs font-semibold tracking-wide uppercase transition",
+              "min-h-10 flex-1 rounded-lg px-3 text-[11px] font-semibold tracking-wide uppercase transition sm:px-4 sm:text-xs",
               tab === id
-                ? "bg-brand text-brand-foreground"
-                : "border border-border bg-surface text-muted hover:text-foreground",
+                ? "bg-brand text-brand-foreground shadow-sm"
+                : "text-muted hover:text-foreground",
             )}
           >
             {label}
@@ -350,7 +375,7 @@ export function MyJourneyView({
       </div>
 
       {message ? (
-        <p className="text-sm text-brand" role="status">
+        <p className="text-sm font-medium text-brand" role="status">
           {message}
         </p>
       ) : null}
@@ -361,226 +386,254 @@ export function MyJourneyView({
       ) : null}
 
       {tab === "goals" ? (
-        <div className="space-y-6">
-          <form
-            onSubmit={createGoal}
-            className="space-y-4 border border-border bg-surface p-5"
-          >
-            <p className="font-display text-xl tracking-wide uppercase">
+        <div>
+          <form onSubmit={createGoal} className={cardClassName}>
+            <h2 className="font-display text-lg tracking-wide uppercase sm:text-xl">
               Set a new goal
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Name something meaningful and measurable for your training.
             </p>
-            <label className="block text-sm">
-              <span className="text-muted">Goal</span>
-              <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm"
-                maxLength={200}
-              />
-            </label>
-            <div className="block text-sm">
-              <span className="text-muted">Target date (optional)</span>
-              <div className="mt-2">
-                <CompactDatePicker
-                  value={targetDate}
-                  onChange={setTargetDate}
-                  optional
+            <div className="mt-6 space-y-5">
+              <label className="block">
+                <span className={labelClassName}>Goal</span>
+                <input
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className={inputClassName}
+                  placeholder="e.g. Run a 5K under 30 minutes"
+                  maxLength={200}
                 />
+              </label>
+              <div>
+                <span className={labelClassName}>Target date (optional)</span>
+                <div className="mt-1.5">
+                  <CompactDatePicker
+                    value={targetDate}
+                    onChange={setTargetDate}
+                    optional
+                  />
+                </div>
+              </div>
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={pending || !title.trim()}
+                  className={btnPrimaryClassName}
+                >
+                  Add goal
+                </button>
               </div>
             </div>
-            <button
-              type="submit"
-              disabled={pending || !title.trim()}
-              className="min-h-11 bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase disabled:opacity-50"
-            >
-              Add goal
-            </button>
           </form>
 
-          {goals.length === 0 ? (
-            <EmptyState
-              title="Start with one goal"
-              description="Pick something meaningful and measurable. Your journey begins with a single step."
-            />
-          ) : (
-            <ul className="space-y-3">
-              {goals.map((goal) => (
-                <li
-                  key={goal.id}
-                  className="border border-border bg-surface p-4"
-                >
-                  {editingGoalId === goal.id ? (
-                    <div className="space-y-3">
-                      <input
-                        value={editTitle}
-                        onChange={(event) => setEditTitle(event.target.value)}
-                        className="w-full border border-border bg-background px-3 py-2 text-sm"
-                      />
-                      <CompactDatePicker
-                        value={editTargetDate}
-                        onChange={setEditTargetDate}
-                        optional
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => saveGoalEdit(goal.id)}
-                          className="min-h-10 bg-brand px-4 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingGoalId(null)}
-                          className="min-h-10 border border-border px-4 text-xs font-semibold tracking-wide uppercase"
-                        >
-                          Cancel
-                        </button>
+          <div className="mt-12 space-y-5">
+            {goals.length > 0 ? (
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 className="font-display text-lg tracking-wide uppercase">
+                  Your goals
+                </h2>
+                <span className="text-xs text-muted">
+                  {goals.length} {goals.length === 1 ? "goal" : "goals"}
+                </span>
+              </div>
+            ) : null}
+
+            {goals.length === 0 ? (
+              <EmptyState
+                title="Start with one goal"
+                description="Pick something meaningful and measurable. Your journey begins with a single step."
+              />
+            ) : (
+              <ul className="space-y-3">
+                {goals.map((goal) => (
+                  <li
+                    key={goal.id}
+                    className="rounded-xl border border-border/80 bg-surface p-5 shadow-sm transition hover:border-border"
+                  >
+                    {editingGoalId === goal.id ? (
+                      <div className="space-y-4">
+                        <input
+                          value={editTitle}
+                          onChange={(event) => setEditTitle(event.target.value)}
+                          className={cn(inputClassName, "mt-0")}
+                        />
+                        <CompactDatePicker
+                          value={editTargetDate}
+                          onChange={setEditTargetDate}
+                          optional
+                        />
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => saveGoalEdit(goal.id)}
+                            className={btnPrimaryClassName}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingGoalId(null)}
+                            className={btnSecondaryClassName}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={cn(
+                                "text-base font-semibold leading-snug",
+                                goal.status === "completed" &&
+                                  "text-muted line-through decoration-muted/60",
+                              )}
+                            >
+                              {goal.title}
+                            </p>
+                            {goal.targetDate ? (
+                              <p className="mt-1.5 text-sm text-muted">
+                                Target · {formatDate(goal.targetDate)}
+                              </p>
+                            ) : null}
+                            {goal.status === "completed" && goal.completedAt ? (
+                              <p className="mt-1 text-sm font-medium text-brand">
+                                Completed · {formatDate(goal.completedAt)}
+                              </p>
+                            ) : null}
+                          </div>
+                          <span
                             className={cn(
-                              "text-base font-medium",
-                              goal.status === "completed" &&
-                                "text-muted line-through",
+                              "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase",
+                              goal.status === "completed"
+                                ? "bg-brand/15 text-brand"
+                                : "bg-background text-muted ring-1 ring-border",
                             )}
                           >
-                            {goal.title}
-                          </p>
-                          {goal.targetDate ? (
-                            <p className="mt-1 text-xs text-muted">
-                              Target: {formatDate(goal.targetDate)}
-                            </p>
-                          ) : null}
-                          {goal.status === "completed" && goal.completedAt ? (
-                            <p className="mt-1 text-xs text-brand">
-                              Completed {formatDate(goal.completedAt)}
-                            </p>
-                          ) : null}
+                            {goal.status === "completed" ? "Done" : "Active"}
+                          </span>
                         </div>
-                        <span
-                          className={cn(
-                            "text-[10px] font-semibold tracking-[0.18em] uppercase",
-                            goal.status === "completed"
-                              ? "text-brand"
-                              : "text-muted",
-                          )}
-                        >
-                          {goal.status === "completed" ? "Done" : "Active"}
-                        </span>
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleGoal(goal)}
-                          className="min-h-10 border border-border px-3 text-xs font-semibold tracking-wide uppercase"
-                        >
-                          {goal.status === "completed"
-                            ? "Mark active"
-                            : "Mark complete"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingGoalId(goal.id);
-                            setEditTitle(goal.title);
-                            setEditTargetDate(goal.targetDate ?? "");
-                          }}
-                          className="min-h-10 border border-border px-3 text-xs font-semibold tracking-wide uppercase"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeGoal(goal.id)}
-                          className="min-h-10 px-3 text-xs font-semibold tracking-wide text-muted uppercase"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                        <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => toggleGoal(goal)}
+                            className={btnSecondaryClassName}
+                          >
+                            {goal.status === "completed"
+                              ? "Mark active"
+                              : "Mark complete"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingGoalId(goal.id);
+                              setEditTitle(goal.title);
+                              setEditTargetDate(goal.targetDate ?? "");
+                            }}
+                            className={btnSecondaryClassName}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeGoal(goal.id)}
+                            className={btnGhostClassName}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       ) : null}
 
       {tab === "photos" ? (
-        <div className="space-y-6">
-          <div className="space-y-4 border border-border bg-surface p-5">
-            <p className="font-display text-xl tracking-wide uppercase">
+        <div>
+          <div className={cardClassName}>
+            <h2 className="font-display text-lg tracking-wide uppercase sm:text-xl">
               Add a progress photo
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Track visual progress over time — captions are optional.
             </p>
-            <label className="block text-sm">
-              <span className="text-muted">Caption (optional)</span>
-              <input
-                value={caption}
-                onChange={(event) => setCaption(event.target.value)}
-                className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm"
-                maxLength={500}
-              />
-            </label>
-            <label className="inline-flex min-h-11 cursor-pointer items-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase">
-              Upload photo
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/*"
-                className="sr-only"
-                onChange={(event) => onPhotoSelected(event.target.files?.[0])}
-              />
-            </label>
+            <div className="mt-6 space-y-5">
+              <label className="block">
+                <span className={labelClassName}>Caption (optional)</span>
+                <input
+                  value={caption}
+                  onChange={(event) => setCaption(event.target.value)}
+                  className={inputClassName}
+                  maxLength={500}
+                />
+              </label>
+              <label className={cn(btnPrimaryClassName, "cursor-pointer")}>
+                Upload photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/*"
+                  className="sr-only"
+                  onChange={(event) => onPhotoSelected(event.target.files?.[0])}
+                />
+              </label>
+            </div>
           </div>
 
-          {photos.length === 0 ? (
-            <EmptyState
-              title="Capture your progress"
-              description="Upload photos over time to see how far you've come. Before/after comparisons are coming soon."
-            />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {photos.map((photo) => (
-                <figure
-                  key={photo.id}
-                  className="overflow-hidden border border-border bg-surface"
-                >
-                  <div className="flex items-center justify-center bg-black/5 p-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.imageUrl}
-                      alt={photo.caption ?? "Progress photo"}
-                      className="max-h-56 w-full max-w-[220px] object-contain"
-                    />
-                  </div>
-                  <figcaption className="border-t border-border p-4">
-                    <p className="text-xs tracking-wide text-muted uppercase">
-                      {formatDate(photo.takenAt)}
-                    </p>
-                    {photo.caption ? (
-                      <p className="mt-2 text-sm text-foreground">
-                        {photo.caption}
+          <div className="mt-12">
+            {photos.length === 0 ? (
+              <EmptyState
+                title="Capture your progress"
+                description="Upload photos over time to see how far you've come. Before/after comparisons are coming soon."
+              />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {photos.map((photo) => (
+                  <figure
+                    key={photo.id}
+                    className="overflow-hidden rounded-xl border border-border/80 bg-surface shadow-sm"
+                  >
+                    <div className="flex items-center justify-center bg-black/[0.03] p-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.imageUrl}
+                        alt={photo.caption ?? "Progress photo"}
+                        className="max-h-56 w-full max-w-[220px] object-contain"
+                      />
+                    </div>
+                    <figcaption className="border-t border-border/60 p-4">
+                      <p className="text-[10px] font-semibold tracking-[0.14em] text-muted uppercase">
+                        {formatDate(photo.takenAt)}
                       </p>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(photo.id)}
-                      disabled={pending}
-                      aria-label="Delete photo"
-                      className="mt-4 inline-flex min-h-10 items-center gap-2 text-xs font-semibold tracking-wide text-muted uppercase transition hover:text-foreground disabled:opacity-50"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                      Delete photo
-                    </button>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          )}
+                      {photo.caption ? (
+                        <p className="mt-2 text-sm leading-relaxed text-foreground">
+                          {photo.caption}
+                        </p>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(photo.id)}
+                        disabled={pending}
+                        aria-label="Delete photo"
+                        className={cn(
+                          btnGhostClassName,
+                          "mt-4 gap-2 disabled:opacity-50",
+                        )}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        Delete photo
+                      </button>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -591,7 +644,7 @@ export function MyJourneyView({
             description="As you set goals and upload progress photos, your fitness journey will appear on this timeline."
           />
         ) : (
-          <ol className="space-y-4 border-l border-border pl-5">
+          <ol className="space-y-6 border-l-2 border-brand/30 pl-6">
             {timeline.map((entry) => (
               <TimelineItem key={entry.id} entry={entry} />
             ))}
@@ -612,19 +665,19 @@ function TimelineItem({ entry }: { entry: JourneyTimelineEntry }) {
 
   return (
     <li className="relative">
-      <span className="absolute top-1 -left-[1.35rem] size-2.5 bg-brand" />
-      <p className="text-[10px] font-semibold tracking-[0.18em] text-brand uppercase">
+      <span className="absolute top-1.5 -left-[1.62rem] size-3 rounded-full bg-brand ring-4 ring-background" />
+      <p className="text-[10px] font-semibold tracking-[0.16em] text-brand uppercase">
         {label}
       </p>
-      <p className="mt-1 text-sm font-medium text-foreground">
+      <p className="mt-1 text-base font-semibold leading-snug text-foreground">
         {entry.type === "photo_uploaded" ? entry.title : entry.title}
       </p>
-      <p className="mt-1 text-xs text-muted">{formatDate(entry.occurredAt)}</p>
+      <p className="mt-1 text-sm text-muted">{formatDate(entry.occurredAt)}</p>
       {entry.type === "photo_uploaded" && entry.caption ? (
-        <p className="mt-2 text-sm text-muted">{entry.caption}</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">{entry.caption}</p>
       ) : null}
       {entry.type === "photo_uploaded" && entry.imageUrl ? (
-        <div className="mt-3 flex max-w-xs items-center justify-center border border-border bg-black/5 p-2">
+        <div className="mt-3 flex max-w-xs items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-black/[0.03] p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={entry.imageUrl}

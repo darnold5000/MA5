@@ -4,6 +4,9 @@ import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
 
+/** Client hub uses session, membership, and tenant data — never static prerender. */
+export const dynamic = "force-dynamic";
+
 export default async function ClientAppLayout({
   children,
 }: Readonly<{

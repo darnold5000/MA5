@@ -13,19 +13,21 @@ export const metadata: Metadata = {
 export default async function JourneyPage() {
   const session = isSupabasePublicConfigured() ? await getSessionUser() : null;
   const userId = session?.id ?? "demo-client";
-  const journey = session ? await getMemberJourney(session.id) : { goals: [], photos: [], timeline: [] };
+  const journey = session
+    ? await getMemberJourney(session.id)
+    : { goals: [], photos: [], timeline: [] };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-3xl tracking-wide uppercase">
+    <div className="mx-auto w-full max-w-none space-y-5">
+      <header className="space-y-1.5 border-b border-border/60 pb-5">
+        <h1 className="font-display text-2xl tracking-wide uppercase sm:text-[1.75rem]">
           Your Fitness Journey
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+        <p className="max-w-3xl text-sm leading-relaxed text-muted">
           Set goals, capture progress photos, and watch your story unfold over
           time.
         </p>
-      </div>
+      </header>
 
       <MyJourneyView
         userId={userId}

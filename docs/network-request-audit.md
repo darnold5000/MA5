@@ -28,7 +28,7 @@ When staff use the Operations hub (e.g. leave **Community board** or **Messages*
 | `router.refresh()` | `useServerRefresh` + thread mark-read |
 | `router.prefetch()` | Not called directly |
 | `revalidatePath` / `revalidateTag` | Not used in app code |
-| `cache()` | `getSessionUser` only |
+| `cache()` | `getSessionUser` (per-request dedupe; reads session from cookies inside), `getActiveMembershipForUser(userId, …)` |
 
 ### Navigation surfaces
 
@@ -119,15 +119,42 @@ When staff use the Operations hub (e.g. leave **Community board** or **Messages*
 | `cache()` on membership read in app layout | Dedupe within one request | Low |
 | Dev-only `MA5_DEBUG_DATA=1` logs on badge/session | Audit aid | Dev only |
 
+## Production build (authenticated routes)
+
+**Root cause:** Next.js attempted static prerender of `/admin/settings` (and other hub pages). With `MA5_TENANT_ID` + `MA5_LOCATION_ID` set, `getFacilitySettings()` calls `isMa5ProductionRuntime()` and throws when Supabase env is unavailable at **build** time (`Facility settings require Supabase on Signal Works deployment`).
+
+**Fix:** `export const dynamic = "force-dynamic"` on:
+
+- `src/app/admin/layout.tsx` — entire Operations hub
+- `src/app/app/layout.tsx` — entire client hub
+
+Marketing and other public routes under `(marketing)` stay static (`○` in `next build` output). Hub routes show `ƒ` (dynamic).
+
+**`cache()` safety:** `getActiveMembershipForUser` is wrapped as `cache(async (userId, allowStripeHydrate) => …)` so dedupe keys include the user. `getSessionUser` uses `cache(async () => …)` but only runs inside a single request and resolves the user from `cookies()` — no cross-tenant reuse across requests.
+
 ## Validation
 
 Run production mode:
 
 ```bash
-npm run build && npm run start
+npm run typecheck && npm test && npm run build && npm run start
 ```
 
 Compare Network tab: leaving community should show **fewer** `?_rsc=` prefetches (reports, settings, marketing, offerings, programs, community disabled). unread-count should **not** double on mark-read alone.
+
+### Production network checklist (manual)
+
+Sign in as admin, then exercise: Community → leave → Messages → thread → leave → tab focus → Home / Schedule / Clients / Messages / Reports / Settings. Record in DevTools (disable cache, preserve log):
+
+| Metric | What to count |
+|--------|----------------|
+| Total requests after leaving Community | Filter by domain |
+| `?_rsc=` | RSC flight prefetches + navigations |
+| `/api/notifications/unread-count` | Should be 1 on load + debounced focus + badge events — not per mark-read full refresh |
+| Supabase REST/RPC | From fetch to `supabase.co` if visible |
+| Stripe / Resend | Should be **0** on GET/navigation |
+
+**Acceptance:** `npm run build` succeeds; hub routes `ƒ`; public pages `○`; no full page refresh when leaving Community/Messages after mark-read badge-only change.
 
 ## Intentionally unchanged
 
