@@ -7,9 +7,11 @@ import { AuthCard } from "@/components/platform/auth-card";
 export function AcceptInviteForm({
   email,
   fullName: initialFullName,
+  inviteGeneration,
 }: {
   email: string;
   fullName: string;
+  inviteGeneration: number;
 }) {
   const [fullName, setFullName] = useState(initialFullName);
   const [password, setPassword] = useState("");
@@ -41,7 +43,7 @@ export function AcceptInviteForm({
       const res = await fetch("/api/auth/accept-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, fullName }),
+        body: JSON.stringify({ password, fullName, inviteGeneration }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;

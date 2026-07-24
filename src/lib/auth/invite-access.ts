@@ -177,6 +177,10 @@ export async function resolveInviteAccess(
   };
 }
 
+/**
+ * @deprecated Do not call from Server Components (Next.js forbids cookies().set on render).
+ * Accept-invite passes inviteGeneration in the POST body instead.
+ */
 export async function stampValidatedInviteGeneration(
   inviteGeneration: number,
 ): Promise<void> {

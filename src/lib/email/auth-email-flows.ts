@@ -1,5 +1,9 @@
 import { inviteRedirectUrl, memberReenrollRedirectUrl } from "@/features/auth/members";
 import {
+  findAuthUserIdByEmail,
+  isAuthUserAlreadyRegisteredError,
+} from "@/lib/auth/auth-users";
+import {
   profileNeedsInviteActivationLink,
   type ProfileLifecycleRow,
 } from "@/lib/auth/client-lifecycle";
@@ -13,7 +17,7 @@ import {
   isTenantEmailDeliveryConfigured,
   loadTenantEmailSettings,
 } from "./tenant-email-settings";
-import type { TenantEmailSettings } from "./types";
+import type { AuthLinkResult, TenantEmailSettings } from "./types";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -21,6 +25,7 @@ export type AuthEmailStack = {
   links: AuthLinkService;
   email: EmailService;
   settings: TenantEmailSettings;
+  admin: ServiceClient;
 };
 
 export function passwordResetRedirectUrl(siteUrl: string): string {
@@ -54,6 +59,7 @@ export function requireAuthEmailStack(
     links: createAuthLinkService(admin),
     email: createEmailService(provider),
     settings,
+    admin,
   };
 }
 
@@ -65,6 +71,62 @@ function emailContext(
   return { settings, to: to.trim().toLowerCase(), fullName };
 }
 
+/**
+ * Supabase `invite` links only work for brand-new auth users. For resends and
+ * orphan auth rows, fall back to `recovery` with the same accept-invite redirect.
+ */
+async function createInviteOrRecoveryLink(
+  stack: AuthEmailStack,
+  args: {
+    emailNorm: string;
+    redirectTo: string;
+    userMetadata?: Record<string, unknown>;
+    preferRecovery?: boolean;
+  },
+): Promise<AuthLinkResult> {
+  if (!args.preferRecovery) {
+    try {
+      return await stack.links.createInviteLink({
+        email: args.emailNorm,
+        redirectTo: args.redirectTo,
+        userMetadata: args.userMetadata,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!isAuthUserAlreadyRegisteredError(message)) {
+        throw err;
+      }
+    }
+  }
+
+  const recovery = await stack.links.createRecoveryLink({
+    email: args.emailNorm,
+    redirectTo: args.redirectTo,
+  });
+
+  if (!recovery.userId) {
+    const existingId = await findAuthUserIdByEmail(stack.admin, args.emailNorm);
+    if (existingId) {
+      return { ...recovery, userId: existingId };
+    }
+  }
+
+  return recovery;
+}
+
+async function resolveUserIdFromLink(
+  stack: AuthEmailStack,
+  emailNorm: string,
+  link: AuthLinkResult,
+): Promise<string> {
+  if (link.userId) return link.userId;
+  const existingId = await findAuthUserIdByEmail(stack.admin, emailNorm);
+  if (!existingId) {
+    throw new Error("Invitation link created but no user id was returned");
+  }
+  return existingId;
+}
+
 export async function deliverMemberInviteEmail(args: {
   stack: AuthEmailStack;
   emailNorm: string;
@@ -73,22 +135,24 @@ export async function deliverMemberInviteEmail(args: {
   userMetadata: Record<string, unknown>;
 }): Promise<{ userId: string }> {
   const redirectTo = inviteRedirectUrl(env.siteUrl, args.inviteGeneration);
-  const link = await args.stack.links.createInviteLink({
-    email: args.emailNorm,
+  const link = await createInviteOrRecoveryLink(args.stack, {
+    emailNorm: args.emailNorm,
     redirectTo,
     userMetadata: args.userMetadata,
   });
 
-  if (!link.userId) {
-    throw new Error("Invitation link created but no user id was returned");
-  }
+  const userId = await resolveUserIdFromLink(
+    args.stack,
+    args.emailNorm,
+    link,
+  );
 
   await args.stack.email.sendInvite({
     ...emailContext(args.stack.settings, args.emailNorm, args.fullName),
     actionLink: link.actionLink,
   });
 
-  return { userId: link.userId };
+  return { userId };
 }
 
 export async function deliverMemberActivationResendEmail(args: {
@@ -102,9 +166,10 @@ export async function deliverMemberActivationResendEmail(args: {
   const useInvite = profileNeedsInviteActivationLink(args.profile);
 
   if (useInvite) {
-    const link = await args.stack.links.createInviteLink({
-      email: args.emailNorm,
+    const link = await createInviteOrRecoveryLink(args.stack, {
+      emailNorm: args.emailNorm,
       redirectTo,
+      preferRecovery: true,
     });
     await args.stack.email.sendInvite({
       ...emailContext(args.stack.settings, args.emailNorm, args.fullName),
@@ -164,22 +229,24 @@ export async function deliverCoachInviteEmail(args: {
   userMetadata: Record<string, unknown>;
 }): Promise<{ userId: string }> {
   const redirectTo = inviteRedirectUrl(env.siteUrl, args.inviteGeneration);
-  const link = await args.stack.links.createInviteLink({
-    email: args.emailNorm,
+  const link = await createInviteOrRecoveryLink(args.stack, {
+    emailNorm: args.emailNorm,
     redirectTo,
     userMetadata: args.userMetadata,
   });
 
-  if (!link.userId) {
-    throw new Error("Coach invitation link created but no user id was returned");
-  }
+  const userId = await resolveUserIdFromLink(
+    args.stack,
+    args.emailNorm,
+    link,
+  );
 
   await args.stack.email.sendCoachInvite({
     ...emailContext(args.stack.settings, args.emailNorm, args.fullName),
     actionLink: link.actionLink,
   });
 
-  return { userId: link.userId };
+  return { userId };
 }
 
 /**

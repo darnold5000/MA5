@@ -113,18 +113,29 @@ export function AuthCallbackHandler({ nextPath }: AuthCallbackHandlerProps) {
   }, [nextPath]);
 
   if (error) {
+    const isInviteFlow = nextPath.startsWith("/auth/accept-invite");
+
     return (
       <AuthCard title="Sign-in link" description="Unable to continue.">
         <p className="text-sm text-brand" role="alert">
           {error}
         </p>
+        {isInviteFlow ? (
+          <p className="mt-3 text-sm text-muted">
+            Invitation links are one-time use. Ask MA5 staff to resend your
+            invite, then open only the newest email. Password reset will not
+            replace an invitation.
+          </p>
+        ) : null}
         <div className="mt-4 flex flex-col gap-3">
-          <Link
-            href="/forgot-password"
-            className="inline-flex min-h-10 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
-          >
-            Request a new link
-          </Link>
+          {!isInviteFlow ? (
+            <Link
+              href="/forgot-password"
+              className="inline-flex min-h-10 w-full items-center justify-center bg-brand px-5 text-xs font-semibold tracking-wide text-brand-foreground uppercase"
+            >
+              Request a new password reset
+            </Link>
+          ) : null}
           <Link
             href="/login"
             className="inline-flex min-h-10 w-full items-center justify-center border border-border px-5 text-xs font-semibold tracking-wide uppercase"

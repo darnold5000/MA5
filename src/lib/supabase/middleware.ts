@@ -31,6 +31,7 @@ export async function updateSession(request: NextRequest) {
   let roles: PlatformRole[] = [];
   let access: AccessState = "active";
   let clientStatus = "active" as string;
+  let inviteGeneration: number | null = null;
 
   if (url && anonKey) {
     const supabase = createServerClient(url, anonKey, {
@@ -67,7 +68,9 @@ export async function updateSession(request: NextRequest) {
           .eq("user_id", user.id),
         supabase
           .from(MA5_TABLES.profiles)
-          .select("active, invitation_status, access_revoked_at, client_status, deleted_at, invitation_accepted_at")
+          .select(
+            "active, invitation_status, access_revoked_at, client_status, deleted_at, invitation_accepted_at, invite_generation",
+          )
           .eq("id", user.id)
           .maybeSingle(),
       ]);
@@ -87,8 +90,25 @@ export async function updateSession(request: NextRequest) {
       } else {
         access = resolveAccessState(profileResult.data);
         clientStatus = resolveClientStatus(profileResult.data);
+        const rawGen = profileResult.data?.invite_generation;
+        if (typeof rawGen === "number" && rawGen >= 1) {
+          inviteGeneration = rawGen;
+        } else if (rawGen != null) {
+          const parsed = Number.parseInt(String(rawGen), 10);
+          if (Number.isFinite(parsed) && parsed >= 1) inviteGeneration = parsed;
+        }
       }
     }
+  }
+
+  function acceptInviteRedirectUrl(request: NextRequest): URL {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth/accept-invite";
+    redirectUrl.search = "";
+    if (inviteGeneration !== null) {
+      redirectUrl.searchParams.set("igen", String(inviteGeneration));
+    }
+    return redirectUrl;
   }
 
   const pathname = request.nextUrl.pathname;
@@ -123,10 +143,7 @@ export async function updateSession(request: NextRequest) {
 
   if ((isAppRoute || isAdminRoute) && user) {
     if (access === "pending_invite") {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/auth/accept-invite";
-      redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
+      return NextResponse.redirect(acceptInviteRedirectUrl(request));
     }
     if (access === "disabled") {
       const redirectUrl = request.nextUrl.clone();
@@ -194,10 +211,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isAuthRoute && user && access === "pending_invite" && !isAcceptInvite) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/auth/accept-invite";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(acceptInviteRedirectUrl(request));
   }
 
   if (isAuthRoute && user && access === "disabled" && !isAccessDisabled) {

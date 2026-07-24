@@ -3,10 +3,7 @@ import type { Metadata } from "next";
 import { AcceptInviteForm } from "@/components/platform/accept-invite-form";
 import { AuthCard } from "@/components/platform/auth-card";
 import { SignOutButton } from "@/components/platform/sign-out-button";
-import {
-  resolveInviteAccess,
-  stampValidatedInviteGeneration,
-} from "@/lib/auth/invite-access";
+import { resolveInviteAccess } from "@/lib/auth/invite-access";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -53,13 +50,12 @@ export default async function AcceptInvitePage({
     );
   }
 
-  await stampValidatedInviteGeneration(access.inviteGeneration);
-
   return (
     <div className="flex min-h-full flex-1 items-start justify-center px-4 py-8 sm:items-center sm:py-12">
       <AcceptInviteForm
         email={access.email}
         fullName={access.fullName}
+        inviteGeneration={access.inviteGeneration}
       />
     </div>
   );

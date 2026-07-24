@@ -4,7 +4,6 @@ import { z } from "zod";
 import { applyAttributionToMember } from "@/features/marketing";
 import { readAttributionFromCookies } from "@/lib/attribution/cookies";
 import {
-  readValidatedInviteGeneration,
   resolveInviteAccess,
 } from "@/lib/auth/invite-access";
 import { activateMemberProfile } from "@/lib/auth/tenant-data";
@@ -21,6 +20,7 @@ import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 const bodySchema = z.object({
   password: z.string().min(8).max(128),
   fullName: z.string().min(1).max(120),
+  inviteGeneration: z.number().int().min(1),
 });
 
 function isPlatformRole(value: string): value is PlatformRole {
@@ -45,8 +45,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const inviteGeneration = await readValidatedInviteGeneration();
-    const access = await resolveInviteAccess(inviteGeneration);
+    const access = await resolveInviteAccess(parsed.data.inviteGeneration);
     if (!access.ok) {
       return NextResponse.json({ error: access.message }, { status: 403 });
     }
