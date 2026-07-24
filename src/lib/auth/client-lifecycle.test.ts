@@ -31,6 +31,17 @@ describe("client lifecycle", () => {
     ).toBe("active");
   });
 
+  it("reconciles stale client_status invited when activation fields are set", () => {
+    expect(
+      deriveClientStatusFromLegacy({
+        client_status: "invited",
+        invitation_status: "accepted",
+        invitation_accepted_at: "2026-01-01T00:00:00.000Z",
+        active: true,
+      }),
+    ).toBe("active");
+  });
+
   it("revoking invite moves invited to invite_revoked", () => {
     const patch = applyLifecycleTransition(
       { client_status: "invited" },

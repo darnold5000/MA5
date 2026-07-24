@@ -138,6 +138,16 @@ export function profileNeedsInviteActivationLink(
   return true;
 }
 
+/** True when legacy activation fields indicate the member finished onboarding. */
+export function isProfileActivated(
+  profile: ProfileLifecycleRow | null | undefined,
+): boolean {
+  if (!profile) return false;
+  if (profile.deleted_at || profile.access_revoked_at) return false;
+  if (!profile.invitation_accepted_at && !profile.activated_at) return false;
+  return profile.active !== false;
+}
+
 export function assertLifecycleAction(
   status: ClientStatus,
   action: MemberLifecycleAction,
@@ -315,7 +325,11 @@ export function deriveClientStatusFromLegacy(
   profile: ProfileLifecycleRow,
 ): ClientStatus {
   if (profile.client_status) {
-    return asClientStatus(profile.client_status);
+    const status = asClientStatus(profile.client_status);
+    if (status === "invited" && isProfileActivated(profile)) {
+      return "active";
+    }
+    return status;
   }
   if (profile.deleted_at) return "deleted";
   if (

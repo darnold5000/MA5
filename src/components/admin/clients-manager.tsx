@@ -7,6 +7,7 @@ import type { MemberDirectoryRow } from "@/features/auth/types";
 import {
   allowedActionsForStatus,
   clientStatusLabel,
+  profileNeedsInviteActivationLink,
   type MemberLifecycleAction,
 } from "@/lib/auth/client-lifecycle";
 
@@ -176,7 +177,12 @@ export function AdminClientsManager({
     const buttons: ReactNode[] = [];
 
     if (
-      member.clientStatus === "invited"
+      member.clientStatus === "invited" &&
+      profileNeedsInviteActivationLink({
+        client_status: member.clientStatus,
+        invitation_accepted_at: member.invitationAcceptedAt,
+        activated_at: member.activatedAt,
+      })
     ) {
       buttons.push(
         <button

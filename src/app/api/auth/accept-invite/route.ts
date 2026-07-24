@@ -63,22 +63,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error: passwordError } = await supabase.auth.updateUser({
-      password: parsed.data.password,
-      data: {
-        full_name: parsed.data.fullName.trim(),
-        invitation_status: "accepted",
-        active: true,
-      },
-    });
-
-    if (passwordError) {
-      return NextResponse.json(
-        { error: passwordError.message },
-        { status: 400 },
-      );
-    }
-
     const serviceClient = createMa5TenantServiceClient();
     try {
       await activateMemberProfile(
@@ -95,6 +79,24 @@ export async function POST(request: Request) {
           ? activationError.message
           : "Could not activate your profile";
       return NextResponse.json({ error: message }, { status: 403 });
+    }
+
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password: parsed.data.password,
+      data: {
+        full_name: parsed.data.fullName.trim(),
+        invitation_status: "accepted",
+        active: true,
+      },
+    });
+
+    if (passwordError) {
+      return NextResponse.json(
+        {
+          error: `${passwordError.message} Your profile is active — use Forgot password to set a password.`,
+        },
+        { status: 400 },
+      );
     }
 
     const { data: roleRows } = await supabase

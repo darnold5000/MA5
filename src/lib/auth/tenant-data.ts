@@ -18,6 +18,8 @@ import {
   applyLifecycleTransition,
   asClientStatus,
   deriveClientStatusFromLegacy,
+  isProfileActivated,
+  normalizeEmail,
   patchForActivated,
   patchForInvited,
   patchForReenroll,
@@ -269,6 +271,27 @@ export async function activateMemberProfile(
   }
   if (status === "active") {
     return { outcome: "already_active" };
+  }
+  if (status === "invited" && isProfileActivated(existing)) {
+    const { data, error } = await supabase
+      .from(MA5_TABLES.profiles)
+      .update({
+        full_name: input.fullName.trim(),
+        ...patchForActivated(now),
+      })
+      .eq("tenant_id", ctx.tenantId)
+      .eq("id", userId)
+      .eq("client_status", "invited")
+      .select("id")
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) {
+      throw new Error(
+        "This invitation has already been used, was revoked, or is no longer valid.",
+      );
+    }
+    return { outcome: "activated" };
   }
   if (status !== "invited") {
     throw new Error("Invitation is not eligible for activation");
