@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { CommunityPost } from "@/features/community/types";
 import { cn } from "@/lib/utils";
@@ -105,22 +105,36 @@ function Composer({
 }
 
 export function CommunityBoard({
-  posts,
+  posts: initialPosts,
   canDelete,
-  title = "Community",
-  description = "Leave a message for the gym — replies welcome.",
+  title = "Community board",
+  description,
 }: {
   posts: CommunityPost[];
   canDelete: boolean;
   title?: string;
   description?: string;
 }) {
-  const router = useRouter();
+  const { refresh } = useServerRefresh();
+  const [boardPosts, setBoardPosts] = useState(initialPosts);
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBoardPosts(initialPosts);
+  }, [initialPosts]);
+
+  async function reloadFromApi() {
+    const res = await fetch("/api/community", { cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { posts?: CommunityPost[] };
+    if (Array.isArray(data.posts)) {
+      setBoardPosts(data.posts);
+    }
+  }
 
   function postMessage(body: string, parentId: string | null) {
     if (!body.trim()) return;
@@ -147,7 +161,8 @@ export function CommunityBoard({
       } else {
         setDraft("");
       }
-      router.refresh();
+      await reloadFromApi();
+      refresh();
     });
   }
 
@@ -168,7 +183,8 @@ export function CommunityBoard({
         setError(data?.error ?? "Could not delete");
         return;
       }
-      router.refresh();
+      await reloadFromApi();
+      refresh();
     });
   }
 
@@ -186,13 +202,12 @@ export function CommunityBoard({
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Chat
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+        <h1 className="font-display text-3xl tracking-wide uppercase">
           {title}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">{description}</p>
+        {description ? (
+          <p className="mt-2 max-w-2xl text-sm text-muted">{description}</p>
+        ) : null}
       </div>
 
       <section className="border border-border bg-surface p-4 sm:p-5">
@@ -212,10 +227,10 @@ export function CommunityBoard({
       </section>
 
       <div className="space-y-4">
-        {posts.length === 0 ? (
+        {boardPosts.length === 0 ? (
           <p className="text-sm text-muted">No messages yet — start the chat.</p>
         ) : null}
-        {posts.map((post) => (
+        {boardPosts.map((post) => (
           <article
             key={post.id}
             className="border border-border bg-surface px-4 py-4 sm:px-5"

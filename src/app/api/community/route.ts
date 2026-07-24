@@ -16,6 +16,12 @@ import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import {
+  isMa5DeploymentConfigured,
+  requireMa5DeploymentContext,
+  withTenantId,
+} from "@/lib/tenant/deployment";
+import { allowDemoFallbacks } from "@/lib/tenant/runtime-data";
 
 const createSchema = z.object({
   body: z.string().trim().min(1).max(2000),
@@ -46,6 +52,10 @@ function removePost(posts: CommunityPost[], postId: string): CommunityPost[] {
       ...p,
       replies: removePost(p.replies, postId),
     }));
+}
+
+function allowDemoCommunityFallback(): boolean {
+  return allowDemoFallbacks() && !isMa5DeploymentConfigured();
 }
 
 function isMissingTableError(err: unknown): boolean {
@@ -133,6 +143,9 @@ export async function POST(request: Request) {
   const body = parsed.data.body;
 
   if (!session) {
+    if (!allowDemoCommunityFallback()) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
     return postToDemoCookie({
       body,
       parentId,
@@ -143,20 +156,33 @@ export async function POST(request: Request) {
 
   try {
     const supabase = await createClient();
+    const ctx = isMa5DeploymentConfigured()
+      ? requireMa5DeploymentContext()
+      : null;
 
     if (parentId) {
-      const { data: parent, error: parentError } = await supabase
+      let parentQuery = supabase
         .from(MA5_TABLES.communityPosts)
         .select("id, parent_id")
-        .eq("id", parentId)
-        .maybeSingle();
-      if (parentError && isMissingTableError(parentError)) {
+        .eq("id", parentId);
+      if (ctx) {
+        parentQuery = parentQuery.eq("tenant_id", ctx.tenantId);
+      }
+      const { data: parent, error: parentError } = await parentQuery.maybeSingle();
+      if (parentError && allowDemoCommunityFallback() && isMissingTableError(parentError)) {
         return postToDemoCookie({
           body,
           parentId,
           authorUserId: session.id,
           authorName: session.profile?.full_name?.trim() || "You",
         });
+      }
+      if (parentError) {
+        console.error("[api/community] parent lookup", parentError);
+        return NextResponse.json(
+          { error: "Could not post reply", detail: parentError.message },
+          { status: 500 },
+        );
       }
       if (!parent || parent.parent_id) {
         return NextResponse.json(
@@ -166,24 +192,21 @@ export async function POST(request: Request) {
       }
     }
 
-    const insertPayload: {
-      author_user_id: string;
-      body: string;
-      parent_id?: string | null;
-    } = {
+    const baseRow = {
       author_user_id: session.id,
       body,
+      ...(parentId ? { parent_id: parentId } : {}),
     };
-    if (parentId) insertPayload.parent_id = parentId;
+    const insertRow = ctx ? withTenantId(ctx, baseRow) : baseRow;
 
     const { data, error } = await supabase
       .from(MA5_TABLES.communityPosts)
-      .insert(insertPayload)
+      .insert(insertRow)
       .select("id")
       .single();
 
     if (error) {
-      if (isMissingTableError(error)) {
+      if (allowDemoCommunityFallback() && isMissingTableError(error)) {
         return postToDemoCookie({
           body,
           parentId,
@@ -194,8 +217,7 @@ export async function POST(request: Request) {
       console.error("[api/community] insert", error);
       return NextResponse.json(
         {
-          error:
-            "Could not post message. If this persists, apply migration 021_community_board.sql in Supabase.",
+          error: "Could not post message.",
           detail: error.message,
         },
         { status: 500 },
@@ -205,7 +227,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, postId: data.id });
   } catch (err) {
     console.error("[api/community]", err);
-    if (isMissingTableError(err)) {
+    if (allowDemoCommunityFallback() && isMissingTableError(err)) {
       return postToDemoCookie({
         body,
         parentId,
@@ -251,12 +273,21 @@ export async function DELETE(request: Request) {
 
   try {
     const supabase = await createClient();
-    const { error } = await supabase
+    const ctx = isMa5DeploymentConfigured()
+      ? requireMa5DeploymentContext()
+      : null;
+
+    let deleteQuery = supabase
       .from(MA5_TABLES.communityPosts)
       .delete()
       .eq("id", parsed.data.postId);
+    if (ctx) {
+      deleteQuery = deleteQuery.eq("tenant_id", ctx.tenantId);
+    }
+
+    const { error } = await deleteQuery;
     if (error) {
-      if (isMissingTableError(error)) {
+      if (allowDemoCommunityFallback() && isMissingTableError(error)) {
         const jar = await import("next/headers").then((m) => m.cookies());
         const cookieStore = await jar;
         const state = parseCommunityState(

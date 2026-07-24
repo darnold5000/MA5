@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { RosterEntry, StaffClient } from "@/features/admin/ops-store";
 import type { SessionItem } from "@/features/scheduling/fallback-data";
@@ -22,7 +22,7 @@ export function AdminRosterManager({
   roster,
   clients,
 }: AdminRosterManagerProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [sessionId, setSessionId] = useState(sessions[0]?.id ?? "");
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
   const [walkInName, setWalkInName] = useState("");
@@ -68,7 +68,7 @@ export function AdminRosterManager({
       return;
     }
     setWalkInName("");
-    router.refresh();
+    refresh();
   }
 
   async function setStatus(bookingId: string, status: string) {
@@ -85,7 +85,7 @@ export function AdminRosterManager({
       setError(data.error ?? "Update failed");
       return;
     }
-    router.refresh();
+    refresh();
   }
 
   async function removePerson(bookingId: string) {
@@ -102,7 +102,7 @@ export function AdminRosterManager({
       setError(data.error ?? "Remove failed");
       return;
     }
-    router.refresh();
+    refresh();
   }
 
   return (

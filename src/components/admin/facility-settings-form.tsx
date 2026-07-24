@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 import Image from "next/image";
 
 import type { CoachRosterEntry, FacilitySettings } from "@/features/settings/types";
@@ -39,7 +39,7 @@ export function FacilitySettingsForm({
   initial: FacilitySettings;
   coaches: CoachRosterEntry[];
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState(initial);
   const [logoPreview, setLogoPreview] = useState<string | null>(() => {
@@ -83,7 +83,7 @@ export function FacilitySettingsForm({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save");
       setMessage(data.warning ? "Saved (demo store)" : "Saved");
-      router.refresh();
+      refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save");
     } finally {
@@ -145,7 +145,7 @@ export function FacilitySettingsForm({
       setInviteMessage(data.message ?? "Invite sent");
       setInviteName("");
       setInviteEmail("");
-      router.refresh();
+      refresh();
     } catch (e) {
       setInviteError(e instanceof Error ? e.message : "Invite failed");
     } finally {

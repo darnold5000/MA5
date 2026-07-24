@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 type BookSessionButtonProps = {
   sessionId: string;
@@ -12,7 +12,7 @@ export function BookSessionButton({
   sessionId,
   disabled,
 }: BookSessionButtonProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export function BookSessionButton({
       }
       const conf = data.booking?.confirmationNumber as string;
       router.push(`/app/bookings?booked=${encodeURIComponent(conf)}`);
-      router.refresh();
+      refresh();
     } catch {
       setError("Booking failed");
       setPending(false);

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 
 import { CommunityBoard } from "@/components/community/community-board";
 import { loadCommunityBoard } from "@/features/community";
+import { HUB_COMMUNITY_BOARD_TITLE } from "@/features/community/hub-copy";
 
 export const metadata: Metadata = {
-  title: "Community · Admin",
+  title: `${HUB_COMMUNITY_BOARD_TITLE} · Admin`,
   robots: { index: false, follow: false },
 };
 
@@ -15,8 +16,7 @@ export default async function AdminCommunityPage() {
     <CommunityBoard
       posts={state.posts}
       canDelete
-      title="Community board"
-      description="Members can leave messages and replies here. Use the trash icon to remove anything that shouldn’t stay."
+      title={HUB_COMMUNITY_BOARD_TITLE}
     />
   );
 }

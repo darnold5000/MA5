@@ -11,8 +11,8 @@ import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 type SiteHeaderProps = {
-  /** Session or demo cookie already grants Fitness Hub access */
-  hubAccess?: boolean;
+  /** Signed-in hub destination (/app members, /admin staff). Null → Sign in. */
+  hubHref?: "/app" | "/admin" | null;
 };
 
 function isNavActive(pathname: string, href: string) {
@@ -28,7 +28,7 @@ const navLinkClass = (active: boolean) =>
       : "text-muted hover:text-foreground",
   );
 
-export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
+export function SiteHeader({ hubHref = null }: SiteHeaderProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -41,6 +41,8 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
   }, [open]);
 
   const closeMenu = () => setOpen(false);
+
+  const hubLabel = hubHref === "/admin" ? "Operations" : "Fitness Hub";
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
@@ -87,13 +89,13 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
         </nav>
 
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
-          {hubAccess ? (
+          {hubHref ? (
             <ButtonLink
-              href="/app"
+              href={hubHref}
               variant="secondary"
               className="min-h-10 px-4 text-xs"
             >
-              Fitness Hub
+              {hubLabel}
             </ButtonLink>
           ) : (
             <ButtonLink
@@ -177,14 +179,14 @@ export function SiteHeader({ hubAccess = false }: SiteHeaderProps) {
               </Link>
             );
           })}
-          {hubAccess ? (
+          {hubHref ? (
             <ButtonLink
-              href="/app"
+              href={hubHref}
               variant="secondary"
               onClick={closeMenu}
               className="mt-2 w-full"
             >
-              Fitness Hub
+              {hubLabel}
             </ButtonLink>
           ) : (
             <ButtonLink

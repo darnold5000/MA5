@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 import { useRef, useState } from "react";
 
 import { formatCompactMoney } from "@/features/analytics/format";
@@ -19,7 +19,7 @@ type ImportSummary = {
 };
 
 export function PaymentImportPanel() {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [importBefore, setImportBefore] = useState("");
@@ -59,7 +59,7 @@ export function PaymentImportPanel() {
     }
 
     setSummary(data);
-    router.refresh();
+    refresh();
     if (inputRef.current) inputRef.current.value = "";
   }
 

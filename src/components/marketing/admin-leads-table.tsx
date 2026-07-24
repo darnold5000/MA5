@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { LeadStatus, MarketingLead } from "@/features/marketing/types";
 
@@ -32,7 +32,7 @@ export function AdminLeadsTable({
   leads: MarketingLead[];
   emptyHint?: string;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     tone: "ok" | "err";
@@ -48,7 +48,7 @@ export function AdminLeadsTable({
       body: JSON.stringify({ leadId, status: next }),
     });
     setPendingId(null);
-    router.refresh();
+    refresh();
   }
 
   async function inviteLead(lead: MarketingLead) {
@@ -88,7 +88,7 @@ export function AdminLeadsTable({
       tone: "ok",
       text: `Invite sent to ${lead.email}. They should receive an activation email shortly.`,
     });
-    router.refresh();
+    refresh();
   }
 
   async function deleteLead(lead: MarketingLead) {
@@ -111,7 +111,7 @@ export function AdminLeadsTable({
       window.alert(data.error ?? "Could not delete lead");
       return;
     }
-    router.refresh();
+    refresh();
   }
 
   return (

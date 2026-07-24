@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { MemberDirectoryRow } from "@/features/auth/types";
 import {
@@ -70,7 +70,7 @@ function statusBadgeClass(status: MemberDirectoryRow["clientStatus"]): string {
 export function AdminClientsManager({
   members,
 }: AdminClientsManagerProps) {
-  const router = useRouter();
+  const { refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -131,7 +131,7 @@ export function AdminClientsManager({
       setRole("client");
       setShowNewClient(false);
     }
-    router.refresh();
+    refresh();
   }
 
   async function runLifecycleAction(
@@ -169,7 +169,7 @@ export function AdminClientsManager({
     } else {
       setMessage("Updated.");
     }
-    router.refresh();
+    refresh();
   }
 
   function renderActions(member: MemberDirectoryRow) {
@@ -188,7 +188,7 @@ export function AdminClientsManager({
         <button
           key="resend"
           type="button"
-          disabled={pending}
+          disabled={pending || isRefreshing}
           onClick={() => void sendInvite(member.email, member.fullName)}
           className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
         >
@@ -202,7 +202,7 @@ export function AdminClientsManager({
         <button
           key={action}
           type="button"
-          disabled={pending}
+          disabled={pending || isRefreshing}
           onClick={() => void runLifecycleAction(member.id, action)}
           className="inline-flex min-h-9 items-center border border-border px-2.5 text-[11px] font-semibold tracking-wide uppercase"
         >

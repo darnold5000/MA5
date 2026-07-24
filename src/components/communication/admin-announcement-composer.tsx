@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { AnnouncementAudienceType, AnnouncementPriority } from "@/features/messaging/types";
 
@@ -11,7 +11,7 @@ export function AdminAnnouncementComposer({
 }: {
   estimatedAudience?: number;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [audienceType, setAudienceType] =
@@ -57,7 +57,7 @@ export function AdminAnnouncementComposer({
         return;
       }
       router.push("/admin/announcements");
-      router.refresh();
+      refresh();
     });
   }
 

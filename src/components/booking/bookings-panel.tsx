@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { BookingItem } from "@/features/scheduling/fallback-data";
 import { paymentStatusLabel } from "@/features/booking/labels";
@@ -35,7 +35,7 @@ export function BookingsPanel({
   justBookedConfirmation,
   lead,
 }: BookingsPanelProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
@@ -114,7 +114,7 @@ export function BookingsPanel({
         setCancellingId(null);
         return;
       }
-      router.refresh();
+      refresh();
     } catch {
       setCancelError("Could not cancel booking");
     } finally {

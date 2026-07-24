@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type {
   Announcement,
@@ -173,7 +173,7 @@ export function ClientThreadView({
   thread: MessageThread;
   messages: Message[];
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export function ClientThreadView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId: thread.id }),
-    }).then(() => router.refresh());
+    }).then(() => refresh());
   }, [thread.id, messages.length, router]);
 
   function send() {
@@ -205,7 +205,7 @@ export function ClientThreadView({
         return;
       }
       setDraft("");
-      router.refresh();
+      refresh();
     });
   }
 
@@ -285,7 +285,7 @@ export function ClientAnnouncementsList({
 }: {
   announcements: Announcement[];
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const published = announcements.filter(
     (a) => a.status === "published" || a.status === "expired",
   );
@@ -295,7 +295,7 @@ export function ClientAnnouncementsList({
       if (!a.readAt) {
         void fetch(`/api/announcements/${a.id}/mark-read`, {
           method: "POST",
-        }).then(() => router.refresh());
+        }).then(() => refresh());
       }
     }
     // Mark on first view of list — intentional once per mount for unread

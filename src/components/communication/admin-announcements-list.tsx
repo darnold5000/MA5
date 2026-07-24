@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { Announcement, AnnouncementStatus } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ export function AdminAnnouncementsList({
 }: {
   announcements: Announcement[];
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [tab, setTab] = useState<AnnouncementStatus | "all">("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -42,7 +42,7 @@ export function AdminAnnouncementsList({
     startTransition(async () => {
       await fetch(`/api/admin/announcements/${id}/publish`, { method: "POST" });
       setPendingId(null);
-      router.refresh();
+      refresh();
     });
   }
 

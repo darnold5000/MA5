@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import {
   EXERCISE_CATEGORIES,
@@ -35,7 +35,7 @@ export function ExerciseFormDrawer({
   onClose,
   onSaved,
 }: Props) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -173,7 +173,7 @@ export function ExerciseFormDrawer({
 
       onClose();
       onSaved?.(saved);
-      router.refresh();
+      refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {

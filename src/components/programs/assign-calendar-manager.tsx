@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { CoachWorkoutReviewPanel } from "@/components/programs/coach-workout-review-panel";
 import type {
@@ -28,7 +28,7 @@ export function AssignCalendarManager({
   calendarEntries,
   completions,
 }: Props) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
@@ -77,7 +77,7 @@ export function AssignCalendarManager({
       setError(data.error ?? "Request failed");
       return null;
     }
-    router.refresh();
+    refresh();
     return data;
   }
 

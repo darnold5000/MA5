@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import {
   CUSTOM_OFFERING_CATEGORY,
@@ -149,8 +149,7 @@ export function OfferingsManager({
 }: {
   initialOfferings: Offering[];
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { refresh, isRefreshing } = useServerRefresh();
   const [offerings, setOfferings] = useState(initialOfferings);
   const [tab, setTab] = useState<ListTab>("active");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -204,7 +203,7 @@ export function OfferingsManager({
           ? `Synced ${synced} offering(s); ${errs} failed.`
           : `Synced ${synced} offering(s) to Stripe.`,
       );
-      startTransition(() => router.refresh());
+      refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
     }
@@ -239,7 +238,7 @@ export function OfferingsManager({
         await loadOfferings();
         setMessage("Offering updated.");
       }
-      startTransition(() => router.refresh());
+      refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     }
@@ -272,7 +271,7 @@ export function OfferingsManager({
       setMessage(labels[action]);
       if (action === "archive") setTab("archived");
       if (action === "restore") setTab("active");
-      startTransition(() => router.refresh());
+      refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update failed");
     }
@@ -290,7 +289,7 @@ export function OfferingsManager({
       await loadOfferings();
       setTab("active");
       setMessage("Offering duplicated as a draft.");
-      startTransition(() => router.refresh());
+      refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Duplicate failed");
     }
@@ -438,7 +437,7 @@ export function OfferingsManager({
           <button
             type="button"
             onClick={() => void onSyncStripe()}
-            disabled={pending}
+            disabled={isRefreshing}
             className="border border-border px-3 py-2 text-xs font-semibold tracking-wide uppercase hover:bg-surface"
           >
             Sync missing to Stripe

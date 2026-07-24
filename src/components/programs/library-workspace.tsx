@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { ExerciseDetailDrawer } from "@/components/programs/exercise-detail-drawer";
 import { ExerciseFormDrawer } from "@/components/programs/exercise-form-drawer";
@@ -53,7 +53,7 @@ export function LibraryWorkspace({
   programs,
   programDays,
 }: LibraryWorkspaceProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [tab, setTab] = useState<LibraryTab>(initialTab);
   const [mode, setMode] = useState<"list" | "edit">("list");
   const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export function LibraryWorkspace({
       setError(data.error ?? "Request failed");
       return null;
     }
-    router.refresh();
+    refresh();
     return data;
   }
 

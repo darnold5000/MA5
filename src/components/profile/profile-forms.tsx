@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type {
   ClientProfileSettings,
@@ -86,7 +86,7 @@ export function ProfileContactForm({
     "fullName" | "preferredName" | "email" | "phone"
   >;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [fullName, setFullName] = useState(initial.fullName);
   const [preferredName, setPreferredName] = useState(initial.preferredName);
   const [phone, setPhone] = useState(initial.phone);
@@ -101,7 +101,7 @@ export function ProfileContactForm({
     try {
       const data = await patchProfile({ fullName, preferredName, phone });
       setMessage(data.warning ? "Saved (demo store)" : "Saved");
-      router.refresh();
+      refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save");
     } finally {
@@ -151,7 +151,7 @@ export function ProfileEmergencyForm({
     | "emergencyNotes"
   >;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [emergencyName, setEmergencyName] = useState(initial.emergencyName);
   const [emergencyRelationship, setEmergencyRelationship] = useState(
     initial.emergencyRelationship,
@@ -174,7 +174,7 @@ export function ProfileEmergencyForm({
         emergencyNotes,
       });
       setMessage(data.warning ? "Saved (demo store)" : "Saved");
-      router.refresh();
+      refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save");
     } finally {
@@ -227,7 +227,7 @@ export function ProfileNotificationsForm({
     | "notifyBillingAlerts"
   >;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [notifyCoachMessages, setNotifyCoachMessages] = useState(
     initial.notifyCoachMessages,
   );
@@ -283,7 +283,7 @@ export function ProfileNotificationsForm({
         notifyBillingAlerts,
       });
       setMessage(data.warning ? "Saved (demo store)" : "Saved");
-      router.refresh();
+      refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save");
     } finally {
@@ -323,7 +323,7 @@ export function ProfileNotificationsForm({
 }
 
 export function ProfileWaiversList({ waivers }: { waivers: ClientWaiver[] }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -332,7 +332,7 @@ export function ProfileWaiversList({ waivers }: { waivers: ClientWaiver[] }) {
     setError(null);
     try {
       await patchProfile({ signWaiverKey: key });
-      router.refresh();
+      refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not sign");
     } finally {

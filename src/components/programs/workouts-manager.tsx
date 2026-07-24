@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { ExerciseBlockCard } from "@/components/programs/exercise-block-card";
 import type {
@@ -73,7 +73,7 @@ export function WorkoutsManager({
   onBack,
   onSaved,
 }: Props) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -139,7 +139,7 @@ export function WorkoutsManager({
       setError(data.error ?? "Request failed");
       return null;
     }
-    router.refresh();
+    refresh();
     return data;
   }
 

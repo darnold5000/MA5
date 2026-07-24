@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { Message, MessageThread } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export function AdminThreadView({
   thread: MessageThread;
   messages: Message[];
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function AdminThreadView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId: thread.id }),
-    }).then(() => router.refresh());
+    }).then(() => refresh());
   }, [thread.id, messages.length, router]);
 
   function send() {
@@ -66,7 +66,7 @@ export function AdminThreadView({
         return;
       }
       setDraft("");
-      router.refresh();
+      refresh();
     });
   }
 
@@ -86,7 +86,7 @@ export function AdminThreadView({
         setError(data?.error ?? "Delete failed");
         return;
       }
-      router.refresh();
+      refresh();
     });
   }
 

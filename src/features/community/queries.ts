@@ -10,6 +10,11 @@ import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import {
+  isMa5DeploymentConfigured,
+  requireMa5DeploymentContext,
+  withTenantId,
+} from "@/lib/tenant/deployment";
 import { allowDemoFallbacks, isMa5ProductionRuntime } from "@/lib/tenant/runtime-data";
 
 type PostRow = {
@@ -33,10 +38,17 @@ export async function loadCommunityBoard(): Promise<CommunityBoardState> {
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    let query = supabase
       .from(MA5_TABLES.communityPosts)
       .select("id, author_user_id, body, parent_id, created_at")
       .order("created_at", { ascending: true });
+
+    if (isMa5DeploymentConfigured()) {
+      const ctx = requireMa5DeploymentContext();
+      query = query.eq("tenant_id", ctx.tenantId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
 
     const rows = (data ?? []) as PostRow[];
@@ -44,10 +56,15 @@ export async function loadCommunityBoard(): Promise<CommunityBoardState> {
     const nameMap = new Map<string, string>();
 
     if (authorIds.length > 0) {
-      const { data: profiles } = await supabase
+      let profileQuery = supabase
         .from(MA5_TABLES.profiles)
         .select("id, full_name")
         .in("id", authorIds);
+      if (isMa5DeploymentConfigured()) {
+        const ctx = requireMa5DeploymentContext();
+        profileQuery = profileQuery.eq("tenant_id", ctx.tenantId);
+      }
+      const { data: profiles } = await profileQuery;
       for (const p of profiles ?? []) {
         nameMap.set(
           String(p.id),

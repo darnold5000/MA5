@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import {
   communityPlacementLabel,
@@ -54,7 +54,7 @@ export function MarketingGalleryManager({
   showFeatured = false,
   showPlacement = false,
 }: MarketingGalleryManagerProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState(initialItems);
   const [pending, setPending] = useState(false);
@@ -118,7 +118,7 @@ export function MarketingGalleryManager({
     setClientName("");
     setFeatured(false);
     setMessage(data.warning ?? "Photo uploaded");
-    router.refresh();
+    refresh();
   }
 
   async function updatePlacement(
@@ -153,7 +153,7 @@ export function MarketingGalleryManager({
       current.map((item) => (item.id === id ? data.item! : item)),
     );
     setMessage(data.warning ?? "Placement updated");
-    router.refresh();
+    refresh();
   }
 
   async function removeItem(id: string) {
@@ -175,7 +175,7 @@ export function MarketingGalleryManager({
 
     setItems((current) => current.filter((item) => item.id !== id));
     setMessage(data.warning ?? "Photo deleted");
-    router.refresh();
+    refresh();
   }
 
   return (

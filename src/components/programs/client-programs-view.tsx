@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { WorkoutBlockSetLogger } from "@/components/programs/workout-block-set-logger";
 import { ExerciseHistoryPanel } from "@/components/programs/exercise-history-panel";
@@ -192,7 +192,7 @@ type PlayerProps = {
 };
 
 export function ClientWorkoutPlayer({ day }: PlayerProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [note, setNote] = useState(day.completion?.clientNote ?? "");
   const [setLogs, setSetLogs] = useState(day.setLogs);
   const [pending, setPending] = useState(false);
@@ -233,7 +233,7 @@ export function ClientWorkoutPlayer({ day }: PlayerProps) {
       setError(data.error ?? "Could not complete");
       return;
     }
-    router.refresh();
+    refresh();
   }
 
   const workout = day.workout;

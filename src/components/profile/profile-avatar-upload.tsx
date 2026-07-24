@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 import Image from "next/image";
 
 import { uploadAvatarFromBrowser } from "@/lib/assets/browser-upload";
@@ -24,7 +24,7 @@ export function ProfileAvatarUpload({
   fullName: string;
   avatarUrl: string | null;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(() => {
     if (avatarUrl && avatarUrl !== "local:avatar") return avatarUrl;
@@ -59,7 +59,7 @@ export function ProfileAvatarUpload({
         setPreview(uploaded.url);
         localStorage.removeItem(DEMO_AVATAR_KEY);
         setMessage("Photo saved");
-        router.refresh();
+        refresh();
         return;
       }
 
@@ -76,7 +76,7 @@ export function ProfileAvatarUpload({
             ? "Photo saved on this device (demo)"
             : `Saved locally — ${uploaded.error}`,
         );
-        router.refresh();
+        refresh();
         return;
       }
 

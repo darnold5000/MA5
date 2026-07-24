@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { SessionItem } from "@/features/scheduling/fallback-data";
 import { FALLBACK_CLASS_TYPES } from "@/features/scheduling/fallback-data";
@@ -22,7 +22,7 @@ function toLocalInputValue(iso: string) {
 }
 
 export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
     }
     setCreating(false);
     setStartsAt("");
-    router.refresh();
+    refresh();
   }
 
   async function patchSession(
@@ -97,7 +97,7 @@ export function AdminScheduleManager({ sessions }: AdminScheduleManagerProps) {
       return;
     }
     setEditingId(null);
-    router.refresh();
+    refresh();
   }
 
   return (

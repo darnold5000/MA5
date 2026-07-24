@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { MessageThread, ThreadListFilter } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ export function AdminMessagesInbox({
   clients: { id: string; name: string }[];
   activeThreadId?: string;
 }) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [filter, setFilter] = useState<ThreadListFilter>("all");
   const [q, setQ] = useState("");
   const [composing, setComposing] = useState(false);
@@ -80,7 +80,7 @@ export function AdminMessagesInbox({
       setComposing(false);
       setBody("");
       router.push(`/admin/messages/${data.threadId}`);
-      router.refresh();
+      refresh();
     });
   }
 

@@ -22,6 +22,7 @@
 
 - [ ] Migrations `024`–`035` applied on Signal Works staging DB
 - [ ] Migration `036_ma5_purge_rpc_lockdown.sql` applied (purge RPC: `service_role` only)
+- [ ] Migration `042_ma5_staff_unread_message_count.sql` applied (fast admin Messages badge)
 - [ ] Staging seed applied **manually** from `supabase-signalworks/seeds/033_ma5_staging_seed.sql` (not in prod migration chain)
 - [ ] MA5 staging deployment env uses Signal Works `NEXT_PUBLIC_SUPABASE_URL` + keys (not hobby DB)
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` set server-only on staging
@@ -126,6 +127,13 @@ npm test
 ```
 
 - [ ] All tests pass (includes marketing tenant-isolation + attribution purge tests)
+
+---
+
+## 8b. Hub performance (Preview / staging)
+
+- [ ] Deploy includes latest hub perf changes (non-blocking `refresh`, route `loading.tsx`, DB-first membership).
+- [ ] In Vercel → MA5 project → **Speed Insights**, confirm data for `/app/*` and `/admin/*` (component is in root `layout.tsx`).
 
 ---
 

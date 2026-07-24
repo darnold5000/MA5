@@ -7,9 +7,6 @@ import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 
-const MEMBERSHIP_CONTACT_MESSAGE =
-  "Membership changes are handled by MA5. Please contact us for assistance.";
-
 export async function POST() {
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -25,8 +22,11 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!hasCapability(sessionUser.roles, "manage_memberships")) {
-    return NextResponse.json({ error: MEMBERSHIP_CONTACT_MESSAGE }, { status: 403 });
+  if (!hasCapability(sessionUser.roles, "manage_own_billing")) {
+    return NextResponse.json(
+      { error: "Your account cannot manage billing online." },
+      { status: 403 },
+    );
   }
 
   let customerId = sessionUser.profile?.stripe_customer_id ?? null;

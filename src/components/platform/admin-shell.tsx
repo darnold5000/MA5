@@ -43,7 +43,7 @@ const SIDEBAR = [
   },
   {
     href: "/admin/community",
-    label: "Community",
+    label: "Community board",
     match: "prefix" as const,
   },
 ] as const;

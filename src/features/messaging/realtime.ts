@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { startTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+import { HUB_BADGE_REFRESH_EVENT } from "@/hooks/use-server-refresh";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -33,7 +34,10 @@ export function useCommunicationRealtime(options: {
     const scheduleRefresh = () => {
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
-        router.refresh();
+        startTransition(() => {
+          router.refresh();
+          window.dispatchEvent(new Event(HUB_BADGE_REFRESH_EVENT));
+        });
       }, 750);
     };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { WorkoutsManager } from "@/components/programs/workouts-manager";
 import type {
@@ -40,7 +40,7 @@ export function ProgramGridManager({
   onBackToList,
   onProgramCreated,
 }: Props) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export function ProgramGridManager({
       setError(data.error ?? "Request failed");
       return null;
     }
-    router.refresh();
+    refresh();
     return data;
   }
 

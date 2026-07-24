@@ -299,6 +299,14 @@ async function loadUnreadBadgeCountFromSupabase(
     return count ?? 0;
   }
 
+  const { data: rpcCount, error: rpcError } = await supabase.rpc(
+    "ma5_count_staff_unread_messages",
+    { p_viewer_id: viewerId },
+  );
+  if (!rpcError && typeof rpcCount === "number") {
+    return rpcCount;
+  }
+
   const { data: threadRows, error: threadErr } = await supabase
     .from(MA5_TABLES.messageThreads)
     .select("id");

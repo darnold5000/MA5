@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import {
   MEMBER_SERVICE_FILTERS,
@@ -48,7 +48,7 @@ export function ScheduleBrowser({
   enrolledBySessionId = {},
   initialService = "all",
 }: ScheduleBrowserProps) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const enrolled = useMemo(
     () => new Set(Object.keys(enrolledBySessionId)),
     [enrolledBySessionId],
@@ -120,7 +120,7 @@ export function ScheduleBrowser({
       const conf = data.booking?.confirmationNumber as string;
       setBookingSession(null);
       router.push(`/app/bookings?booked=${encodeURIComponent(conf)}`);
-      router.refresh();
+      refresh();
     } catch {
       setError("Booking failed");
       setPending(false);

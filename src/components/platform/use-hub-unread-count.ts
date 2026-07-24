@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { HUB_BADGE_REFRESH_EVENT } from "@/hooks/use-server-refresh";
+
 export function useHubUnreadCount(staff: boolean) {
   const [count, setCount] = useState(0);
 
@@ -22,8 +24,13 @@ export function useHubUnreadCount(staff: boolean) {
   useEffect(() => {
     void refresh();
     const onFocus = () => void refresh();
+    const onBadgeRefresh = () => void refresh();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener(HUB_BADGE_REFRESH_EVENT, onBadgeRefresh);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(HUB_BADGE_REFRESH_EVENT, onBadgeRefresh);
+    };
   }, [refresh]);
 
   return { count, refresh };

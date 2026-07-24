@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { CoachWorkoutReviewPanel } from "@/components/programs/coach-workout-review-panel";
 import type {
@@ -31,7 +31,7 @@ export function TeamsManager({
   programs,
   clients,
 }: Props) {
-  const router = useRouter();
+  const { router, refresh, isRefreshing } = useServerRefresh();
   const today = new Date().toISOString().slice(0, 10);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function TeamsManager({
       setError(data.error ?? "Request failed");
       return null;
     }
-    router.refresh();
+    refresh();
     return data;
   }
 

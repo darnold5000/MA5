@@ -21,7 +21,7 @@ const SIDEBAR = [
   { href: "/app/bookings", label: "My Training", match: "prefix" as const },
   { href: "/app/journey", label: "Journey", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
-  { href: "/app/community", label: "Community · Chat", match: "prefix" as const },
+  { href: "/app/community", label: "Community board", match: "prefix" as const },
   { href: "/app/profile", label: "Profile", match: "prefix" as const },
   { href: "/app/messages", label: "Messages", match: "messages" as const },
 ] as const;

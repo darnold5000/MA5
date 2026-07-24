@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import { buildTimeline } from "@/features/journey/timeline";
 import type {
@@ -72,7 +72,7 @@ export function MyJourneyView({
   initialData,
   demoMode = false,
 }: MyJourneyViewProps) {
-  const router = useRouter();
+  const { refresh, isRefreshing } = useServerRefresh();
   const [tab, setTab] = useState<Tab>("goals");
   const [goals, setGoals] = useState(initialData.goals);
   const [photos, setPhotos] = useState(initialData.photos);
@@ -90,10 +90,6 @@ export function MyJourneyView({
     () => buildTimeline(goals, photos),
     [goals, photos],
   );
-
-  async function refresh() {
-    router.refresh();
-  }
 
   async function createGoal(event: React.FormEvent) {
     event.preventDefault();
