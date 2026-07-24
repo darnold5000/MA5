@@ -38,7 +38,10 @@ import { applyActiveClientFilter } from "@/lib/auth/member-filters";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 import { allowDemoFallbacks, isMa5ProductionRuntime } from "@/lib/tenant/runtime-data";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type PaymentRowDb = {
   amount_cents: number;
@@ -76,23 +79,59 @@ function formatPctBadge(change: number | null): string {
   return `${arrow} ${Math.abs(change)}%`;
 }
 
+async function paymentsReadClient(): Promise<{
+  supabase: SupabaseClient;
+  tenantId: string | null;
+}> {
+  if (isMa5DeploymentConfigured()) {
+    const { supabase, ctx } = createMa5TenantServiceClient();
+    return { supabase, tenantId: ctx.tenantId };
+  }
+  return { supabase: await createClient(), tenantId: null };
+}
+
+function isGymCalendarToday(iso: string, now = new Date()): boolean {
+  const a = zonedParts(new Date(iso));
+  const b = zonedParts(now);
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+async function sumRevenueGymToday(): Promise<number> {
+  const { supabase, tenantId } = await paymentsReadClient();
+  const windowStart = addDays(new Date(), -2);
+  let query = supabase
+    .from(MA5_TABLES.payments)
+    .select("amount_cents, created_at, status")
+    .eq("status", "succeeded")
+    .gte("created_at", windowStart.toISOString());
+  if (tenantId) query = query.eq("tenant_id", tenantId);
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []).filter((row) =>
+    isGymCalendarToday(row.created_at as string),
+  );
+  return sumCents(rows as { amount_cents: number }[]);
+}
+
 async function fetchPaymentsBetween(
   from: Date,
   to: Date,
   statuses: string[],
 ): Promise<PaymentRowDb[]> {
-  const supabase = await createClient();
+  const { supabase, tenantId } = await paymentsReadClient();
   const rows: PaymentRowDb[] = [];
   const pageSize = 1000;
   let offset = 0;
 
   while (true) {
-    const { data, error } = await supabase
+    let query = supabase
       .from(MA5_TABLES.payments)
       .select("amount_cents, created_at, status")
       .in("status", statuses)
       .gte("created_at", from.toISOString())
-      .lte("created_at", to.toISOString())
+      .lte("created_at", to.toISOString());
+    if (tenantId) query = query.eq("tenant_id", tenantId);
+    const { data, error } = await query
       .order("created_at", { ascending: true })
       .range(offset, offset + pageSize - 1);
 
@@ -928,7 +967,7 @@ export async function getDailyOpsDashboard(): Promise<DailyOpsDashboard> {
       todaySchedule,
       comms,
     ] = await Promise.all([
-      sumRevenueBetween(today, now),
+      sumRevenueGymToday(),
       sumRevenueBetween(weekStart, now),
       sumRevenueBetween(prevWeekStart, prevWeekEnd),
       fetchMembershipSnapshot(),

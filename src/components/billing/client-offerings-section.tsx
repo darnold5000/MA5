@@ -1,10 +1,18 @@
 import { CheckoutButton } from "@/components/billing/checkout-button";
 import { formatMoney } from "@/features/scheduling/format";
 import { listActiveOfferings } from "@/lib/billing/catalog";
+import { getActivePurchasedProductIds } from "@/lib/billing/membership-summary";
 
-export async function ClientOfferingsSection() {
+export async function ClientOfferingsSection({
+  userId,
+}: {
+  userId?: string | null;
+}) {
   const offerings = await listActiveOfferings();
-  const purchasable = offerings.filter((o) => o.currentStripePriceId);
+  const ownedIds = userId ? await getActivePurchasedProductIds(userId) : new Set();
+  const purchasable = offerings.filter(
+    (o) => o.currentStripePriceId && !ownedIds.has(o.id),
+  );
 
   if (offerings.length === 0) {
     return (
@@ -18,8 +26,9 @@ export async function ClientOfferingsSection() {
   if (purchasable.length === 0) {
     return (
       <p className="text-sm text-muted">
-        Offerings are being set up. Check back soon or contact MA5 for help
-        completing your purchase.
+        {ownedIds.size > 0
+          ? "You’re on an active plan. Contact MA5 if you want to change or add another offering."
+          : "Offerings are being set up. Check back soon or contact MA5 for help completing your purchase."}
       </p>
     );
   }

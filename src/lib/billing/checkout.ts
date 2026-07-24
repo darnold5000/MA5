@@ -125,7 +125,7 @@ export async function createOfferingCheckout(params: {
             },
           }
         : {}),
-      success_url: `${env.siteUrl}/app/profile?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${env.siteUrl}/api/stripe/membership-paid?checkout_session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${env.siteUrl}/app/profile?checkout=cancelled`,
     });
 

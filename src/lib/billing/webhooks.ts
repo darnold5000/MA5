@@ -5,6 +5,10 @@ import {
   getOfferingBySlug,
   getOfferingByStripePriceId,
 } from "@/lib/billing/catalog";
+import {
+  subscriptionPeriodEnd,
+  subscriptionPeriodStart,
+} from "@/lib/billing/stripe-subscription-periods";
 import { getStripe } from "@/lib/billing/stripe-client";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { tenantOnConflict, withTenantId } from "@/lib/tenant/deployment";
@@ -15,18 +19,6 @@ function customerId(
 ) {
   if (!customer) return null;
   return typeof customer === "string" ? customer : customer.id;
-}
-
-function subscriptionPeriodEnd(sub: Stripe.Subscription): string | null {
-  const end = (sub as Stripe.Subscription & { current_period_end?: number })
-    .current_period_end;
-  return end ? new Date(end * 1000).toISOString() : null;
-}
-
-function subscriptionPeriodStart(sub: Stripe.Subscription): string | null {
-  const start = (sub as Stripe.Subscription & { current_period_start?: number })
-    .current_period_start;
-  return start ? new Date(start * 1000).toISOString() : null;
 }
 
 function mapSubscriptionStatus(status: Stripe.Subscription.Status | string) {
@@ -540,13 +532,43 @@ async function handleChargeRefunded(
   }
 }
 
+/**
+ * Idempotent ledger sync for a completed offering checkout (subscription or one-time).
+ * Used by Stripe webhooks and the post-checkout success redirect.
+ */
+export async function syncOfferingCheckoutSession(
+  client: Ma5TenantServiceClient,
+  session: Stripe.Checkout.Session,
+) {
+  const stripe = getStripe();
+  await handleCheckoutSessionCompleted(client, session);
+
+  if (!stripe || session.mode !== "subscription") return;
+
+  const subId =
+    typeof session.subscription === "string"
+      ? session.subscription
+      : session.subscription?.id ?? null;
+  if (!subId) return;
+
+  const invoices = await stripe.invoices.list({
+    subscription: subId,
+    limit: 10,
+  });
+  for (const inv of invoices.data) {
+    if (inv.status === "paid" || (inv.amount_paid ?? 0) > 0) {
+      await handleInvoice(client, inv, false);
+    }
+  }
+}
+
 export async function handleStripeWebhookEvent(
   event: Stripe.Event,
   client: Ma5TenantServiceClient,
 ) {
   switch (event.type) {
     case "checkout.session.completed":
-      await handleCheckoutSessionCompleted(
+      await syncOfferingCheckoutSession(
         client,
         event.data.object as Stripe.Checkout.Session,
       );

@@ -11,6 +11,7 @@ import type {
   ProgressPhoto,
 } from "@/features/journey/types";
 import { uploadJourneyPhotoFromBrowser } from "@/lib/assets/browser-upload";
+import { CompactDatePicker } from "@/components/ui/compact-date-picker";
 import { cn } from "@/lib/utils";
 
 type Tab = "goals" | "photos" | "timeline";
@@ -377,15 +378,16 @@ export function MyJourneyView({
                 maxLength={200}
               />
             </label>
-            <label className="block text-sm">
+            <div className="block text-sm">
               <span className="text-muted">Target date (optional)</span>
-              <input
-                type="date"
-                value={targetDate}
-                onChange={(event) => setTargetDate(event.target.value)}
-                className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm"
-              />
-            </label>
+              <div className="mt-2">
+                <CompactDatePicker
+                  value={targetDate}
+                  onChange={setTargetDate}
+                  optional
+                />
+              </div>
+            </div>
             <button
               type="submit"
               disabled={pending || !title.trim()}
@@ -414,13 +416,10 @@ export function MyJourneyView({
                         onChange={(event) => setEditTitle(event.target.value)}
                         className="w-full border border-border bg-background px-3 py-2 text-sm"
                       />
-                      <input
-                        type="date"
+                      <CompactDatePicker
                         value={editTargetDate}
-                        onChange={(event) =>
-                          setEditTargetDate(event.target.value)
-                        }
-                        className="w-full border border-border bg-background px-3 py-2 text-sm"
+                        onChange={setEditTargetDate}
+                        optional
                       />
                       <div className="flex flex-wrap gap-2">
                         <button

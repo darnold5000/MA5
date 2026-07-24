@@ -106,7 +106,7 @@ export default async function ProfilePage() {
               Available to purchase
             </p>
             <div className="mt-4">
-              <ClientOfferingsSection />
+              <ClientOfferingsSection userId={session?.id} />
             </div>
           </div>
         </div>

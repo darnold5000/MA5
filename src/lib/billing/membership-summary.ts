@@ -1,6 +1,8 @@
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
 import { createServiceClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
+import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
+import { createMa5TenantServiceClient } from "@/lib/tenant/service";
 
 export type MembershipSummary = {
   planName: string;
@@ -11,6 +13,12 @@ export type MembershipSummary = {
   lastPaymentDate: string | null;
   lastPaymentAmount: string | null;
   upcomingInvoiceAmount: string | null;
+};
+
+type ProductFields = {
+  name?: string;
+  billing_interval?: string | null;
+  payment_type?: string | null;
 };
 
 function formatMoney(cents: number, currency = "usd") {
@@ -29,9 +37,14 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function formatBillingInterval(interval: string | null | undefined) {
-  if (!interval || interval === "one_time") return null;
+function formatBillingInterval(
+  interval: string | null | undefined,
+  paymentType?: string | null,
+) {
   if (interval === "month") return "Monthly";
+  if (interval === "one_time") return null;
+  if (paymentType === "subscription") return "Monthly";
+  if (!interval) return null;
   return interval;
 }
 
@@ -41,6 +54,15 @@ function formatStatus(status: string) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
+
+function unwrapProduct(
+  product: ProductFields | ProductFields[] | null | undefined,
+): ProductFields | null {
+  if (!product) return null;
+  return Array.isArray(product) ? (product[0] ?? null) : product;
+}
+
+const ACTIVE_STATUSES = ["active", "trialing", "past_due"] as const;
 
 export async function getMembershipSummary(
   userId: string,
@@ -74,51 +96,78 @@ export async function getMembershipSummary(
   }
 
   try {
-    const supabase = createServiceClient();
+    const tenantClient = isMa5DeploymentConfigured()
+      ? createMa5TenantServiceClient()
+      : null;
+    const supabase = tenantClient?.supabase ?? createServiceClient();
+    const tenantId = tenantClient?.ctx.tenantId ?? null;
+
+    let membershipQuery = supabase
+      .from(MA5_TABLES.memberships)
+      .select(
+        "status, current_period_end, created_at, product_id, ma5_products(name, billing_interval, payment_type)",
+      )
+      .eq("user_id", userId)
+      .in("status", [...ACTIVE_STATUSES])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    let subscriptionQuery = supabase
+      .from(MA5_TABLES.subscriptions)
+      .select(
+        "status, current_period_end, current_period_start, created_at, product_id, ma5_products(name, billing_interval, payment_type)",
+      )
+      .eq("user_id", userId)
+      .in("status", [...ACTIVE_STATUSES])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    let paymentQuery = supabase
+      .from(MA5_TABLES.payments)
+      .select("amount_cents, currency, created_at")
+      .eq("user_id", userId)
+      .eq("status", "succeeded")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (tenantId) {
+      membershipQuery = membershipQuery.eq("tenant_id", tenantId);
+      subscriptionQuery = subscriptionQuery.eq("tenant_id", tenantId);
+      paymentQuery = paymentQuery.eq("tenant_id", tenantId);
+    }
+
     const [{ data: membership }, { data: subscription }, { data: lastPayment }] =
       await Promise.all([
-        supabase
-          .from(MA5_TABLES.memberships)
-          .select(
-            "status, current_period_end, created_at, ma5_products(name, billing_interval)",
-          )
-          .eq("user_id", userId)
-          .in("status", ["active", "trialing", "past_due"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from(MA5_TABLES.subscriptions)
-          .select("status, current_period_end, current_period_start, created_at")
-          .eq("user_id", userId)
-          .in("status", ["active", "trialing", "past_due"])
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from(MA5_TABLES.payments)
-          .select("amount_cents, currency, created_at")
-          .eq("user_id", userId)
-          .eq("status", "succeeded")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+        membershipQuery.maybeSingle(),
+        subscriptionQuery.maybeSingle(),
+        paymentQuery.maybeSingle(),
       ]);
 
-    const product = membership?.ma5_products as
-      | { name?: string; billing_interval?: string | null }
-      | { name?: string; billing_interval?: string | null }[]
-      | null;
-    const prod = Array.isArray(product) ? product[0] : product;
+    const membershipProduct = unwrapProduct(
+      membership?.ma5_products as ProductFields | ProductFields[] | null,
+    );
+    const subscriptionProduct = unwrapProduct(
+      subscription?.ma5_products as ProductFields | ProductFields[] | null,
+    );
+    const product = membershipProduct ?? subscriptionProduct;
+
+    const hasActiveRecord = Boolean(
+      membership || subscription || active,
+    );
 
     const planName =
-      prod?.name ?? active?.productName ?? empty.planName;
-    const status = formatStatus(
+      membershipProduct?.name ??
+      subscriptionProduct?.name ??
+      active?.productName ??
+      (hasActiveRecord ? "Membership" : empty.planName);
+
+    const rawStatus =
       (subscription?.status as string) ??
-        (membership?.status as string) ??
-        active?.status ??
-        "inactive",
-    );
+      (membership?.status as string) ??
+      active?.status ??
+      (hasActiveRecord ? "active" : "inactive");
+
+    const status = formatStatus(rawStatus);
 
     const nextBillingDate = formatDate(
       (subscription?.current_period_end as string | null) ??
@@ -145,10 +194,17 @@ export async function getMembershipSummary(
           )
         : null;
 
+    if (!hasActiveRecord && !lastPayment) {
+      return empty;
+    }
+
     return {
       planName,
-      status,
-      billingFrequency: formatBillingInterval(prod?.billing_interval),
+      status: hasActiveRecord ? status : empty.status,
+      billingFrequency: formatBillingInterval(
+        product?.billing_interval,
+        product?.payment_type,
+      ),
       nextBillingDate,
       membershipStartDate,
       lastPaymentDate,
@@ -168,4 +224,35 @@ export async function getMembershipSummary(
       upcomingInvoiceAmount: null,
     };
   }
+}
+
+/** Product ids the user already holds an active subscription/membership for. */
+export async function getActivePurchasedProductIds(
+  userId: string,
+): Promise<Set<string>> {
+  const ids = new Set<string>();
+  if (!isSupabaseConfigured() || !userId) return ids;
+
+  const tenantClient = isMa5DeploymentConfigured()
+    ? createMa5TenantServiceClient()
+    : null;
+  const supabase = tenantClient?.supabase ?? createServiceClient();
+  const tenantId = tenantClient?.ctx.tenantId ?? null;
+
+  const tables = [MA5_TABLES.memberships, MA5_TABLES.subscriptions] as const;
+  for (const table of tables) {
+    let query = supabase
+      .from(table)
+      .select("product_id")
+      .eq("user_id", userId)
+      .in("status", [...ACTIVE_STATUSES])
+      .not("product_id", "is", null);
+    if (tenantId) query = query.eq("tenant_id", tenantId);
+    const { data } = await query;
+    for (const row of data ?? []) {
+      const pid = row.product_id as string | null;
+      if (pid) ids.add(pid);
+    }
+  }
+  return ids;
 }

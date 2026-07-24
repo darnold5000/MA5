@@ -78,7 +78,7 @@ export function PasswordField({
       >
         {label}
       </span>
-      <div className="relative">
+      <div className="relative isolate">
         <input
           id={inputId}
           type={show ? "text" : "password"}
@@ -88,7 +88,7 @@ export function PasswordField({
           required={required}
           minLength={minLength}
           className={cn(
-            "min-h-10 w-full border border-border bg-background px-3 pr-11 text-foreground outline-none sm:min-h-11",
+            "relative z-0 min-h-10 w-full border border-border bg-background px-3 pr-11 text-foreground outline-none sm:min-h-11",
             inputClassName,
           )}
         />
@@ -96,12 +96,12 @@ export function PasswordField({
           type="button"
           onClick={() => setShow((v) => !v)}
           aria-label={show ? "Hide password" : "Show password"}
-          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-foreground/75 hover:text-foreground"
+          className="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center border-l border-border bg-background text-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand"
         >
           {show ? (
-            <EyeOffIcon className="h-5 w-5" />
+            <EyeOffIcon className="h-5 w-5 shrink-0 stroke-[2]" />
           ) : (
-            <EyeIcon className="h-5 w-5" />
+            <EyeIcon className="h-5 w-5 shrink-0 stroke-[2]" />
           )}
         </button>
       </div>
