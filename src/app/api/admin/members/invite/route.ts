@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { inviteRedirectUrl } from "@/features/auth/members";
 import { attachLeadOnInvite } from "@/features/marketing/link-lead";
 import {
   deriveClientStatusFromLegacy,
   nextInviteGeneration,
   patchForInvited,
 } from "@/lib/auth/client-lifecycle";
-import { sendExistingUserActivationEmail, sendFormerMemberReenrollEmail } from "@/lib/auth/activation-email";
+import { requireAdminSessionOrResponse } from "@/lib/auth/session";
+import {
+  deliverActiveMemberSignInEmail,
+  deliverFormerMemberWelcomeBackEmail,
+  deliverMemberActivationResendEmail,
+  deliverMemberInviteEmail,
+  requireAuthEmailStack,
+} from "@/lib/email/auth-email-flows";
 import {
   findProfileByEmailInTenant,
   inviteUserMetadata,
@@ -16,8 +22,7 @@ import {
   upsertInvitedProfile,
   upsertMemberRole,
 } from "@/lib/auth/tenant-data";
-import { requireAdminSessionOrResponse } from "@/lib/auth/session";
-import { env, isSupabasePublicConfigured } from "@/lib/env";
+import { isSupabasePublicConfigured } from "@/lib/env";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 import { createMa5TenantServiceClient } from "@/lib/tenant/service";
@@ -93,6 +98,7 @@ export async function POST(request: Request) {
   try {
     const client = createMa5TenantServiceClient();
     const { supabase: admin, ctx } = client;
+    const stack = requireAuthEmailStack(ctx.tenantId, admin);
 
     const existingProfile = await findProfileByEmailInTenant(emailNorm, client);
 
@@ -110,6 +116,27 @@ export async function POST(request: Request) {
         leadId: leadIdOpt,
       });
 
+      if (parsed.data.resend) {
+        await deliverActiveMemberSignInEmail({
+          stack,
+          emailNorm,
+          fullName: fullName || existingProfile.full_name || emailNorm,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          member: {
+            id: existingProfile.id,
+            fullName: fullName || existingProfile.full_name || emailNorm,
+            email: emailNorm,
+            role,
+            invitationStatus: "accepted",
+            active: true,
+          },
+          message: "Member is already active — sign-in email sent",
+        });
+      }
+
       return NextResponse.json({
         ok: true,
         member: {
@@ -120,9 +147,7 @@ export async function POST(request: Request) {
           invitationStatus: "accepted",
           active: true,
         },
-        message: parsed.data.resend
-          ? "Member is already active — no new invitation needed"
-          : "Existing member already active — role ensured",
+        message: "Existing member already active — role ensured",
       });
     }
 
@@ -147,9 +172,9 @@ export async function POST(request: Request) {
           existingProfile.invite_generation ?? null,
         );
 
-        await sendFormerMemberReenrollEmail({
-          admin,
-          email: emailNorm,
+        await deliverFormerMemberWelcomeBackEmail({
+          stack,
+          emailNorm,
           fullName,
         });
 
@@ -198,90 +223,42 @@ export async function POST(request: Request) {
     const inviteGeneration = nextInviteGeneration(
       existingProfile?.invite_generation ?? null,
     );
-
-    const { data: invited, error: inviteError } =
-      await admin.auth.admin.inviteUserByEmail(emailNorm, {
-        data: inviteUserMetadata(ctx, { fullName, role, inviteGeneration }),
-        redirectTo: inviteRedirectUrl(env.siteUrl, inviteGeneration),
-      });
-
-    if (!inviteError) {
-      const userId = invited.user?.id;
-      if (!userId) {
-        return NextResponse.json(
-          { error: "Invite created but no user id returned" },
-          { status: 500 },
-        );
-      }
-
-      await upsertInvitedProfile(
-        {
-          userId,
-          emailNorm,
-          fullName,
-          phone: parsed.data.phone,
-          notes: parsed.data.notes,
-          role,
-          now,
-          inviteGeneration,
-        },
-        client,
-      );
-
-      await admin.auth.admin.updateUserById(userId, {
-        user_metadata: {
-          ma5_invite_generation: inviteGeneration,
-        },
-      });
-
-      await attachLeadOnInvite({
-        client,
-        profileId: userId,
-        email: emailNorm,
-        leadId: leadIdOpt,
-      });
-
-      return NextResponse.json({
-        ok: true,
-        member: {
-          id: userId,
-          fullName,
-          email: emailNorm,
-          role,
-          invitationStatus: "sent",
-          active: false,
-        },
-        message: "Invitation email sent",
-      });
-    }
-
-    const existingUserId = existingProfile?.id ?? null;
-
-    if (!existingUserId) {
-      return NextResponse.json(
-        { error: inviteError.message },
-        { status: 400 },
-      );
-    }
-
-    const profileForEmail = existingProfile
-      ? {
-          ...existingProfile,
-          ...patchForInvited(now, inviteGeneration),
-        }
-      : null;
-
-    const { channel } = await sendExistingUserActivationEmail({
-      admin,
-      email: emailNorm,
+    const metadata = inviteUserMetadata(ctx, {
       fullName,
+      role,
       inviteGeneration,
-      profile: profileForEmail,
     });
+
+    let userId: string;
+    let resendKind: "invite" | "recovery" | "new" = "new";
+
+    if (existingProfile?.id) {
+      const profileForEmail = {
+        ...existingProfile,
+        ...patchForInvited(now, inviteGeneration),
+      };
+      resendKind = await deliverMemberActivationResendEmail({
+        stack,
+        emailNorm,
+        fullName,
+        inviteGeneration,
+        profile: profileForEmail,
+      });
+      userId = existingProfile.id;
+    } else {
+      const delivered = await deliverMemberInviteEmail({
+        stack,
+        emailNorm,
+        fullName,
+        inviteGeneration,
+        userMetadata: metadata,
+      });
+      userId = delivered.userId;
+    }
 
     await upsertInvitedProfile(
       {
-        userId: existingUserId,
+        userId,
         emailNorm,
         fullName,
         phone: parsed.data.phone,
@@ -293,7 +270,7 @@ export async function POST(request: Request) {
       client,
     );
 
-    await admin.auth.admin.updateUserById(existingUserId, {
+    await admin.auth.admin.updateUserById(userId, {
       user_metadata: {
         ma5_invite_generation: inviteGeneration,
       },
@@ -301,15 +278,16 @@ export async function POST(request: Request) {
 
     await attachLeadOnInvite({
       client,
-      profileId: existingUserId,
+      profileId: userId,
       email: emailNorm,
       leadId: leadIdOpt,
     });
 
+    const resentInvite = resendKind === "invite" || resendKind === "new";
     return NextResponse.json({
       ok: true,
       member: {
-        id: existingUserId,
+        id: userId,
         fullName,
         email: emailNorm,
         role,
@@ -317,12 +295,14 @@ export async function POST(request: Request) {
         active: false,
       },
       message: parsed.data.resend
-        ? channel === "resend_invite" || channel === "supabase_invite"
+        ? resentInvite
           ? "Invitation email resent"
           : "Activation email resent"
-        : channel === "resend_invite" || channel === "supabase_invite"
-          ? "Existing account updated — invitation email sent"
-          : "Existing account updated — activation email sent",
+        : existingProfile
+          ? resentInvite
+            ? "Existing account updated — invitation email sent"
+            : "Existing account updated — activation email sent"
+          : "Invitation email sent",
     });
   } catch (err) {
     console.error("[api/admin/members/invite]", err);

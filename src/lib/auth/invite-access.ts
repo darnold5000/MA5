@@ -5,7 +5,7 @@ import {
   normalizeEmail,
   portalStatusMessage,
 } from "@/lib/auth/client-lifecycle";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { createClient, createServiceClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
 import { isMa5DeploymentConfigured } from "@/lib/tenant/deployment";
 
@@ -65,14 +65,30 @@ export async function resolveInviteAccess(
       ok: false,
       code: "no_session",
       message:
-        "We could not verify the email associated with this invitation. Please request a new invitation from MA5 Performance.",
+        "Your invitation session is missing or expired. Open the link in the invitation email again, or ask MA5 Performance to resend it.",
     };
   }
 
   const authEmail = normalizeEmail(user.email);
   const tenantId = process.env.MA5_TENANT_ID?.trim();
+  if (!tenantId) {
+    return {
+      ok: false,
+      code: "not_configured",
+      message: "Invitations are not configured.",
+    };
+  }
 
-  const { data: profile, error: profileError } = await supabase
+  // Service role: invited users are not ma5_is_tenant_member yet (037+), so RLS
+  // would hide their profile from the authenticated client.
+  const admin =
+    process.env.SUPABASE_SERVICE_ROLE_KEY && isSupabaseConfigured()
+      ? createServiceClient()
+      : null;
+
+  const profileClient = admin ?? (await createClient());
+
+  const { data: profile, error: profileError } = await profileClient
     .from(MA5_TABLES.profiles)
     .select(
       "id, email, full_name, client_status, invitation_status, invitation_accepted_at, active, access_revoked_at, deleted_at, status_before_delete, invite_generation",
@@ -81,12 +97,16 @@ export async function resolveInviteAccess(
     .eq("tenant_id", tenantId)
     .maybeSingle();
 
-  if (profileError || !profile) {
+  if (profileError) {
+    console.error("[invite-access] profile lookup", profileError.message);
+  }
+
+  if (!profile) {
     return {
       ok: false,
       code: "no_profile",
       message:
-        "We could not verify the email associated with this invitation. Please request a new invitation from MA5 Performance.",
+        "We could not find your MA5 member profile for this invitation. Ask MA5 Performance to send a new invitation.",
     };
   }
 
@@ -132,7 +152,8 @@ export async function resolveInviteAccess(
   const cookieGeneration = parseInviteGeneration(
     cookieStore.get(INVITE_GENERATION_COOKIE)?.value,
   );
-  const effectiveGeneration = linkGeneration ?? cookieGeneration;
+  const effectiveGeneration =
+    linkGeneration ?? cookieGeneration ?? profileGeneration;
 
   if (
     profileGeneration === null ||

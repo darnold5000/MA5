@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { inviteRedirectUrl } from "@/features/auth/members";
 import { nextInviteGeneration } from "@/lib/auth/client-lifecycle";
+import { getSessionUser } from "@/lib/auth/session";
+import {
+  deliverCoachInviteEmail,
+  requireAuthEmailStack,
+} from "@/lib/email/auth-email-flows";
 import {
   findProfileByEmailInTenant,
   inviteUserMetadata,
   upsertInvitedProfile,
   upsertMemberRole,
 } from "@/lib/auth/tenant-data";
-import { env, isSupabasePublicConfigured } from "@/lib/env";
-import { getSessionUser } from "@/lib/auth/session";
+import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin } from "@/lib/permissions/roles";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { MA5_TABLES } from "@/lib/supabase/tables";
@@ -55,88 +58,75 @@ export async function POST(request: Request) {
     try {
       const client = createMa5TenantServiceClient();
       const { supabase: admin, ctx } = client;
+      const stack = requireAuthEmailStack(ctx.tenantId, admin);
 
       const existing = await findProfileByEmailInTenant(emailNorm, client);
       const inviteGeneration = nextInviteGeneration(
         existing?.invite_generation ?? null,
       );
+      const metadata = inviteUserMetadata(ctx, {
+        fullName,
+        role: "coach",
+        inviteGeneration,
+      });
 
-      const { data: invited, error: inviteError } =
-        await admin.auth.admin.inviteUserByEmail(emailNorm, {
-          data: inviteUserMetadata(ctx, {
-            fullName,
-            role: "coach",
-            inviteGeneration,
-          }),
-          redirectTo: inviteRedirectUrl(env.siteUrl, inviteGeneration),
-        });
+      const { userId } = await deliverCoachInviteEmail({
+        stack,
+        emailNorm,
+        fullName,
+        inviteGeneration,
+        userMetadata: metadata,
+      });
 
-      if (inviteError) {
-        const existing = await findProfileByEmailInTenant(emailNorm, client);
-
-        if (existing?.id) {
-          await upsertMemberRole(existing.id, "coach", client);
-          if (fullName && !existing.full_name) {
-            await admin
-              .from(MA5_TABLES.profiles)
-              .update({ full_name: fullName })
-              .eq("tenant_id", ctx.tenantId)
-              .eq("id", existing.id);
-          }
-          return NextResponse.json({
-            ok: true,
-            coach: {
-              id: existing.id,
-              fullName: fullName || existing.full_name || emailNorm,
-              email: emailNorm,
-              roleLabel: "Coach",
-              status: "active",
-            },
-            message: "Existing account granted coach access",
-          });
-        }
-
+      if (existing?.id && existing.id !== userId) {
         return NextResponse.json(
-          { error: inviteError.message },
+          { error: "Email is linked to a different account" },
           { status: 400 },
         );
       }
 
-      const userId = invited.user?.id;
-      if (userId) {
-        await upsertInvitedProfile(
-          {
-            userId,
-            emailNorm,
-            fullName,
-            role: "coach",
-            now: new Date().toISOString(),
-            inviteGeneration,
-          },
-          client,
-        );
-        await admin.auth.admin.updateUserById(userId, {
-          user_metadata: { ma5_invite_generation: inviteGeneration },
-        });
+      await upsertInvitedProfile(
+        {
+          userId,
+          emailNorm,
+          fullName,
+          role: "coach",
+          now: new Date().toISOString(),
+          inviteGeneration,
+        },
+        client,
+      );
+
+      await upsertMemberRole(userId, "coach", client);
+
+      await admin.auth.admin.updateUserById(userId, {
+        user_metadata: { ma5_invite_generation: inviteGeneration },
+      });
+
+      if (existing?.id && fullName && !existing.full_name) {
+        await admin
+          .from(MA5_TABLES.profiles)
+          .update({ full_name: fullName })
+          .eq("tenant_id", ctx.tenantId)
+          .eq("id", userId);
       }
 
       return NextResponse.json({
         ok: true,
         coach: {
-          id: userId ?? `invited-${Date.now()}`,
+          id: userId,
           fullName,
           email: emailNorm,
           roleLabel: "Coach",
           status: "invited",
         },
-        message: "Invite email sent",
+        message: "Coach invitation email sent",
       });
     } catch (err) {
       console.error("[api/admin/coaches/invite]", err);
-      return NextResponse.json(
-        { error: "Could not send coach invitation" },
-        { status: 500 },
-      );
+      const message =
+        err instanceof Error ? err.message : "Could not send coach invitation";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   }
 

@@ -52,6 +52,9 @@ Set `MA5_TENANT_ID` in MA5 deployment environment. Details: [docs/migration/RUNB
 | 036 | `036_ma5_purge_rpc_lockdown.sql` | Apply before staging sign-off |
 | 037 | `037_ma5_client_lifecycle.sql` | Apply before client lifecycle deploy |
 | 038 | `038_ma5_invite_generation.sql` | Apply with 037 before invite hardening deploy |
+| 039 | `039_ma5_active_client_helpers.sql` | Apply with 037–038 |
+| 040 | `040_ma5_profiles_invited_self_read.sql` | **Required** for accept-invite after 037 |
+| 041 | `041_tenant_email_settings.sql` | Phase 3 — tenant email branding (ADR 0007) |
 
 Types: `npm run gen:types` (OpenAPI) or `npm run gen:types:cli` after `supabase login` + `npm run supabase:link`.
 
