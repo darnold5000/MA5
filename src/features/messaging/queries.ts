@@ -13,6 +13,7 @@ import type {
   MessageThread,
   ThreadListFilter,
 } from "@/features/messaging/types";
+import { logDataAccess } from "@/lib/debug/data-access-log";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin, hasCapability } from "@/lib/permissions/roles";
@@ -415,6 +416,7 @@ export async function getUnreadBadgeCount(options?: {
   );
 
   try {
+    logDataAccess("getUnreadBadgeCount", { staff: Boolean(options?.staff) });
     return await loadUnreadBadgeCountFromSupabase(session.id, isStaff);
   } catch (err) {
     console.error("[messaging] getUnreadBadgeCount", err);

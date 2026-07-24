@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { CommunityPost } from "@/features/community/types";
 import { cn } from "@/lib/utils";
@@ -115,7 +114,6 @@ export function CommunityBoard({
   title?: string;
   description?: string;
 }) {
-  const { refresh } = useServerRefresh();
   const [boardPosts, setBoardPosts] = useState(initialPosts);
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -162,7 +160,6 @@ export function CommunityBoard({
         setDraft("");
       }
       await reloadFromApi();
-      refresh();
     });
   }
 
@@ -184,7 +181,6 @@ export function CommunityBoard({
         return;
       }
       await reloadFromApi();
-      refresh();
     });
   }
 

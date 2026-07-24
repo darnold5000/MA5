@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
+import { AppNavLink } from "@/components/platform/app-nav-link";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -276,7 +277,8 @@ export function AppShell({
                     const showBadge =
                       item.href === "/app/messages" && inboxUnread > 0;
                     return (
-                      <Link
+                      <AppNavLink
+                        hub="app"
                         key={item.href}
                         href={item.href}
                         className={cn(
@@ -293,16 +295,18 @@ export function AppShell({
                             {inboxUnread > 9 ? "9+" : inboxUnread}
                           </span>
                         ) : null}
-                      </Link>
+                      </AppNavLink>
                     );
                   })}
-                  <Link
+                  <AppNavLink
+                    hub="app"
                     href="/app/announcements"
+                    prefetch={false}
                     className="flex min-h-12 items-center px-3 text-sm tracking-wide text-foreground touch-manipulation active:bg-brand/10"
                     onClick={() => setMenuOpen(false)}
                   >
                     Announcements
-                  </Link>
+                  </AppNavLink>
                 </nav>
                 <div className="space-y-2 border-t border-border p-3">
                   <ThemeToggle className="w-full justify-start" />
@@ -337,7 +341,8 @@ export function AppShell({
                 const showBadge =
                   item.href === "/app/messages" && inboxUnread > 0;
                 return (
-                  <Link
+                  <AppNavLink
+                    hub="app"
                     key={item.href}
                     href={item.href}
                     className={cn(
@@ -353,7 +358,7 @@ export function AppShell({
                         {inboxUnread > 9 ? "9+" : inboxUnread}
                       </span>
                     ) : null}
-                  </Link>
+                  </AppNavLink>
                 );
               })}
             </nav>
@@ -383,10 +388,10 @@ export function AppShell({
             {MOBILE_TAB.map((item) => {
               const active = isActive(pathname, item.href, item.match);
               return (
-                <Link
+                <AppNavLink
+                  hub="app"
                   key={item.href}
                   href={item.href}
-                  prefetch
                   className={cn(
                     "relative flex min-h-14 flex-col items-center justify-center touch-manipulation active:bg-brand/10",
                     active ? "text-foreground" : "text-muted",
@@ -398,7 +403,7 @@ export function AppShell({
                   {item.href === "/app/messages" && inboxUnread > 0 ? (
                     <span className="absolute top-1.5 right-[22%] size-2 rounded-full bg-brand" />
                   ) : null}
-                </Link>
+                </AppNavLink>
               );
             })}
           </div>

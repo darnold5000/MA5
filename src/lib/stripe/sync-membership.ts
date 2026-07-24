@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import {
   getOfferingBySlug,
   getOfferingByStripePriceId,
@@ -74,6 +76,24 @@ async function loadActiveMembershipFromDb(
 }
 
 export async function getActiveMembershipForUser(
+  userId: string,
+  options: MembershipLookupOptions = {},
+): Promise<ActiveMembership | null> {
+  return getActiveMembershipForUserCached(userId, options.allowStripeHydrate === true);
+}
+
+const getActiveMembershipForUserCached = cache(
+  async (
+    userId: string,
+    allowStripeHydrate: boolean,
+  ): Promise<ActiveMembership | null> => {
+    return getActiveMembershipForUserImpl(userId, {
+      allowStripeHydrate,
+    });
+  },
+);
+
+async function getActiveMembershipForUserImpl(
   userId: string,
   options: MembershipLookupOptions = {},
 ): Promise<ActiveMembership | null> {

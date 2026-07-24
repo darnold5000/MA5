@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useServerRefresh } from "@/hooks/use-server-refresh";
+import { refreshHubBadges, useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type { Message, MessageThread } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export function AdminThreadView({
   thread: MessageThread;
   messages: Message[];
 }) {
-  const { router, refresh, isRefreshing } = useServerRefresh();
+  const { refresh, isRefreshing } = useServerRefresh();
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +46,8 @@ export function AdminThreadView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId: thread.id }),
-    }).then(() => refresh());
-  }, [thread.id, messages.length, router]);
+    }).then(() => refreshHubBadges());
+  }, [thread.id, messages.length]);
 
   function send() {
     if (!draft.trim()) return;

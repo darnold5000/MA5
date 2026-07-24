@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useServerRefresh } from "@/hooks/use-server-refresh";
+import { refreshHubBadges, useServerRefresh } from "@/hooks/use-server-refresh";
 
 import type {
   Announcement,
@@ -173,7 +173,7 @@ export function ClientThreadView({
   thread: MessageThread;
   messages: Message[];
 }) {
-  const { router, refresh, isRefreshing } = useServerRefresh();
+  const { refresh, isRefreshing } = useServerRefresh();
   const [draft, setDraft] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -185,8 +185,8 @@ export function ClientThreadView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId: thread.id }),
-    }).then(() => refresh());
-  }, [thread.id, messages.length, router]);
+    }).then(() => refreshHubBadges());
+  }, [thread.id, messages.length]);
 
   function send() {
     if (!draft.trim()) return;
@@ -285,7 +285,7 @@ export function ClientAnnouncementsList({
 }: {
   announcements: Announcement[];
 }) {
-  const { router, refresh, isRefreshing } = useServerRefresh();
+  const { refresh, isRefreshing } = useServerRefresh();
   const published = announcements.filter(
     (a) => a.status === "published" || a.status === "expired",
   );
@@ -295,7 +295,7 @@ export function ClientAnnouncementsList({
       if (!a.readAt) {
         void fetch(`/api/announcements/${a.id}/mark-read`, {
           method: "POST",
-        }).then(() => refresh());
+        }).then(() => refreshHubBadges());
       }
     }
     // Mark on first view of list — intentional once per mount for unread

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
+import { AppNavLink } from "@/components/platform/app-nav-link";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -211,7 +212,8 @@ export function AdminShell({
               const showBadge =
                 item.match === "communication" && communicationUnread > 0;
               return (
-                <Link
+                <AppNavLink
+                  hub="admin"
                   key={item.href}
                   href={item.href}
                   className={cn(
@@ -227,7 +229,7 @@ export function AdminShell({
                       {communicationUnread > 9 ? "9+" : communicationUnread}
                     </span>
                   ) : null}
-                </Link>
+                </AppNavLink>
               );
             })}
           </nav>
@@ -249,12 +251,14 @@ export function AdminShell({
               Demo guide
             </button>
             */}
-            <Link
+            <AppNavLink
+              hub="admin"
               href="/admin/settings"
+              prefetch={false}
               className="block px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground"
             >
               Settings
-            </Link>
+            </AppNavLink>
             {/* Client hub preview — kept but hidden
             <ClientHubPreview
               label="Preview client view"
@@ -312,7 +316,8 @@ export function AdminShell({
                       item.match === "communication" &&
                       communicationUnread > 0;
                     return (
-                      <Link
+                      <AppNavLink
+                        hub="admin"
                         key={item.href}
                         href={item.href}
                         className={cn(
@@ -331,16 +336,18 @@ export function AdminShell({
                               : communicationUnread}
                           </span>
                         ) : null}
-                      </Link>
+                      </AppNavLink>
                     );
                   })}
-                  <Link
+                  <AppNavLink
+                    hub="admin"
                     href="/admin/settings"
+                    prefetch={false}
                     className="flex min-h-12 items-center px-3 text-sm tracking-wide text-foreground touch-manipulation"
                     onClick={() => setMenuOpen(false)}
                   >
                     Settings
-                  </Link>
+                  </AppNavLink>
                 </nav>
                 <div className="space-y-2 border-t border-border p-3">
                   <ThemeToggle className="w-full justify-start" />
@@ -377,7 +384,8 @@ export function AdminShell({
                 const showBadge =
                   item.match === "communication" && communicationUnread > 0;
                 return (
-                  <Link
+                  <AppNavLink
+                    hub="admin"
                     key={item.href}
                     href={item.href}
                     className={cn(
@@ -393,7 +401,7 @@ export function AdminShell({
                         {communicationUnread > 9 ? "9+" : communicationUnread}
                       </span>
                     ) : null}
-                  </Link>
+                  </AppNavLink>
                 );
               })}
             </div>

@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { NextResponse } from "next/server";
 
+import { logDataAccess } from "@/lib/debug/data-access-log";
 import {
   accessDeniedResponse,
   isActiveAccess,
@@ -47,6 +48,7 @@ function isPlatformRole(value: string): value is PlatformRole {
 }
 
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  logDataAccess("getSessionUser");
   if (!isSupabaseConfigured()) {
     return null;
   }
