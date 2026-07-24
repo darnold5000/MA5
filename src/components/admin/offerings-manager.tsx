@@ -411,16 +411,28 @@ export function OfferingsManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
           <h2 className="font-display text-3xl tracking-wide uppercase">
             Offerings
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Manage what customers can buy. <strong className="font-medium text-foreground">Active</strong> offerings are visible for purchase.{" "}
-            <strong className="font-medium text-foreground">Hidden</strong> offerings are temporarily off the storefront.{" "}
-            <strong className="font-medium text-foreground">Archived</strong> offerings are retired but all history is kept.
-          </p>
+          <details className="group relative mt-1">
+            <summary
+              className="flex size-8 cursor-pointer list-none items-center justify-center rounded-full border border-border text-sm text-muted hover:text-foreground [&::-webkit-details-marker]:hidden"
+              aria-label="Offering status help"
+            >
+              i
+            </summary>
+            <div className="absolute top-full left-0 z-10 mt-2 w-72 border border-border bg-surface p-3 text-sm leading-relaxed text-muted shadow-lg">
+              Manage what customers can buy.{" "}
+              <strong className="font-medium text-foreground">Active</strong>{" "}
+              offerings are visible for purchase.{" "}
+              <strong className="font-medium text-foreground">Hidden</strong>{" "}
+              offerings are temporarily off the storefront.{" "}
+              <strong className="font-medium text-foreground">Archived</strong>{" "}
+              offerings are retired but all history is kept.
+            </div>
+          </details>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

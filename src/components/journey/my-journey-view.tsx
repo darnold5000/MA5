@@ -305,6 +305,7 @@ export function MyJourneyView({
 
     if (demoMode) {
       setPhotos((current) => current.filter((photo) => photo.id !== photoId));
+      setCaption("");
       setPending(false);
       setMessage("Photo deleted");
       return;
@@ -320,6 +321,7 @@ export function MyJourneyView({
       return;
     }
     setPhotos((current) => current.filter((photo) => photo.id !== photoId));
+    setCaption("");
     setMessage("Photo deleted");
     void refresh();
   }
@@ -375,7 +377,6 @@ export function MyJourneyView({
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Lose 20 lbs, run a 5K, attend 4 classes per week…"
                 className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm"
                 maxLength={200}
               />
@@ -526,7 +527,6 @@ export function MyJourneyView({
               <input
                 value={caption}
                 onChange={(event) => setCaption(event.target.value)}
-                placeholder="Week 4 — feeling stronger"
                 className="mt-2 w-full border border-border bg-background px-3 py-3 text-sm"
                 maxLength={500}
               />

@@ -88,10 +88,7 @@ export function AdminMessagesInbox({
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-            Communication
-          </p>
-          <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+          <h1 className="font-display text-3xl tracking-wide uppercase">
             Messages
           </h1>
           <p className="mt-2 text-sm text-muted">

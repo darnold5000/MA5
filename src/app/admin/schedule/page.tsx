@@ -4,7 +4,7 @@ import { AdminScheduleManager } from "@/components/admin/schedule-manager";
 import { listAllSessions } from "@/features/scheduling/queries";
 
 export const metadata: Metadata = {
-  title: "Schedule · Operations",
+  title: "Schedule",
   robots: { index: false, follow: false },
 };
 
@@ -14,10 +14,7 @@ export default async function AdminSchedulePage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Schedule
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+        <h1 className="font-display text-3xl tracking-wide uppercase">
           Classes & appointments
         </h1>
       </div>

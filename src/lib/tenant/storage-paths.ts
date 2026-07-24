@@ -24,7 +24,7 @@ export function memberJourneyPhotoPath(userId: string, fileId: string): string {
 }
 
 export function brandAvatarPath(userId: string, fileId: string): string {
-  return `${storageTenantId()}/brand/avatars/${userId}/${fileId}.jpg`;
+  return `${storageTenantId()}/brand/avatar/${userId}/${fileId}.jpg`;
 }
 
 export function brandLogoPath(fileId: string): string {

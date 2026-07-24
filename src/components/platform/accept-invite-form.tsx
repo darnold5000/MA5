@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
+import { PasswordField } from "@/components/ui/password-field";
 
 export function AcceptInviteForm({
   email,
@@ -16,7 +17,6 @@ export function AcceptInviteForm({
   const [fullName, setFullName] = useState(initialFullName);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,41 +96,22 @@ export function AcceptInviteForm({
             className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
           />
         </label>
-        <label className="block space-y-1.5 text-sm sm:space-y-2">
-          <span className="font-semibold tracking-wide uppercase">Password</span>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none sm:min-h-11"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 px-3 text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-        </label>
-        <label className="block space-y-1.5 text-sm sm:space-y-2">
-          <span className="font-semibold tracking-wide uppercase">
-            Confirm password
-          </span>
-          <input
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-            minLength={8}
-            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
-          />
-        </label>
+        <PasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
+        <PasswordField
+          label="Confirm password"
+          value={confirm}
+          onChange={setConfirm}
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
         <label className="flex items-start gap-3 text-sm text-muted">
           <input
             type="checkbox"

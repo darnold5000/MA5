@@ -36,7 +36,7 @@ const SIDEBAR = [
   },
   {
     href: "/admin/messages",
-    label: "Communication",
+    label: "Messages",
     match: "communication" as const,
   },
   {
@@ -63,7 +63,7 @@ const MOBILE_TAB = [
   },
   {
     href: "/admin/messages",
-    label: "Inbox",
+    label: "Messages",
     match: "communication" as const,
     icon: "messages",
   },
@@ -167,8 +167,6 @@ export function AdminShell({
   const [menuOpen, setMenuOpen] = useState(false);
   // Demo mode kept but hidden — restore by uncommenting demoOpen / triggers below.
   // const [demoOpen, setDemoOpen] = useState(false);
-  const programsLight =
-    pathname === "/admin/programs" || pathname.startsWith("/admin/programs/");
 
   useEffect(() => {
     setMenuOpen(false);
@@ -185,26 +183,9 @@ export function AdminShell({
 
   return (
     <HubThemeProvider scope="admin">
-      <div
-        className={cn(
-          "flex min-h-full flex-1",
-          programsLight ? "programs-th bg-[var(--th-bg)]" : "bg-background",
-        )}
-      >
-        <aside
-          className={cn(
-            "sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r lg:flex",
-            programsLight
-              ? "border-[var(--th-border)] bg-[var(--th-surface)]"
-              : "border-border bg-surface",
-          )}
-        >
-          <div
-            className={cn(
-              "border-b px-4 py-5",
-              programsLight ? "border-[var(--th-border)]" : "border-border",
-            )}
-          >
+      <div className="flex min-h-full flex-1 bg-background">
+        <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
+          <div className="border-b border-border px-4 py-5">
             <Link href="/admin" className="flex items-center gap-3">
               <Image
                 src="/images/brand/ma5-logo.jpeg"
@@ -214,26 +195,13 @@ export function AdminShell({
                 className="h-9 w-9 rounded-full object-cover"
               />
               <div>
-                <span
-                  className={cn(
-                    "block font-display text-lg tracking-[0.08em] uppercase",
-                    programsLight && "text-[var(--th-text)]",
-                  )}
-                >
+                <span className="block font-display text-lg tracking-[0.08em] uppercase">
                   {siteConfig.shortName}
-                </span>
-                <span
-                  className={cn(
-                    "text-[10px] tracking-wide uppercase",
-                    programsLight ? "text-[var(--th-muted)]" : "text-muted",
-                  )}
-                >
-                  Operations
                 </span>
               </div>
             </Link>
           </div>
-          <nav aria-label="Operations" className="flex flex-1 flex-col gap-1 p-3">
+          <nav aria-label="Admin" className="flex flex-1 flex-col gap-1 p-3">
             {SIDEBAR.map((item) => {
               const active = isActive(pathname, item.href, item.match);
               const showBadge =
@@ -244,13 +212,9 @@ export function AdminShell({
                   href={item.href}
                   className={cn(
                     "flex items-center justify-between gap-2 px-3 py-2.5 text-sm tracking-wide transition",
-                    programsLight
-                      ? active
-                        ? "border-l-2 border-[var(--th-blue)] bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
-                        : "border-l-2 border-transparent text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                      : active
-                        ? "border-l-2 border-brand bg-brand/10 text-foreground"
-                        : "border-l-2 border-transparent text-muted hover:text-foreground",
+                    active
+                      ? "border-l-2 border-brand bg-brand/10 font-semibold text-foreground"
+                      : "border-l-2 border-transparent text-muted hover:text-foreground",
                   )}
                 >
                   <span>{item.label}</span>
@@ -263,32 +227,17 @@ export function AdminShell({
               );
             })}
           </nav>
-          <div
-            className={cn(
-              "mt-auto space-y-1 border-t p-4",
-              programsLight ? "border-[var(--th-border)]" : "border-border",
-            )}
-          >
+          <div className="mt-auto space-y-1 border-t border-border p-4">
             {/* Demo mode — kept but hidden
             <button
               type="button"
               onClick={() => setDemoOpen(true)}
               aria-haspopup="dialog"
               aria-expanded={demoOpen}
-              className={cn(
-                "flex w-full items-center gap-2 px-3 py-2 text-left text-sm tracking-wide",
-                programsLight
-                  ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                  : "text-muted hover:text-foreground",
-              )}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm tracking-wide text-muted hover:text-foreground"
             >
               <span
-                className={cn(
-                  "flex size-5 shrink-0 items-center justify-center border text-[10px] font-semibold",
-                  programsLight
-                    ? "border-[var(--th-blue)] text-[var(--th-blue)]"
-                    : "border-current",
-                )}
+                className="flex size-5 shrink-0 items-center justify-center border border-current text-[10px] font-semibold"
                 aria-hidden
               >
                 ?
@@ -298,44 +247,22 @@ export function AdminShell({
             */}
             <Link
               href="/admin/settings"
-              className={cn(
-                "block px-3 py-2 text-sm tracking-wide",
-                programsLight
-                  ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                  : "text-muted hover:text-foreground",
-              )}
+              className="block px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground"
             >
               Settings
             </Link>
             {/* Client hub preview — kept but hidden
             <ClientHubPreview
               label="Preview client view"
-              className={cn(
-                "block w-full px-3 py-2",
-                programsLight && "text-[var(--th-muted)]",
-              )}
+              className="block w-full px-3 py-2"
             />
             */}
-            <SignOutButton
-              className={cn(
-                "block w-full px-3 py-2 text-sm tracking-wide",
-                programsLight
-                  ? "text-[var(--th-muted)] hover:text-[var(--th-text)]"
-                  : "text-muted hover:text-foreground",
-              )}
-            />
+            <SignOutButton className="block w-full px-3 py-2 text-sm tracking-wide text-muted hover:text-foreground" />
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <header
-            className={cn(
-              "sticky top-0 z-50 flex items-center justify-between gap-3 border-b px-4 py-3 lg:hidden",
-              programsLight
-                ? "border-[var(--th-border)] bg-[var(--th-surface)]"
-                : "border-border bg-surface",
-            )}
-          >
+          <header className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 lg:hidden">
             <Link href="/admin" className="flex min-w-0 items-center gap-2.5">
               <Image
                 src="/images/brand/ma5-logo.jpeg"
@@ -345,32 +272,14 @@ export function AdminShell({
                 className="h-8 w-8 shrink-0 rounded-full object-cover"
               />
               <div className="min-w-0">
-                <span
-                  className={cn(
-                    "block font-display text-base tracking-[0.08em] uppercase",
-                    programsLight && "text-[var(--th-text)]",
-                  )}
-                >
+                <span className="block font-display text-base tracking-[0.08em] uppercase">
                   {siteConfig.shortName}
-                </span>
-                <span
-                  className={cn(
-                    "text-[10px] tracking-wide uppercase",
-                    programsLight ? "text-[var(--th-muted)]" : "text-muted",
-                  )}
-                >
-                  Operations
                 </span>
               </div>
             </Link>
             <button
               type="button"
-              className={cn(
-                "inline-flex size-11 shrink-0 items-center justify-center border touch-manipulation",
-                programsLight
-                  ? "border-[var(--th-border)] text-[var(--th-text)]"
-                  : "border-border text-foreground",
-              )}
+              className="inline-flex size-11 shrink-0 items-center justify-center border border-border text-foreground touch-manipulation"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               aria-controls="admin-mobile-menu"
@@ -390,12 +299,7 @@ export function AdminShell({
               />
               <div
                 id="admin-mobile-menu"
-                className={cn(
-                  "absolute inset-x-0 top-[57px] z-50 max-h-[calc(100dvh-57px-4.25rem)] overflow-y-auto border-b shadow-lg lg:hidden",
-                  programsLight
-                    ? "border-[var(--th-border)] bg-[var(--th-surface)]"
-                    : "border-border bg-surface",
-                )}
+                className="absolute inset-x-0 top-[57px] z-50 max-h-[calc(100dvh-57px-4.25rem)] overflow-y-auto border-b border-border bg-surface shadow-lg lg:hidden"
               >
                 <nav aria-label="More" className="flex flex-col p-2">
                   {SIDEBAR.map((item) => {
@@ -409,13 +313,9 @@ export function AdminShell({
                         href={item.href}
                         className={cn(
                           "flex min-h-12 items-center justify-between gap-2 px-3 text-sm tracking-wide touch-manipulation",
-                          programsLight
-                            ? active
-                              ? "bg-[var(--th-bg)] font-semibold text-[var(--th-blue)]"
-                              : "text-[var(--th-text)]"
-                            : active
-                              ? "bg-brand/10 font-semibold text-foreground"
-                              : "text-foreground",
+                          active
+                            ? "bg-brand/10 font-semibold text-foreground"
+                            : "text-foreground",
                         )}
                         onClick={() => setMenuOpen(false)}
                       >
@@ -432,25 +332,13 @@ export function AdminShell({
                   })}
                   <Link
                     href="/admin/settings"
-                    className={cn(
-                      "flex min-h-12 items-center px-3 text-sm tracking-wide touch-manipulation",
-                      programsLight
-                        ? "text-[var(--th-text)]"
-                        : "text-foreground",
-                    )}
+                    className="flex min-h-12 items-center px-3 text-sm tracking-wide text-foreground touch-manipulation"
                     onClick={() => setMenuOpen(false)}
                   >
                     Settings
                   </Link>
                 </nav>
-                <div
-                  className={cn(
-                    "space-y-2 border-t p-3",
-                    programsLight
-                      ? "border-[var(--th-border)]"
-                      : "border-border",
-                  )}
-                >
+                <div className="space-y-2 border-t border-border p-3">
                   <ThemeToggle className="w-full justify-start" />
                   {/* Client hub preview — kept but hidden
                   <ClientHubPreview
@@ -460,47 +348,24 @@ export function AdminShell({
                   */}
                   <SignOutButton
                     showIcon
-                    className={cn(
-                      "flex min-h-12 w-full items-center gap-2 px-3 text-left text-sm tracking-wide",
-                      programsLight
-                        ? "text-[var(--th-muted)]"
-                        : "text-muted",
-                    )}
+                    className="flex min-h-12 w-full items-center gap-2 px-3 text-left text-sm tracking-wide text-muted"
                   />
                 </div>
               </div>
             </>
           ) : null}
 
-          <header
-            className={cn(
-              "sticky top-0 z-40 hidden items-center justify-end border-b px-6 py-2.5 backdrop-blur lg:flex",
-              programsLight
-                ? "border-[var(--th-border)] bg-[var(--th-surface)]/95"
-                : "border-border bg-background/95",
-            )}
-          >
+          <header className="sticky top-0 z-40 hidden items-center justify-end border-b border-border bg-background/95 px-6 py-2.5 backdrop-blur lg:flex">
             <ThemeToggle />
           </header>
 
-          <main
-            id="main-content"
-            className={cn(
-              "flex-1 px-4 py-6 sm:px-6 lg:px-8",
-              programsLight && "bg-[var(--th-bg)] text-[var(--th-text)]",
-            )}
-          >
+          <main id="main-content" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </main>
 
           <nav
-            aria-label="Operations mobile"
-            className={cn(
-              "fixed inset-x-0 bottom-0 z-50 border-t pb-[env(safe-area-inset-bottom)] lg:hidden",
-              programsLight
-                ? "border-[var(--th-border)] bg-[var(--th-surface)]/95"
-                : "border-border bg-surface/95",
-            )}
+            aria-label="Admin mobile"
+            className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] lg:hidden"
           >
             <div className="mx-auto grid max-w-lg grid-cols-4">
               {MOBILE_TAB.map((item) => {
@@ -513,13 +378,7 @@ export function AdminShell({
                     href={item.href}
                     className={cn(
                       "relative flex min-h-14 flex-col items-center justify-center touch-manipulation",
-                      programsLight
-                        ? active
-                          ? "text-[var(--th-blue)]"
-                          : "text-[var(--th-muted)]"
-                        : active
-                          ? "text-brand"
-                          : "text-muted",
+                      active ? "text-foreground" : "text-muted",
                     )}
                     aria-label={item.label}
                     title={item.label}

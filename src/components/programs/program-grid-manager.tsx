@@ -344,7 +344,7 @@ export function ProgramGridManager({
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)]">
-          <aside className="border border-[var(--th-border)] bg-white">
+          <aside className="border border-[var(--th-border)] bg-[var(--th-surface)]">
             <div className="border-b border-[var(--th-border)] bg-[#111827] px-3 py-2 text-xs font-semibold tracking-wide text-white uppercase">
               {selected.title}
             </div>
@@ -476,7 +476,7 @@ export function ProgramGridManager({
       </div>
 
       {/* TrainHeroic-style weeks × days grid */}
-      <div className="border border-[var(--th-border)] bg-white">
+      <div className="border border-[var(--th-border)] bg-[var(--th-surface)]">
         <div className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))] border-b border-[#111827] bg-[#111827] text-center text-[11px] font-bold tracking-wide text-white uppercase">
           <div className="border-r border-white/10 py-3" />
           {Array.from({ length: 7 }, (_, i) => (
@@ -496,7 +496,7 @@ export function ProgramGridManager({
               key={weekIndex}
               className="grid grid-cols-[72px_repeat(7,minmax(0,1fr))] border-b border-[var(--th-border)] last:border-b-0"
             >
-              <div className="flex items-start border-r border-[var(--th-border)] bg-white px-2 py-3 text-[11px] font-bold tracking-wide uppercase th-muted">
+              <div className="flex items-start border-r border-[var(--th-border)] bg-[var(--th-surface)] px-2 py-3 text-[11px] font-bold tracking-wide uppercase th-muted">
                 Week {weekIndex}
               </div>
               {Array.from({ length: 7 }, (_, di) => {
@@ -514,7 +514,7 @@ export function ProgramGridManager({
                     {workout && cell?.workoutId ? (
                       <>
                         <div className="absolute inset-0 w-full p-2">
-                          <div className="flex h-full flex-col rounded border border-[var(--th-border)] bg-white p-2 shadow-sm">
+                          <div className="flex h-full flex-col rounded border border-[var(--th-border)] bg-[var(--th-surface)] p-2 shadow-sm">
                             <p className="flex-1 text-xs font-semibold leading-snug text-[var(--th-text)]">
                               {workout.title}
                             </p>
@@ -605,7 +605,7 @@ export function ProgramGridManager({
           onClick={() => setLibraryPicker(null)}
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-sm border border-[var(--th-border)] bg-white shadow-xl"
+            className="w-full max-w-md overflow-hidden rounded-sm border border-[var(--th-border)] bg-[var(--th-surface)] shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="border-b border-[var(--th-border)] px-5 py-4">

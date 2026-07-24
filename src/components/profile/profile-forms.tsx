@@ -7,6 +7,7 @@ import type {
   ClientProfileSettings,
   ClientWaiver,
 } from "@/features/settings/types";
+import { PasswordField } from "@/components/ui/password-field";
 import { cn } from "@/lib/utils";
 
 function FieldInput({
@@ -437,17 +438,19 @@ export function ProfilePasswordForm({ email }: { email: string }) {
         </button>
       ) : (
         <div className="mt-4 space-y-3">
-          <FieldInput
+          <PasswordField
             label="New password"
             value={password}
             onChange={setPassword}
-            type="password"
+            autoComplete="new-password"
+            minLength={8}
           />
-          <FieldInput
+          <PasswordField
             label="Confirm password"
             value={confirm}
             onChange={setConfirm}
-            type="password"
+            autoComplete="new-password"
+            minLength={8}
           />
           <SaveBar
             pending={pending}

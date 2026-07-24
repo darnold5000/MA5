@@ -24,7 +24,7 @@ export const siteConfig = {
     // No public phone number listed on the current MA5 website.
     phone: "",
     phoneDisplay: "",
-    email: "ma.fitness99@gmail.com",
+    email: "support@ma5fitness.com",
   },
   hours: {
     summary: "24/7 key-fob open-gym access for members; training by appointment",

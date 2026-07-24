@@ -274,7 +274,14 @@ function mergeWaivers(
   );
   return DEFAULT_WAIVERS.map((def) => {
     const row = byKey.get(def.key);
-    if (!row) return { ...def };
+    if (!row) {
+      return {
+        key: def.key,
+        label: WAIVER_LABELS[def.key],
+        status: "pending" as const,
+        signedAt: null,
+      };
+    }
     return {
       key: def.key,
       label: WAIVER_LABELS[def.key],

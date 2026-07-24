@@ -16,8 +16,7 @@ const PARAM_OPTIONS: { value: ExerciseParam; label: string }[] = [
   { value: "weight_lb", label: "Weight (lb)" },
 ];
 
-const inputClass =
-  "w-full border border-[#d1d5db] bg-white px-3 py-2.5 text-sm text-[#111827] outline-none focus:border-[#2563eb] focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0";
+const inputClass = "th-input text-sm";
 
 const MAX_VIDEO_MB = 500;
 
@@ -200,7 +199,7 @@ export function ExerciseFormDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="exercise-drawer-title"
-        className="programs-th relative flex h-full w-full max-w-md flex-col bg-white text-[var(--th-text)] shadow-2xl"
+        className="programs-th relative flex h-full w-full max-w-md flex-col bg-[var(--th-surface)] text-[var(--th-text)] shadow-2xl"
       >
         <div className="flex items-center gap-3 border-b border-[#e5e7eb] px-5 py-4">
           <button

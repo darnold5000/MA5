@@ -30,10 +30,7 @@ export default async function ProgramsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Programs
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+        <h1 className="font-display text-3xl tracking-wide uppercase">
           Today&apos;s training
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">

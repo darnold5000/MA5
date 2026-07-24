@@ -241,7 +241,7 @@ export function AssignCalendarManager({
                   className={`flex w-full flex-wrap items-center justify-between gap-2 border px-3 py-2 text-left text-sm transition ${
                     isSelected
                       ? "border-[var(--th-blue)] bg-[var(--th-blue)]/5"
-                      : "border-[var(--th-border)] bg-white hover:border-[var(--th-blue)]/40"
+                      : "border-[var(--th-border)] bg-[var(--th-surface)] hover:border-[var(--th-blue)]/40"
                   }`}
                 >
                   <span>

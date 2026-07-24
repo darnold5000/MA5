@@ -325,7 +325,7 @@ export function WorkoutsManager({
 
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Session Preview */}
-        <aside className="border border-[var(--th-border)] bg-white">
+        <aside className="border border-[var(--th-border)] bg-[var(--th-surface)]">
           <div className="border-b border-[var(--th-border)] px-3 py-3 text-[11px] font-bold tracking-wide text-[#111827] uppercase">
             Session Preview
           </div>

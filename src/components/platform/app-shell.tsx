@@ -17,9 +17,9 @@ const SIDEBAR = [
   { href: "/app", label: "Home", match: "exact" as const },
   { href: "/app/schedule", label: "Reserve", match: "prefix" as const },
   { href: "/app/bookings", label: "My Training", match: "prefix" as const },
-  { href: "/app/journey", label: "My Journey", match: "prefix" as const },
+  { href: "/app/journey", label: "Journey", match: "prefix" as const },
   { href: "/app/programs", label: "Programs", match: "prefix" as const },
-  { href: "/app/community", label: "Community", match: "prefix" as const },
+  { href: "/app/community", label: "Community · Chat", match: "prefix" as const },
   { href: "/app/profile", label: "Profile", match: "prefix" as const },
   { href: "/app/messages", label: "Messages", match: "messages" as const },
 ] as const;
@@ -385,7 +385,7 @@ export function AppShell({
                   prefetch
                   className={cn(
                     "relative flex min-h-14 flex-col items-center justify-center touch-manipulation active:bg-brand/10",
-                    active ? "text-brand" : "text-muted",
+                    active ? "text-foreground" : "text-muted",
                   )}
                   aria-label={item.label}
                   title={item.label}

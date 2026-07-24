@@ -96,7 +96,7 @@ export function ExercisePicker({
               role="dialog"
               aria-modal="true"
               aria-labelledby={titleId}
-              className="programs-th relative flex h-full w-full max-w-md flex-col bg-white text-[var(--th-text)] shadow-2xl"
+              className="programs-th relative flex h-full w-full max-w-md flex-col bg-[var(--th-surface)] text-[var(--th-text)] shadow-2xl"
             >
               <div className="flex items-center gap-3 border-b border-[var(--th-border)] px-5 py-4">
                 <button

@@ -53,7 +53,7 @@ function WorkoutBlocksReview({
       {workout.blocks.map((block) => (
         <article
           key={block.id}
-          className="border border-[var(--th-border)] bg-white p-4"
+          className="border border-[var(--th-border)] bg-[var(--th-surface)] p-4"
         >
           <p className="text-xs font-semibold tracking-wide uppercase text-[var(--th-blue)]">
             {block.label}
@@ -272,7 +272,7 @@ export function CoachWorkoutReviewPanel(props: Props) {
           </div>
 
           {clientReview?.completion?.clientNote ? (
-            <div className="border border-[var(--th-border)] bg-white px-4 py-3 text-sm">
+            <div className="border border-[var(--th-border)] bg-[var(--th-surface)] px-4 py-3 text-sm">
               <p className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Athlete note
               </p>
@@ -283,7 +283,7 @@ export function CoachWorkoutReviewPanel(props: Props) {
           ) : null}
 
           {workout?.coachInstructions ? (
-            <div className="border border-[var(--th-border)] bg-white px-4 py-3 text-sm">
+            <div className="border border-[var(--th-border)] bg-[var(--th-surface)] px-4 py-3 text-sm">
               <p className="text-xs font-semibold tracking-wide uppercase th-muted">
                 Coach instructions
               </p>
@@ -307,7 +307,7 @@ export function CoachWorkoutReviewPanel(props: Props) {
                 return (
                   <details
                     key={member.clientUserId}
-                    className="border border-[var(--th-border)] bg-white"
+                    className="border border-[var(--th-border)] bg-[var(--th-surface)]"
                     open={memberLogged > 0}
                   >
                     <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">

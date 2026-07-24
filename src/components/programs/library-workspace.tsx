@@ -693,7 +693,7 @@ function LibraryTable({
             <tr
               key={row.id}
               className={cn(
-                "border-t border-[var(--th-border)] bg-white hover:bg-[var(--th-surface-muted)]/60",
+                "border-t border-[var(--th-border)] bg-[var(--th-surface)] hover:bg-[var(--th-surface-muted)]/60",
                 row.onRowClick && "cursor-pointer",
               )}
               onClick={(e) => {

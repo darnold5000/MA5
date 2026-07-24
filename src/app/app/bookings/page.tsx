@@ -56,10 +56,7 @@ export default async function BookingsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          My training
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+        <h1 className="font-display text-3xl tracking-wide uppercase">
           Your schedule
         </h1>
         <p className="mt-2 text-sm text-muted">

@@ -4,13 +4,13 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
+import { PasswordField } from "@/components/ui/password-field";
 import { parseHashSessionTokens } from "@/lib/auth/auth-callback";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
@@ -128,43 +128,22 @@ export function ResetPasswordForm() {
       description="Choose a new password for your MA5 account."
     >
       <form className="space-y-3 sm:space-y-4" onSubmit={onSubmit}>
-        <label className="block space-y-1.5 text-sm sm:space-y-2">
-          <span className="font-semibold tracking-wide uppercase">
-            New password
-          </span>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none sm:min-h-11"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 px-3 text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-        </label>
-        <label className="block space-y-1.5 text-sm sm:space-y-2">
-          <span className="font-semibold tracking-wide uppercase">
-            Confirm password
-          </span>
-          <input
-            type={showPassword ? "text" : "password"}
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-            minLength={8}
-            className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
-          />
-        </label>
+        <PasswordField
+          label="New password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
+        <PasswordField
+          label="Confirm password"
+          value={confirm}
+          onChange={setConfirm}
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
         {error ? (
           <p className="text-sm text-brand" role="alert">
             {error}

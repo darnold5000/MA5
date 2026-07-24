@@ -26,7 +26,7 @@ describe("storage-paths", () => {
     process.env.MA5_TENANT_ID = TENANT;
     process.env.MA5_LOCATION_ID = "ac85a800-91cc-4ba5-a42c-9b55eac4653a";
     expect(brandAvatarPath("user-1", "abc")).toBe(
-      `${TENANT}/brand/avatars/user-1/abc.jpg`,
+      `${TENANT}/brand/avatar/user-1/abc.jpg`,
     );
   });
 

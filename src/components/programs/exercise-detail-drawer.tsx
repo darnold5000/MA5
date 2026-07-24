@@ -49,7 +49,7 @@ export function ExerciseDetailDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="exercise-detail-title"
-        className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
+        className="programs-th relative flex h-full w-full max-w-md flex-col bg-[var(--th-surface)] text-[var(--th-text)] shadow-2xl"
       >
         <div className="flex items-center justify-between gap-3 border-b border-[#e5e7eb] px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">

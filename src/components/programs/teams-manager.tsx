@@ -129,7 +129,7 @@ export function TeamsManager({
 
       <div className="overflow-x-auto border border-[var(--th-border)]">
         <table className="min-w-full text-sm">
-          <thead className="bg-white text-left text-xs tracking-wide th-muted uppercase">
+          <thead className="bg-[var(--th-surface)] text-left text-xs tracking-wide th-muted uppercase">
             <tr>
               <th className="px-3 py-2">Group</th>
               <th className="px-3 py-2">Athletes</th>
@@ -152,7 +152,7 @@ export function TeamsManager({
                   className={`cursor-pointer border-t border-border ${
                     selectedId === t.id
                       ? "bg-[var(--th-blue)]/10"
-                      : "bg-white"
+                      : "bg-[var(--th-surface)]"
                   }`}
                   onClick={() => {
                     setSelectedId(t.id);
@@ -250,7 +250,7 @@ export function TeamsManager({
                 {members.map((m) => (
                   <li
                     key={m.id}
-                    className="flex items-center justify-between border border-[var(--th-border)] bg-white px-3 py-2"
+                    className="flex items-center justify-between border border-[var(--th-border)] bg-[var(--th-surface)] px-3 py-2"
                   >
                     <span>{m.userName}</span>
                     <button
@@ -334,7 +334,7 @@ export function TeamsManager({
                         className={`flex w-full flex-wrap items-center justify-between gap-2 border px-3 py-2 text-left text-sm transition ${
                           isSelected
                             ? "border-[var(--th-blue)] bg-[var(--th-blue)]/5"
-                            : "border-[var(--th-border)] bg-white hover:border-[var(--th-blue)]/40"
+                            : "border-[var(--th-border)] bg-[var(--th-surface)] hover:border-[var(--th-blue)]/40"
                         }`}
                       >
                         <span>

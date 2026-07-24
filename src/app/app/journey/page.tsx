@@ -18,10 +18,7 @@ export default async function JourneyPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          My Journey
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+        <h1 className="font-display text-3xl tracking-wide uppercase">
           Your Fitness Journey
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">

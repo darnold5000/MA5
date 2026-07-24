@@ -4,7 +4,7 @@ import { AdminMessagesInbox } from "@/components/communication/admin-messages-in
 import { loadCommunicationState } from "@/features/messaging";
 
 export const metadata: Metadata = {
-  title: "Messages · Operations",
+  title: "Messages",
   robots: { index: false, follow: false },
 };
 

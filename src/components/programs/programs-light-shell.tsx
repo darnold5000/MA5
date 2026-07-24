@@ -1,9 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/**
- * Content wrapper for Programs pages.
- * Full-window light chrome is applied by AdminShell on /admin/programs/*.
- */
+/** Scoped TrainHeroic-style tokens for Programs / Library (theme-aware via globals.css). */
 export function ProgramsLightShell({
   children,
   className,

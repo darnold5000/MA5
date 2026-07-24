@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MemberAttributionSection } from "@/components/marketing/member-attribution-section";
+import { ClientOfferingsSection } from "@/components/billing/client-offerings-section";
 import { MembershipSection } from "@/components/profile/membership-section";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { InstallMa5Section } from "@/components/pwa/install-ma5-section";
@@ -12,7 +12,6 @@ import {
   ProfilePasswordForm,
   ProfileWaiversList,
 } from "@/components/profile/profile-forms";
-import { getMemberAttribution } from "@/features/marketing";
 import { getClientProfileSettings } from "@/features/settings/queries";
 import { getMembershipSummary } from "@/lib/billing/membership-summary";
 import { getSessionUser } from "@/lib/auth/session";
@@ -32,7 +31,7 @@ function Section({
 }) {
   return (
     <section className="border border-border bg-surface p-5 sm:p-6">
-      <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
+      <p className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
         {title}
       </p>
       <div className="mt-5">{children}</div>
@@ -51,15 +50,11 @@ export default async function ProfilePage() {
     : await getMembershipSummary("demo-client");
 
   const userId = session?.id ?? "demo-client";
-  const attribution = await getMemberAttribution(userId);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Profile
-        </p>
-        <h1 className="mt-1 font-display text-3xl tracking-wide uppercase">
+        <h1 className="font-display text-3xl tracking-wide uppercase">
           {profile.fullName || profile.preferredName}
         </h1>
         <p className="mt-2 text-sm text-muted">
@@ -97,16 +92,25 @@ export default async function ProfilePage() {
         />
       </Section>
 
-      <section id="membership" className="border border-border bg-surface p-5 sm:p-6 scroll-mt-24">
-        <p className="text-xs font-semibold tracking-[0.2em] text-brand uppercase">
-          Membership
+      <section
+        id="membership"
+        className="scroll-mt-24 border border-border bg-surface p-5 sm:p-6"
+      >
+        <p className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
+          Membership &amp; plans
         </p>
-        <div className="mt-5">
+        <div className="mt-5 space-y-8">
           <MembershipSection membership={membership} />
+          <div>
+            <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+              Available to purchase
+            </p>
+            <div className="mt-4">
+              <ClientOfferingsSection />
+            </div>
+          </div>
         </div>
       </section>
-
-      <MemberAttributionSection attribution={attribution} />
 
       <Section title="Waivers">
         <ProfileWaiversList waivers={profile.waivers} />

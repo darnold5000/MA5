@@ -233,7 +233,7 @@ export function InstallMa5Section({
         </div>
         {pushStatus === "need_keys" ? (
           <p className="mt-2 text-xs text-muted">
-            Push is not configured on this server yet (missing VAPID keys).
+            Push notifications are not available in this environment yet.
           </p>
         ) : null}
         {pushStatus === "denied" ? (

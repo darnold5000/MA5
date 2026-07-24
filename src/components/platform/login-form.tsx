@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
 import { AuthCard } from "@/components/platform/auth-card";
+import { PasswordField } from "@/components/ui/password-field";
 import {
   messageForAuthHashError,
   parseHashAuthError,
@@ -18,7 +19,6 @@ export function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(
     callbackError
       ? "Your sign-in link expired or was already used. Request a new invitation or password reset email."
@@ -100,26 +100,13 @@ export function LoginForm() {
             className="min-h-10 w-full border border-border bg-background px-3 text-foreground outline-none sm:min-h-11"
           />
         </label>
-        <label className="block space-y-1.5 text-sm sm:space-y-2">
-          <span className="font-semibold tracking-wide uppercase">Password</span>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="min-h-10 w-full border border-border bg-background px-3 pr-16 text-foreground outline-none sm:min-h-11"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 px-3 text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-        </label>
+        <PasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          required
+        />
         <div className="flex justify-end">
           <Link
             href="/forgot-password"
