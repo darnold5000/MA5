@@ -28,6 +28,14 @@ export function useCommunicationRealtime(options: {
     }
 
     const channels: { unsubscribe?: () => void }[] = [];
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        router.refresh();
+      }, 750);
+    };
 
     const notifChannel = supabase
       .channel(`ma5-notif-${options.userId}`)
@@ -39,7 +47,7 @@ export function useCommunicationRealtime(options: {
           table: "ma5_notifications",
           filter: `user_id=eq.${options.userId}`,
         },
-        () => router.refresh(),
+        scheduleRefresh,
       )
       .subscribe();
     channels.push(notifChannel);
@@ -55,13 +63,14 @@ export function useCommunicationRealtime(options: {
             table: "ma5_messages",
             filter: `thread_id=eq.${options.threadId}`,
           },
-          () => router.refresh(),
+          scheduleRefresh,
         )
         .subscribe();
       channels.push(msgChannel);
     }
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       for (const ch of channels) {
         void supabase?.removeChannel(
           ch as Parameters<NonNullable<typeof supabase>["removeChannel"]>[0],

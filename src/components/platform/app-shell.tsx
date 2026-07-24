@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Demo mode — kept but hidden
 // import { DemoPreviewChrome } from "@/components/platform/demo-preview";
+import { HubRouteProgress } from "@/components/platform/hub-route-progress";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { HubThemeProvider } from "@/components/platform/theme-context";
 import { ThemeToggle } from "@/components/platform/theme-toggle";
+import { useHubUnreadCount } from "@/components/platform/use-hub-unread-count";
 import { siteConfig } from "@/content/site-config";
 import { cn } from "@/lib/utils";
 
@@ -161,17 +163,16 @@ export type AppShellProps = {
   children: React.ReactNode;
   memberName: string;
   memberPlan: string;
-  inboxUnread?: number;
 };
 
 export function AppShell({
   children,
   memberName,
   memberPlan,
-  inboxUnread = 0,
 }: AppShellProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { count: inboxUnread } = useHubUnreadCount(false);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -188,6 +189,9 @@ export function AppShell({
 
   return (
     <HubThemeProvider scope="app">
+      <Suspense fallback={null}>
+        <HubRouteProgress />
+      </Suspense>
       <div className="flex min-h-full flex-1 flex-col">
         <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8">

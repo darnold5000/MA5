@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,9 +8,11 @@ import { usePathname } from "next/navigation";
 // Demo mode — kept but hidden
 // import { ClientHubPreview } from "@/components/admin/client-hub-preview";
 // import { DemoPreviewChrome } from "@/components/platform/demo-preview";
+import { HubRouteProgress } from "@/components/platform/hub-route-progress";
 import { SignOutButton } from "@/components/platform/sign-out-button";
 import { HubThemeProvider } from "@/components/platform/theme-context";
 import { ThemeToggle } from "@/components/platform/theme-toggle";
+import { useHubUnreadCount } from "@/components/platform/use-hub-unread-count";
 import { siteConfig } from "@/content/site-config";
 import { cn } from "@/lib/utils";
 
@@ -158,13 +160,12 @@ function NavIcon({
 
 export function AdminShell({
   children,
-  communicationUnread = 0,
 }: {
   children: React.ReactNode;
-  communicationUnread?: number;
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { count: communicationUnread } = useHubUnreadCount(true);
   // Demo mode kept but hidden — restore by uncommenting demoOpen / triggers below.
   // const [demoOpen, setDemoOpen] = useState(false);
 
@@ -183,6 +184,9 @@ export function AdminShell({
 
   return (
     <HubThemeProvider scope="admin">
+      <Suspense fallback={null}>
+        <HubRouteProgress />
+      </Suspense>
       <div className="flex min-h-full flex-1 bg-background">
         <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
           <div className="border-b border-border px-4 py-5">

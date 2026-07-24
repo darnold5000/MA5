@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/platform/app-shell";
 import { resolveClientFullName } from "@/content/demo-persona";
-import { getUnreadBadgeCount } from "@/features/messaging";
 import { getSessionUser } from "@/lib/auth/session";
 import { isSupabasePublicConfigured } from "@/lib/env";
 import { getActiveMembershipForUser } from "@/lib/stripe/sync-membership";
@@ -13,8 +12,11 @@ export default async function ClientAppLayout({
   const session = isSupabasePublicConfigured()
     ? await getSessionUser()
     : null;
+
   const membership = session
-    ? await getActiveMembershipForUser(session.id)
+    ? await getActiveMembershipForUser(session.id, {
+        allowStripeHydrate: false,
+      })
     : null;
 
   const memberName = resolveClientFullName({
@@ -27,14 +29,8 @@ export default async function ClientAppLayout({
       .replace(/\s+Membership$/i, " Membership")
       .trim() ?? "No plan";
 
-  const inboxUnread = await getUnreadBadgeCount({ staff: false });
-
   return (
-    <AppShell
-      memberName={memberName}
-      memberPlan={memberPlan}
-      inboxUnread={inboxUnread}
-    >
+    <AppShell memberName={memberName} memberPlan={memberPlan}>
       {children}
     </AppShell>
   );

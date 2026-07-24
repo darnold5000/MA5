@@ -23,56 +23,69 @@ export type ActiveMembership = {
  * Membership state is owned by verified Stripe webhooks.
  * This helper only reads current membership for UI — it does not mutate from redirects.
  */
+export type MembershipLookupOptions = {
+  /** Stripe API hydration is slow — only enable after checkout or explicit sync. */
+  allowStripeHydrate?: boolean;
+};
+
 export async function syncMembershipFromCheckoutSession(
   _sessionId: string,
   userId: string,
 ): Promise<ActiveMembership | null> {
-  return getActiveMembershipForUser(userId);
+  return getActiveMembershipForUser(userId, { allowStripeHydrate: true });
+}
+
+async function loadActiveMembershipFromDb(
+  userId: string,
+): Promise<ActiveMembership | null> {
+  const client = isMa5DeploymentConfigured()
+    ? createMa5TenantServiceClient()
+    : null;
+  const supabase = client?.supabase ?? createServiceClient();
+  const tenantId = client?.ctx.tenantId;
+
+  let query = supabase
+    .from(MA5_TABLES.memberships)
+    .select("status, current_period_end, ma5_products(name, slug)")
+    .eq("user_id", userId)
+    .in("status", ["active", "trialing"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (tenantId) {
+    query = query.eq("tenant_id", tenantId);
+  }
+
+  const { data } = await query.maybeSingle();
+  if (!data) return null;
+
+  const product = data.ma5_products as
+    | { name?: string; slug?: string }
+    | { name?: string; slug?: string }[]
+    | null;
+  const prod = Array.isArray(product) ? product[0] : product;
+
+  return {
+    productSlug: prod?.slug ?? "",
+    productName: prod?.name ?? "Membership",
+    status: data.status as string,
+    currentPeriodEnd: (data.current_period_end as string) ?? null,
+  };
 }
 
 export async function getActiveMembershipForUser(
   userId: string,
+  options: MembershipLookupOptions = {},
 ): Promise<ActiveMembership | null> {
   if (!isSupabaseConfigured()) return null;
 
   try {
-    const fromStripe = await hydrateMembershipFromStripeCustomer(userId);
-    if (fromStripe) return fromStripe;
+    const fromDb = await loadActiveMembershipFromDb(userId);
+    if (fromDb) return fromDb;
 
-    const client = isMa5DeploymentConfigured()
-      ? createMa5TenantServiceClient()
-      : null;
-    const supabase = client?.supabase ?? createServiceClient();
-    const tenantId = client?.ctx.tenantId;
+    if (options.allowStripeHydrate === false) return null;
 
-    let query = supabase
-      .from(MA5_TABLES.memberships)
-      .select("status, current_period_end, ma5_products(name, slug)")
-      .eq("user_id", userId)
-      .in("status", ["active", "trialing"])
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (tenantId) {
-      query = query.eq("tenant_id", tenantId);
-    }
-
-    const { data } = await query.maybeSingle();
-
-    if (!data) return null;
-
-    const product = data.ma5_products as
-      | { name?: string; slug?: string }
-      | { name?: string; slug?: string }[]
-      | null;
-    const prod = Array.isArray(product) ? product[0] : product;
-
-    return {
-      productSlug: prod?.slug ?? "",
-      productName: prod?.name ?? "Membership",
-      status: data.status as string,
-      currentPeriodEnd: (data.current_period_end as string) ?? null,
-    };
+    return hydrateMembershipFromStripeCustomer(userId);
   } catch {
     return null;
   }

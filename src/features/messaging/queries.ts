@@ -94,18 +94,30 @@ async function loadFromSupabase(
   const threads: MessageThread[] = [];
   const messagesByThread: Record<string, Message[]> = {};
 
+  const threadIds = (threadRows ?? []).map((row) => String(row.id));
+  const { data: allMsgRows } =
+    threadIds.length > 0
+      ? await supabase
+          .from(MA5_TABLES.messages)
+          .select("*")
+          .in("thread_id", threadIds)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true })
+      : { data: [] as Record<string, unknown>[] };
+
+  const msgsByThread = new Map<string, Record<string, unknown>[]>();
+  for (const m of allMsgRows ?? []) {
+    const tid = String(m.thread_id);
+    const list = msgsByThread.get(tid) ?? [];
+    list.push(m as Record<string, unknown>);
+    msgsByThread.set(tid, list);
+  }
+
   for (const row of threadRows ?? []) {
     const tid = String(row.id);
-    const { data: msgs } = await supabase
-      .from(MA5_TABLES.messages)
-      .select("*")
-      .eq("thread_id", tid)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: true });
-
     const lastRead = readMap.get(tid);
     let unreadCount = 0;
-    const mapped: Message[] = (msgs ?? []).map((m) => {
+    const mapped: Message[] = (msgsByThread.get(tid) ?? []).map((m) => {
       const createdAt = String(m.created_at);
       const senderUserId = String(m.sender_user_id);
       if (
@@ -270,6 +282,83 @@ function audienceLabel(type: Announcement["audienceType"]): string {
   }
 }
 
+async function loadUnreadBadgeCountFromSupabase(
+  viewerId: string,
+  isStaff: boolean,
+): Promise<number> {
+  const supabase = await createClient();
+
+  if (!isStaff) {
+    const { count, error } = await supabase
+      .from(MA5_TABLES.notifications)
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", viewerId)
+      .is("read_at", null)
+      .in("type", ["direct_message", "announcement"]);
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  const { data: threadRows, error: threadErr } = await supabase
+    .from(MA5_TABLES.messageThreads)
+    .select("id");
+  if (threadErr) throw threadErr;
+
+  const threadIds = (threadRows ?? []).map((t) => String(t.id));
+  if (threadIds.length === 0) return 0;
+
+  const [{ data: readRows }, { data: msgRows }] = await Promise.all([
+    supabase
+      .from(MA5_TABLES.messageThreadReads)
+      .select("thread_id, last_read_at")
+      .eq("user_id", viewerId)
+      .in("thread_id", threadIds),
+    supabase
+      .from(MA5_TABLES.messages)
+      .select("thread_id, sender_user_id, sender_role, created_at")
+      .in("thread_id", threadIds)
+      .is("deleted_at", null),
+  ]);
+
+  const readMap = new Map(
+    (readRows ?? []).map((r) => [
+      r.thread_id as string,
+      r.last_read_at as string,
+    ]),
+  );
+
+  const unreadByThread = new Map<string, number>();
+  const lastSenderByThread = new Map<string, Message["senderRole"] | null>();
+  const lastMsgAtByThread = new Map<string, string>();
+
+  for (const m of msgRows ?? []) {
+    const tid = String(m.thread_id);
+    const createdAt = String(m.created_at);
+    const senderUserId = String(m.sender_user_id);
+    const senderRole = m.sender_role as Message["senderRole"];
+
+    const prevAt = lastMsgAtByThread.get(tid);
+    if (!prevAt || createdAt > prevAt) {
+      lastMsgAtByThread.set(tid, createdAt);
+      lastSenderByThread.set(tid, senderRole);
+    }
+
+    if (senderUserId === viewerId) continue;
+    const lastRead = readMap.get(tid);
+    if (!lastRead || createdAt > lastRead) {
+      unreadByThread.set(tid, (unreadByThread.get(tid) ?? 0) + 1);
+    }
+  }
+
+  let total = 0;
+  for (const [tid, unread] of unreadByThread) {
+    if (lastSenderByThread.get(tid) === "client" && unread > 0) {
+      total += unread;
+    }
+  }
+  return total;
+}
+
 export async function loadCommunicationState(): Promise<CommunicationState> {
   const demoAllowed = allowDemoFallbacks();
   const demo = demoAllowed
@@ -304,11 +393,30 @@ export async function loadCommunicationState(): Promise<CommunicationState> {
 export async function getUnreadBadgeCount(options?: {
   staff?: boolean;
 }): Promise<number> {
-  const state = await loadCommunicationState();
-  if (options?.staff) {
-    return countStaffUnreadReplies(state.threads);
+  if (!isSupabasePublicConfigured() || !isSupabaseConfigured()) {
+    return 0;
   }
-  return countUnreadNotifications(state.notifications);
+
+  const session = await getSessionUser();
+  if (!session) return 0;
+
+  const isStaff = Boolean(
+    options?.staff &&
+      canAccessAdmin(session.roles) &&
+      hasCapability(session.roles, "message_clients"),
+  );
+
+  try {
+    return await loadUnreadBadgeCountFromSupabase(session.id, isStaff);
+  } catch (err) {
+    console.error("[messaging] getUnreadBadgeCount", err);
+    if (isMa5ProductionRuntime()) return 0;
+    const state = await loadCommunicationState();
+    if (isStaff) {
+      return countStaffUnreadReplies(state.threads);
+    }
+    return countUnreadNotifications(state.notifications);
+  }
 }
 
 export function filterThreads(

@@ -3,18 +3,17 @@ import { NextResponse } from "next/server";
 import { formatUnreadBadge } from "@/features/messaging/types";
 import { getUnreadBadgeCount } from "@/features/messaging/queries";
 import { getSessionUser } from "@/lib/auth/session";
-import { isSupabasePublicConfigured } from "@/lib/env";
 import { canAccessAdmin, hasCapability } from "@/lib/permissions/roles";
-import { isSupabaseConfigured } from "@/lib/supabase/server";
 
-export async function GET() {
-  const session =
-    isSupabasePublicConfigured() && isSupabaseConfigured()
-      ? await getSessionUser()
-      : null;
+export async function GET(request: Request) {
+  const session = await getSessionUser();
+  if (!session) {
+    return NextResponse.json({ count: 0, label: formatUnreadBadge(0) });
+  }
 
+  const wantsStaff = new URL(request.url).searchParams.get("staff") === "1";
   const staff = Boolean(
-    session &&
+    wantsStaff &&
       canAccessAdmin(session.roles) &&
       hasCapability(session.roles, "message_clients"),
   );

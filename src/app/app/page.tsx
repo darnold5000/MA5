@@ -83,7 +83,7 @@ export default async function ClientDashboardPage() {
     : suggested;
 
   const activeMembership = session
-    ? await getActiveMembershipForUser(session.id)
+    ? await getActiveMembershipForUser(session.id, { allowStripeHydrate: false })
     : null;
 
   const firstName = resolveClientFirstName({

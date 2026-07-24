@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { NextResponse } from "next/server";
 
 import {
@@ -45,7 +46,7 @@ function isPlatformRole(value: string): value is PlatformRole {
   return (PLATFORM_ROLES as readonly string[]).includes(value);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!isSupabaseConfigured()) {
     return null;
   }
@@ -106,7 +107,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
       access: "active",
     };
   }
-}
+});
 
 export async function requireSessionUser(): Promise<SessionUser> {
   const session = await getSessionUser();
